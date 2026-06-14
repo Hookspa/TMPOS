@@ -2,7 +2,7 @@
 // DASHBOARDS — rollups de señales CRM (Sprint 5)
 // (sin emojis; señales con puntos de color)
 // ══════════════════════════════════════════
-function artistReleasesAll(artId){ return launches.filter(l => l.artistId === artId); }
+function artistReleasesAll(artId){ return launches.filter(l => l.artistId === artId && l.type !== 'evergreen'); }
 // Legal pendiente del release = tracks con split sin firmar + documentos legales no firmados/aprobados
 function releaseLegalPending(l){
   let n = 0;

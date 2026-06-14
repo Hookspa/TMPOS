@@ -206,7 +206,7 @@ function openNewTask() {
 function ntFillReleases() {
   const aid = (document.getElementById('nt-artist') || {}).value || '';
   const rel = document.getElementById('nt-release'); if (!rel) return;
-  const ls = (typeof launches !== 'undefined') ? launches.filter(l => !aid || l.artistId === aid) : [];
+  const ls = (typeof launches !== 'undefined') ? launches.filter(l => (!aid || l.artistId === aid) && l.type !== 'evergreen') : [];
   rel.innerHTML = `<option value="">— Ninguno —</option>` + ls.map(l => `<option value="${l.id}">${s(l.name)}</option>`).join('');
 }
 function cerrarNewTask(e) { if (!e || e.target === document.getElementById('modal-newtask')) document.getElementById('modal-newtask').classList.remove('open'); }

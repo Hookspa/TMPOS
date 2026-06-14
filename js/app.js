@@ -471,11 +471,14 @@ let calModalIdx = null;
 function abrirModalCal(idx) {
   calModalIdx = idx;
   const r = referencias[idx];
-  const a = activeLaunch();
-  document.getElementById('mc-title').innerHTML =
-    `${s(r.title)} ${a ? `<span style="color:var(--text-dim);font-weight:400">→ ${s(a.name)}</span>` : ''}`;
+  document.getElementById('mc-title').innerHTML = `${s(r.title)}`;
   document.getElementById('mc-fecha').value = '';
   document.getElementById('mc-status').textContent = '';
+  // Selector de campaña (release activo + evergreen del artista) + pauta
+  const camps = calCampaigns();
+  const csel = document.getElementById('mc-camp');
+  if (csel) csel.innerHTML = camps.map(c => `<option value="${c.id}">${s(c.name)}${c.isEvergreen ? ' · always-on' : ''}</option>`).join('') || '<option value="">— sin campaña —</option>';
+  const psel = document.getElementById('mc-pauta'); if (psel) psel.value = 'organico';
   document.getElementById('modal-cal').classList.add('open');
 }
 function cerrarModalCal(e) {
@@ -485,14 +488,18 @@ function cerrarModalCal(e) {
 function confirmarCal() {
   const fecha = document.getElementById('mc-fecha').value;
   if (!fecha) { document.getElementById('mc-status').textContent = 'Selecciona una fecha'; return; }
-  const a = activeLaunch();
-  if (!a) { document.getElementById('mc-status').textContent = 'No hay lanzamiento activo'; return; }
+  const campId = (document.getElementById('mc-camp') || {}).value || '';
+  const target = launches.find(l => l.id === campId) || activeLaunch();
+  if (!target) { document.getElementById('mc-status').textContent = 'Crea una campaña o lanzamiento'; return; }
+  const pauta = (document.getElementById('mc-pauta') || {}).value || 'organico';
   const r = referencias[calModalIdx];
   const cats = (r.cat||[]).filter(Boolean);
-  a.cal.push({ id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0]||'awareness', fecha, refIdx: calModalIdx, refLink: s(r.link) });
+  target.cal = target.cal || [];
+  target.cal.push({ id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0]||'awareness', fecha, pauta, refIdx: calModalIdx, refLink: s(r.link) });
   saveLaunches();
   document.getElementById('mc-status').style.color = '#4ade80';
-  document.getElementById('mc-status').textContent = `✓ Agregado a ${s(a.name)}`;
+  document.getElementById('mc-status').textContent = `✓ Agregado a ${s(target.name)}`;
+  if (typeof renderCalendar === 'function' && (document.querySelector('.page.active')||{}).id === 'page-calendario') renderCalendar();
   setTimeout(() => { document.getElementById('modal-cal').classList.remove('open'); }, 800);
 }
 
@@ -529,7 +536,8 @@ let _dpInput = null, _dpMonth = null;
 // Días del artista activo que ya tienen contenido programado (todas sus campañas de release; evergreen se suma en Push 2).
 function dpOccupied() {
   const map = {};
-  const ls = (typeof artistLaunches === 'function') ? artistLaunches() : [];
+  // Todas las campañas del artista activo: releases + evergreen.
+  const ls = launches.filter(l => l.artistId === currentArtistId);
   ls.forEach(l => (l.cal || []).forEach(ci => { if (ci.fecha) map[ci.fecha] = (map[ci.fecha] || 0) + 1; }));
   return map;
 }
@@ -640,7 +648,7 @@ function renderCalGrid() {
   grid.innerHTML = DAYS.map(d => `<div class="cal-day-header">${d}</div>`).join('');
   const today = new Date(); today.setHours(0,0,0,0);
   const dropKey = (a && a.date) ? a.date : null;
-  const items = a ? a.cal : [];
+  const items = calVisibleItems(); // piezas de TODAS las campañas visibles (release + evergreen)
 
   days.forEach(day => {
     const dk = dateKey(day);
@@ -649,10 +657,11 @@ function renderCalGrid() {
     const outMonth = (month !== null && day.getMonth() !== month);
     const dayItems = items.filter(ci => ci.fecha === dk);
     const itemsHTML = dayItems.map(ci => {
-      const col = catColor(ci.cat);
+      const col = ci._campColor || catColor(ci.cat);
       const est = (ci.production && ci.production.estado) || 'pendiente';
       const estIcon = ESTADO_ICON[est] || '';
-      return `<div onclick="openProduction('${a.id}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci.title)} · ${est}">${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
+      const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
+      return `<div onclick="openProduction('${ci._campId}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
@@ -664,13 +673,7 @@ function renderCalGrid() {
     grid.appendChild(div);
   });
 
-  const allCats = getUniqueTags('cat');
-  const leyendaEl = document.getElementById('cal-leyenda');
-  if (leyendaEl) {
-    leyendaEl.innerHTML = allCats.length
-      ? allCats.map(c => { const col = catColor(c); return `<div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:2px;background:${col};display:inline-block;flex-shrink:0"></span><span style="font-size:11px;color:var(--text-muted)">${s(c)}</span></div>`; }).join('')
-      : '<div style="font-size:10px;color:var(--text-dim)">Carga el banco para ver categorías</div>';
-  }
+  renderCampaignsBar();
   if (sideRefs) sideRefs.innerHTML = referencias.slice(0, 6).map((r) => {
     const cats = (r.cat||[]).filter(Boolean); const col = catColor(cats[0]);
     return `<div class="ref-item" onclick="openRefBoxdrop(${r._idx})">
@@ -678,6 +681,27 @@ function renderCalGrid() {
       <div class="ref-info"><div class="ref-title">${s(r.title)}</div><div class="ref-meta">${cats.map(up).join(' · ') || '—'}</div></div>
     </div>`;
   }).join('');
+}
+
+// Barra de campañas (leyenda + toggles de visibilidad + crear/eliminar evergreen).
+function renderCampaignsBar() {
+  const el = document.getElementById('cal-leyenda'); if (!el) return;
+  const camps = calCampaigns();
+  const canEditC = (typeof canDo !== 'function') || canDo('edit_launch');
+  const rows = camps.map(c => {
+    const hidden = !!_calHidden[c.id];
+    const del = c.isEvergreen && canEditC ? `<button class="goal-btn reject" style="padding:2px 5px" title="Eliminar campaña" onclick="event.stopPropagation();borrarCampania('${c.id}')">${icon('close',10)}</button>` : '';
+    const tag = c.isEvergreen ? 'always-on' : 'release';
+    return `<div style="display:flex;align-items:center;gap:8px;opacity:${hidden?0.4:1};cursor:pointer" onclick="toggleCampaign('${c.id}')" title="${hidden?'Mostrar':'Ocultar'} en el calendario">
+      <span style="width:11px;height:11px;border-radius:3px;background:${c.color};display:inline-block;flex-shrink:0;${hidden?'opacity:.5':''}"></span>
+      <span style="flex:1;min-width:0;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s(c.name)} <span style="font-size:8px;font-family:var(--font-mono);color:var(--text-dim)">${tag}</span></span>
+      <span style="color:var(--text-dim);display:flex">${icon(hidden?'eye':'eye',11)}</span>
+      ${del}
+    </div>`;
+  }).join('');
+  el.innerHTML = (rows || '<div style="font-size:10px;color:var(--text-dim)">Sin campañas.</div>') +
+    (canEditC ? `<button class="btn btn-ghost" style="margin-top:8px;font-size:11px;padding:5px 9px;width:100%" onclick="crearCampania()">+ Campaña always-on</button>` : '');
+  if (typeof hydrateIcons === 'function') hydrateIcons(el);
 }
 
 // ── Tablero Kanban (3 etapas) ──
@@ -728,10 +752,9 @@ function kanbanCardHTML(launchId, ci) {
   </div>`;
 }
 function renderKanban() {
-  const a = activeLaunch();
   const board = document.getElementById('cal-board');
-  if (!a) { board.innerHTML = '<div class="empty-hint">Selecciona un lanzamiento.</div>'; return; }
-  const items = a.cal || [];
+  const items = calVisibleItems(); // todas las campañas visibles
+  if (!calCampaigns().length) { board.innerHTML = '<div class="empty-hint">Selecciona un lanzamiento o crea una campaña.</div>'; return; }
   board.innerHTML = `<div class="kanban">${STAGE_DEF.map(st => {
     const cards = items.filter(ci => stageOf((ci.production && ci.production.estado) || 'pendiente') === st.key);
     return `<div class="kanban-col" data-stage="${st.key}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="kanbanDrop(event,'${st.key}')">
@@ -740,20 +763,24 @@ function renderKanban() {
         <span class="kanban-count">${cards.length}</span>
         <span class="kanban-info">ⓘ<span class="kanban-tip">${st.desc}</span></span>
       </div>
-      <div class="kanban-cards">${cards.map(ci => kanbanCardHTML(a.id, ci)).join('') || '<div class="kanban-empty">Arrastra piezas aquí</div>'}</div>
+      <div class="kanban-cards">${cards.map(ci => kanbanCardHTML(ci._campId, ci)).join('') || '<div class="kanban-empty">Arrastra piezas aquí</div>'}</div>
     </div>`;
   }).join('')}</div>`;
 }
 function kanbanDrag(e, id) { e.dataTransfer.setData('text/plain', id); }
+// Encuentra la pieza por id en cualquiera de las campañas (release o evergreen).
+function findCalItem(id) {
+  for (const c of calCampaigns()) { const ci = (c.launch.cal || []).find(x => x.id === id); if (ci) return { launch: c.launch, ci }; }
+  return null;
+}
 function kanbanDrop(e, stageKey) {
   e.preventDefault();
   document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('drag-over'));
   const id = e.dataTransfer.getData('text/plain');
-  const a = activeLaunch(); if (!a) return;
-  const ci = (a.cal || []).find(c => c.id === id); if (!ci) return;
+  const found = findCalItem(id); if (!found) return;
+  const ci = found.ci;
   const st = STAGE_DEF.find(x => x.key === stageKey); if (!st) return;
   ensureProduction(ci);
-  // si ya está en una etapa de esa columna, no cambiar; si no, poner el estado por defecto
   if (stageOf(ci.production.estado) !== stageKey) ci.production.estado = st.setTo;
   saveLaunches(); renderKanban();
 }
@@ -822,6 +849,11 @@ function prodSetFecha(val) {
   ci.fecha = val; saveLaunches();
   if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
 }
+function prodSetPauta(val) {
+  const ci = prodItem(); if (!ci) return;
+  ci.pauta = val; saveLaunches();
+  if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
+}
 function renderProd() {
   const ci = prodItem(); const body = document.getElementById('prod-body'); if (!ci || !body) return;
   const p = ensureProduction(ci);
@@ -841,6 +873,7 @@ function prodBriefHTML(ci, p) {
       <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
       <div class="field"><label>Responsable</label>${respSel}</div>
       <div class="field"><label>Fecha</label><input type="text" class="input" readonly placeholder="Elegir fecha…" value="${s(ci.fecha)}" onclick="openDayPicker(this)" onchange="prodSetFecha(this.value)" style="cursor:pointer"></div>
+      <div class="field"><label>Pauta</label><select class="input" onchange="prodSetPauta(this.value)"><option value="organico" ${ci.pauta!=='pautado'?'selected':''}>Orgánico</option><option value="pautado" ${ci.pauta==='pautado'?'selected':''}>Pautado (paid)</option></select></div>
     </div>
     <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
     <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${s(p.descripcion)}</textarea></div>
@@ -1312,7 +1345,7 @@ function abrirReporteLanzamiento(id) {
 // DASHBOARD DEL LABEL (rendimiento por artista, para staff)
 // ══════════════════════════════════════════
 function artistPerformance(art) {
-  const ls = launches.filter(l => l.artistId === art.id);
+  const ls = launches.filter(l => l.artistId === art.id && l.type !== 'evergreen');
   const withGoals = ls.filter(l => (l.goals || []).some(g => g.status !== 'rejected'));
   const latest = withGoals.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
     || ls.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
@@ -2146,7 +2179,8 @@ function normalizeLaunch(l) {
   l.revenue = (l.revenue && typeof l.revenue === 'object') ? l.revenue : {};
   l.artistId = l.artistId || (artists[0] && artists[0].id);
   // CRM (Sprint 0): release type + tracklist (aditivo, no rompe nada)
-  l.type = l.type || 'single';                                  // single | ep | album
+  l.type = l.type || 'single';                                  // single | ep | album | evergreen (campaña always-on)
+  l.color = l.color || '';                                       // color de campaña (evergreen)
   l.tracklist = Array.isArray(l.tracklist) ? l.tracklist : [];  // [{trackId, order}]
   // CRM (Sprint 1): checklist release-level (visual/distrib/mkt)
   l.releaseChecklist = (l.releaseChecklist && typeof l.releaseChecklist === 'object') ? l.releaseChecklist : {};
@@ -2164,7 +2198,45 @@ function normalizeLaunch(l) {
   l.recoup = (l.recoup && typeof l.recoup === 'object') ? l.recoup : {}; // {ingresos, inversionTotal?}
   return l;
 }
-function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId); }
+// Lanzamientos REALES del artista (excluye campañas evergreen, que son launches type:'evergreen').
+function artistLaunches() { return launches.filter(l => l.artistId === currentArtistId && l.type !== 'evergreen'); }
+// Campañas evergreen / always-on del artista (viven como launches type:'evergreen').
+function artistEvergreen() { return launches.filter(l => l.artistId === currentArtistId && l.type === 'evergreen'); }
+// ── Campañas del calendario: release activo + todas las evergreen del artista (cada una con color) ──
+const CAMPAIGN_PALETTE = ['#FF6B30','#38bdf8','#a78bfa','#4ade80','#FFAA00','#f472b6','#22d3ee','#fb923c'];
+let _calHidden = {}; // { launchId: true } campañas ocultas en el calendario
+function campColorFor(l, i) { return (l.type === 'evergreen' && l.color) ? l.color : CAMPAIGN_PALETTE[i % CAMPAIGN_PALETTE.length]; }
+function calCampaigns() {
+  const out = [];
+  const rel = (typeof activeLaunch === 'function') ? activeLaunch() : null;
+  if (rel) out.push({ id: rel.id, name: rel.name, color: CAMPAIGN_PALETTE[0], isEvergreen: false, launch: rel });
+  artistEvergreen().forEach((l, i) => out.push({ id: l.id, name: l.name, color: campColorFor(l, i + 1), isEvergreen: true, launch: l }));
+  return out;
+}
+function campColor(launchId) { const c = calCampaigns().find(x => x.id === launchId); return c ? c.color : 'var(--accent)'; }
+function toggleCampaign(id) { _calHidden[id] = !_calHidden[id]; renderCalendar(); }
+// Piezas visibles agregadas de todas las campañas activas (release + evergreen), cada una tagueada con su campaña.
+function calVisibleItems() {
+  const out = [];
+  calCampaigns().forEach(c => { if (_calHidden[c.id]) return; (c.launch.cal || []).forEach(ci => out.push(Object.assign({}, ci, { _campId: c.id, _campColor: c.color, _campName: c.name }))); });
+  return out;
+}
+async function crearCampania() {
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return;
+  const a = activeArtist(); if (!a) { uiAlert('Selecciona un artista primero.'); return; }
+  const name = (await uiPrompt('Nombre de la campaña always-on (ej. Always-On, Lifestyle, Catálogo):', { title: 'Nueva campaña' }) || '').trim();
+  if (!name) return;
+  const color = CAMPAIGN_PALETTE[(artistEvergreen().length + 1) % CAMPAIGN_PALETTE.length];
+  const l = normalizeLaunch({ id: 'cmp-' + Date.now(), artistId: a.id, name, type: 'evergreen', status: 'evergreen', color, cal: [] });
+  launches.push(l); saveLaunches(); renderCalendar();
+  uiToast('✓ Campaña creada');
+}
+async function borrarCampania(id) {
+  const l = launches.find(x => x.id === id); if (!l || l.type !== 'evergreen') return;
+  if (!(await uiConfirm(`¿Eliminar la campaña "${s(l.name)}" y su contenido?`))) return;
+  launches = launches.filter(x => x.id !== id); delete _calHidden[id]; saveLaunches(); renderCalendar();
+  uiToast('✓ Campaña eliminada');
+}
 
 let launches = [];
 try { launches = JSON.parse(localStorage.getItem('ao_launches')); } catch(e){}
@@ -2242,6 +2314,7 @@ function tracksOfLaunch(l) { return ((l && l.tracklist) || []).map(ref => tracks
 function migrateLaunchesToTracks() {
   let changed = false;
   (launches || []).forEach(l => {
+    if (l.type === 'evergreen') return; // las campañas always-on no tienen tracks
     if (!l.type) { l.type = 'single'; changed = true; }
     if (!Array.isArray(l.tracklist)) l.tracklist = [];
     if (!l.tracklist.length) {
