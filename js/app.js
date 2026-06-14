@@ -521,6 +521,68 @@ function weekStart() {
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+// ══════════════════════════════════════════
+// SELECTOR DE FECHA (mini-calendario emergente que marca los días ya ocupados)
+// Uso: <input readonly onclick="openDayPicker(this)"> → al elegir, escribe el ISO y dispara 'change'.
+// ══════════════════════════════════════════
+let _dpInput = null, _dpMonth = null;
+// Días del artista activo que ya tienen contenido programado (todas sus campañas de release; evergreen se suma en Push 2).
+function dpOccupied() {
+  const map = {};
+  const ls = (typeof artistLaunches === 'function') ? artistLaunches() : [];
+  ls.forEach(l => (l.cal || []).forEach(ci => { if (ci.fecha) map[ci.fecha] = (map[ci.fecha] || 0) + 1; }));
+  return map;
+}
+function ensureDayPicker() {
+  let el = document.getElementById('daypicker');
+  if (!el) { el = document.createElement('div'); el.id = 'daypicker'; el.className = 'daypicker'; el.style.display = 'none'; document.body.appendChild(el); }
+  return el;
+}
+function openDayPicker(input) {
+  _dpInput = input;
+  const v = (input.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) ? new Date(input.value + 'T00:00:00') : new Date();
+  _dpMonth = new Date(v.getFullYear(), v.getMonth(), 1);
+  const el = ensureDayPicker();
+  dpRender();
+  const r = input.getBoundingClientRect();
+  el.style.position = 'fixed';
+  el.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 268)) + 'px';
+  el.style.top = (r.bottom + 6 + (window.innerHeight - r.bottom < 320 ? -(340) : 0)) + 'px';
+  el.style.zIndex = '5000';
+  el.style.display = 'block';
+  setTimeout(() => document.addEventListener('mousedown', _dpOutside), 0);
+}
+function _dpOutside(e) { const el = document.getElementById('daypicker'); if (el && !el.contains(e.target) && e.target !== _dpInput) closeDayPicker(); }
+function closeDayPicker() { const el = document.getElementById('daypicker'); if (el) el.style.display = 'none'; document.removeEventListener('mousedown', _dpOutside); }
+function dpNav(delta) { _dpMonth = new Date(_dpMonth.getFullYear(), _dpMonth.getMonth() + delta, 1); dpRender(); }
+function dpToday() { const t = new Date(); dpPick(dateKey(t)); }
+function dpPick(iso) { if (_dpInput) { _dpInput.value = iso; _dpInput.dispatchEvent(new Event('change', { bubbles: true })); } closeDayPicker(); }
+function dpRender() {
+  const el = document.getElementById('daypicker'); if (!el) return;
+  const occ = dpOccupied();
+  const y = _dpMonth.getFullYear(), m = _dpMonth.getMonth();
+  const startDow = (new Date(y, m, 1).getDay() + 6) % 7; // lunes = 0
+  const daysIn = new Date(y, m + 1, 0).getDate();
+  const today = dateKey(new Date());
+  const sel = _dpInput ? _dpInput.value : '';
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += `<span class="dp-cell empty"></span>`;
+  for (let d = 1; d <= daysIn; d++) {
+    const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const n = occ[iso] || 0;
+    const cls = ['dp-cell', iso === today ? 'today' : '', iso === sel ? 'sel' : '', n ? 'busy' : ''].filter(Boolean).join(' ');
+    cells += `<button type="button" class="${cls}" onclick="dpPick('${iso}')" ${n ? `title="${n} pieza(s) ya programada(s) este día"` : ''}>${d}${n ? `<span class="dp-dot"></span>` : ''}</button>`;
+  }
+  el.innerHTML = `
+    <div class="dp-head">
+      <button type="button" class="dp-nav" onclick="dpNav(-1)">‹</button>
+      <span class="dp-title">${MESES_CAL[m]} ${y}</span>
+      <button type="button" class="dp-nav" onclick="dpNav(1)">›</button>
+    </div>
+    <div class="dp-dows">${DAYS.map(d => `<span>${d.slice(0,2)}</span>`).join('')}</div>
+    <div class="dp-grid">${cells}</div>
+    <div class="dp-foot"><span class="dp-legend"><span class="dp-dot"></span> ya hay contenido</span><button type="button" class="dp-today" onclick="dpToday()">Hoy</button></div>`;
+}
 function calMonthGrid() {
   const a = activeLaunch();
   const base = (a && a.date) ? new Date(a.date + 'T00:00:00') : new Date(2026, 5, 2);
@@ -778,7 +840,7 @@ function prodBriefHTML(ci, p) {
       <div class="field"><label>Objetivo</label><input class="input" value="${s(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
       <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
       <div class="field"><label>Responsable</label>${respSel}</div>
-      <div class="field"><label>Fecha</label><input type="date" class="input" value="${s(ci.fecha)}" onchange="prodSetFecha(this.value)"></div>
+      <div class="field"><label>Fecha</label><input type="text" class="input" readonly placeholder="Elegir fecha…" value="${s(ci.fecha)}" onclick="openDayPicker(this)" onchange="prodSetFecha(this.value)" style="cursor:pointer"></div>
     </div>
     <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
     <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${s(p.descripcion)}</textarea></div>
