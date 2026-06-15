@@ -534,19 +534,28 @@ function refSetLink(idx, value) {
 // ══════════════════════════════════════════
 // AGREGAR AL CALENDARIO (del lanzamiento activo)
 // ══════════════════════════════════════════
-let calModalIdx = null;
-function abrirModalCal(idx) {
-  calModalIdx = idx;
-  const r = referencias[idx];
-  document.getElementById('mc-title').innerHTML = `${s(r.title)}`;
+let calModalIdx = null;            // compat
+let _mcSource = null;              // { kind:'ref'|'gen', idx }
+// Setup común del modal: selector de campaña + pauta + fecha limpia.
+function _mcPopulate(title) {
+  document.getElementById('mc-title').innerHTML = s(title);
   document.getElementById('mc-fecha').value = '';
   document.getElementById('mc-status').textContent = '';
-  // Selector de campaña (release activo + evergreen del artista) + pauta
+  document.getElementById('mc-status').style.color = 'var(--accent2)';
   const camps = calCampaigns();
   const csel = document.getElementById('mc-camp');
   if (csel) csel.innerHTML = camps.map(c => `<option value="${c.id}">${s(c.name)}${c.isEvergreen ? ' · always-on' : ''}</option>`).join('') || '<option value="">— sin campaña —</option>';
   const psel = document.getElementById('mc-pauta'); if (psel) psel.value = 'organico';
   document.getElementById('modal-cal').classList.add('open');
+}
+function abrirModalCal(idx) {            // desde una referencia / post propio
+  calModalIdx = idx; _mcSource = { kind: 'ref', idx };
+  _mcPopulate((referencias[idx] || {}).title || '');
+}
+function abrirModalCalGen(i) {           // desde una idea generada con IA (a.generated)
+  const a = activeLaunch(); const it = a && (a.generated || [])[i]; if (!it) return;
+  _mcSource = { kind: 'gen', idx: i };
+  _mcPopulate(it.title || 'Idea');
 }
 function cerrarModalCal(e) {
   if (!e || e.target === document.getElementById('modal-cal'))
@@ -554,19 +563,29 @@ function cerrarModalCal(e) {
 }
 function confirmarCal() {
   const fecha = document.getElementById('mc-fecha').value;
-  if (!fecha) { document.getElementById('mc-status').textContent = 'Selecciona una fecha'; return; }
+  if (!fecha) { document.getElementById('mc-status').style.color = 'var(--accent2)'; document.getElementById('mc-status').textContent = 'Selecciona una fecha'; return; }
   const campId = (document.getElementById('mc-camp') || {}).value || '';
   const target = launches.find(l => l.id === campId) || activeLaunch();
   if (!target) { document.getElementById('mc-status').textContent = 'Crea una campaña o lanzamiento'; return; }
   const pauta = (document.getElementById('mc-pauta') || {}).value || 'organico';
-  const r = referencias[calModalIdx];
-  const cats = (r.cat||[]).filter(Boolean);
+  const src = _mcSource || { kind: 'ref', idx: calModalIdx };
+  let item;
+  if (src.kind === 'gen') {
+    const g = ((activeLaunch() || {}).generated || [])[src.idx]; if (!g) return; // las ideas IA viven en el release activo
+
+    item = { id: 'ci-' + Date.now(), title: s(g.title), cat: s(g.cat) || 'awareness', fecha, pauta, refLink: s(g.refLink || ''),
+      production: { objetivo: s(g.objetivo || ''), hook: s(g.hook || ''), descripcion: s(g.descripcion || ''), plataforma: s(g.format || ''), estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
+  } else {
+    const r = referencias[src.idx]; if (!r) return;
+    const cats = (r.cat || []).filter(Boolean);
+    item = { id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0] || 'awareness', fecha, pauta, refIdx: src.idx, refLink: s(r.link) };
+  }
   target.cal = target.cal || [];
-  target.cal.push({ id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0]||'awareness', fecha, pauta, refIdx: calModalIdx, refLink: s(r.link) });
+  target.cal.push(item);
   saveLaunches();
   document.getElementById('mc-status').style.color = '#4ade80';
   document.getElementById('mc-status').textContent = `✓ Agregado a ${s(target.name)}`;
-  if (typeof renderCalendar === 'function' && (document.querySelector('.page.active')||{}).id === 'page-calendario') renderCalendar();
+  if (typeof renderCalendar === 'function' && (document.querySelector('.page.active') || {}).id === 'page-calendario') renderCalendar();
   setTimeout(() => { document.getElementById('modal-cal').classList.remove('open'); }, 800);
 }
 

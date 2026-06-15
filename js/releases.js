@@ -645,15 +645,9 @@ function renderResults() {
       </div>`;
     }).join('')}</div>`;
 }
-async function addGeneratedToCal(i) {
-  const a = activeLaunch(); if (!a || !a.generated[i]) return;
-  const it = a.generated[i];
-  const fecha = await uiPrompt('Fecha de publicación (YYYY-MM-DD):', {def: a.date || '', title:'Agregar al calendario'});
-  if (!fecha) return;
-  a.cal.push({ id: 'ci-' + Date.now(), title: it.title, cat: (it.cat || 'awareness'), fecha, refLink: it.refLink || '',
-    production: { objetivo: it.objetivo || '', hook: it.hook || '', descripcion: it.descripcion || '', plataforma: it.format || '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } });
-  saveLaunches();
-  uiToast('✓ Agregado al calendario de ' + a.name);
+function addGeneratedToCal(i) {
+  // Mismo box que las referencias: campaña + pauta + selector de fecha con días ocupados.
+  if (typeof abrirModalCalGen === 'function') abrirModalCalGen(i);
 }
 
 // ── Ajustes de IA + estimación de costo ──
