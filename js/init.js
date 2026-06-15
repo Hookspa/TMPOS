@@ -20,6 +20,7 @@ renderAllLaunches();
     }
   } catch (e) { console.warn('No se pudo cargar el banco embebido:', e); }
 })();
+if (typeof mergeCustomRefs === 'function') mergeCustomRefs(); // posts propios persistidos → al banco
 
 iniciarBanco();
 

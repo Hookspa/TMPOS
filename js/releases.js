@@ -498,12 +498,12 @@ function renderIdeas() {
   const ideasHTML = ideas.length
     ? ideas.map((it, i) => {
         const col = catColor((it.cat||[])[0]);
-        return `<div class="idea-card" style="cursor:default">
-          <button class="del-btn" style="position:static;float:right;opacity:1;background:var(--surface2)" onclick="quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
+        return `<div class="idea-card" style="cursor:pointer" onclick="openIdeaCard(${i})" title="Abrir la tarjeta para ver toda la info">
+          <button class="del-btn" style="position:static;float:right;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
-          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${s(it.link)}" target="_blank" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
+          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${s(it.link)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
         </div>`;
       }).join('')
     : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <span style="color:var(--accent);cursor:pointer" onclick="showPage('banco')">Banco de Referencias</span> y marca ideas con la estrella ${icon('star',12)} para este lanzamiento.</div>`;
@@ -523,7 +523,7 @@ function renderIdeas() {
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
       <div class="ideas-grid">${ideasHTML}</div>
     </div>
 
@@ -534,7 +534,8 @@ function renderIdeas() {
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cantidad</span>
-        <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()"><option>6</option><option selected>8</option><option>10</option><option>12</option></select>
+        <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()">${(ideas.length >= 12 ? [6,8,10,12,16,20,24] : [6,8,10,12]).map(n => `<option ${n===8?'selected':''}>${n}</option>`).join('')}</select>
+        ${ideas.length >= 12 ? `<span style="font-size:10px;color:#4ade80;font-family:var(--font-mono)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">Selecciona 12+ referencias para generar hasta 24</span>`}
         <button class="btn btn-primary" onclick="generarIdeasPlantilla()">${icon('zap',13)} Generar (plantillas)</button>
         <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:rgba(255,107,48,0.35);color:var(--accent)">${icon('ai',13)} Generar con IA</button>
       </div>
@@ -547,6 +548,17 @@ function renderIdeas() {
 function quitarIdea(i) {
   const a = activeLaunch(); if (!a || !a.ideas[i]) return;
   a.ideas.splice(i, 1); saveLaunches(); renderIdeas();
+}
+// Abre la tarjeta (boxdrop) de una idea seleccionada — busca la referencia por su key; si ya no está en el banco, la reconstruye desde el snapshot.
+function openIdeaCard(i) {
+  const a = activeLaunch(); if (!a) return;
+  const it = (a.ideas || [])[i]; if (!it) return;
+  let idx = referencias.findIndex(r => refKey(r) === it.key);
+  if (idx < 0) {
+    referencias.push({ _idx: referencias.length, id: '', title: it.title, hook: it.hook || '', for: it.for || [], cat: it.cat || [], link: it.link || '', thumb: it.thumb || '', comentarios: it.comentarios || '', icon: it.icon || catIcon(it.cat || []) });
+    idx = referencias.length - 1;
+  }
+  if (typeof openRefBoxdrop === 'function') openRefBoxdrop(idx);
 }
 
 // ── Motor de plantillas (offline) ──
@@ -749,13 +761,20 @@ function costFromUsage(u, ai) {
 }
 function updateCostLine() {
   const a = activeLaunch(); const el = document.getElementById('gen-cost'); if (!a || !el) return;
+  if (typeof isAdmin === 'function' && !isAdmin()) { el.innerHTML = ''; return; } // costo de IA: solo super-admin
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const est = estimateCost(a, count);
   const perDollar = est.cost > 0 ? Math.max(1, Math.floor(1 / est.cost)) : '∞';
   el.innerHTML = `IA: ${est.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key configurada '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — configúrala en '+icon('settings',12)+' API</span>'} · modelo <strong>${s(est.ai.model)}</strong><br>Estimado por generación: ≈ ${est.inTok} tok entrada + ${est.outTok} tok salida ≈ <strong style="color:var(--accent)">$${est.cost.toFixed(4)}</strong> (~${perDollar} generaciones por US$1)`;
 }
 function parseIdeasJSON(text) {
-  try { const m = s(text).match(/\[[\s\S]*\]/); return m ? JSON.parse(m[0]) : []; } catch (e) { return []; }
+  const t = s(text);
+  // 1) intento normal: el array completo
+  try { const m = t.match(/\[[\s\S]*\]/); if (m) return JSON.parse(m[0]); } catch (e) {}
+  // 2) fallback ante truncamiento (max_tokens): rescata objetos {...} completos uno por uno
+  const out = []; const re = /\{[^{}]*\}/g; let mm;
+  while ((mm = re.exec(t)) !== null) { try { const o = JSON.parse(mm[0]); if (o && (o.title || o.hook)) out.push(o); } catch (e) {} }
+  return out;
 }
 async function generarIdeasIA() {
   const a = activeLaunch(); if (!a) return;
@@ -766,10 +785,13 @@ async function generarIdeasIA() {
   if (!aiReady()) { abrirAISettings(); return; }
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const prompt = buildIdeaPrompt(a, count);
+  // Presupuesto de salida proporcional al número de ideas (cada idea ≈ 250-300 tok JSON).
+  // Antes se usaba el default (2000) y a partir de ~12 ideas el JSON se truncaba → parse fallaba.
+  const maxTok = Math.min(8000, count * 320 + 700);
   const res = document.getElementById('ideas-results');
-  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando con IA (${s(ai.model)})… esto puede tardar unos segundos.</div>`;
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando ${count} ideas con IA (${s(ai.model)})… esto puede tardar unos segundos.</div>`;
   try {
-    const { text, usage } = await callClaude(prompt);
+    const { text, usage } = await callClaude(prompt, maxTok, 'ideas');
     const ideas = parseIdeasJSON(text);
     if (!ideas.length) throw new Error('La IA no devolvió ideas en formato válido.');
     a.generated = ideas.map(x => ({

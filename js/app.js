@@ -112,6 +112,37 @@ const DEMO = [
 ];
 function setReferencias(arr) { referencias = arr || []; referencias.forEach((r, i) => { r._idx = i; }); }
 setReferencias(DEMO);
+// ── Posts propios "desde cero" (mismo modelo que una referencia, persistidos en localStorage) ──
+function loadCustomRefs() { try { return JSON.parse(localStorage.getItem('ao_custom_refs')) || []; } catch (e) { return []; } }
+function saveCustomRefs(arr) { try { localStorage.setItem('ao_custom_refs', JSON.stringify(arr)); } catch (e) {} }
+// Mezcla los posts propios en el banco (se llama al cargar, después del CSV) y reindexa.
+function mergeCustomRefs() {
+  loadCustomRefs().forEach(c => { if (!referencias.some(r => refKey(r) === refKey(c))) referencias.push(Object.assign({ custom: true }, c)); });
+  referencias.forEach((r, i) => { r._idx = i; });
+}
+function persistCustomEdit(r) {
+  if (!r || !r.custom) return;
+  const arr = loadCustomRefs();
+  const snap = { id: r.id, title: r.title, hook: r.hook, cat: r.cat, for: r.for, link: r.link, thumb: r.thumb, comentarios: r.comentarios, icon: r.icon, custom: true };
+  const i = arr.findIndex(x => x.id === r.id);
+  if (i >= 0) arr[i] = snap; else arr.push(snap);
+  saveCustomRefs(arr);
+}
+// Crea un post desde cero (post propio) con la misma tarjeta/opciones que una referencia y abre su boxdrop editable.
+function crearPostDesdeCero() {
+  const c = { id: 'custom-' + Date.now(), title: 'Nuevo post', hook: '', cat: ['custom'], for: [], link: '', thumb: '', comentarios: '', icon: 'pin', custom: true };
+  const arr = loadCustomRefs(); arr.push(c); saveCustomRefs(arr);
+  c._idx = referencias.length; referencias.push(c);
+  if (typeof openRefBoxdrop === 'function') openRefBoxdrop(c._idx);
+}
+function eliminarPostCustom(idx) {
+  const r = referencias[idx]; if (!r || !r.custom) return;
+  saveCustomRefs(loadCustomRefs().filter(x => x.id !== r.id));
+  referencias.splice(idx, 1); referencias.forEach((x, i) => { x._idx = i; });
+  document.getElementById('boxdrop').classList.remove('open');
+  if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
+  uiToast('✓ Post eliminado');
+}
 
 // ══════════════════════════════════════════
 // NAVEGACIÓN
@@ -177,7 +208,7 @@ function showPage(id, skipRecord) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   let _ttl = titles[id] || id;
   if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
   document.getElementById('page-title').textContent = up(_ttl);
@@ -193,6 +224,7 @@ function showPage(id, skipRecord) {
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
   if (id === 'tareas')       renderTareas();
+  if (id === 'campanias')    renderCampanias();
   if (id === 'dashboard')    renderDashboard();
   if (id === 'label')        renderLabel();
   document.querySelector('.content').scrollTop = 0;
@@ -301,6 +333,12 @@ function renderBanco() {
       </div>
     </div>`;
   }).join('');
+  // Tarjeta "+ Crear post desde cero" al inicio (solo en la primera página).
+  const addCard = (paginaActual === 1)
+    ? `<div class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
+        <div style="text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<div style="font-size:11px;font-family:var(--font-mono);margin-top:8px;letter-spacing:1px">CREAR POST<br>DESDE CERO</div></div>
+      </div>`
+    : '';
   const desde = inicio + 1, hasta = Math.min(inicio + porPagina, filtered.length);
   const paginacion = `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 4px 0;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;gap:10px">
@@ -315,7 +353,7 @@ function renderBanco() {
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" ${paginaActual===totalPags?'disabled':''} onclick="cambiarPagina(${paginaActual+1})">›</button>
       </div>
     </div>`;
-  grid.innerHTML = cards + paginacion;
+  grid.innerHTML = addCard + cards + paginacion;
   // Resuelve async la miniatura real de los TikTok visibles que aún no están en caché (oEmbed + CORS).
   slice.forEach(r => {
     const link = s(r.link).trim();
@@ -407,22 +445,28 @@ function resolveTikTokThumb(link, imgId) {
 function openRefBoxdrop(idx) {
   const r = referencias[idx];
   if (!r) return;
+  const custom = !!r.custom;
   const cats = (r.cat||[]).filter(Boolean);
   const fors = (r.for||[]).filter(Boolean);
   const a = activeLaunch();
   const sel = ideaSelected(r);
   document.getElementById('bd-title').textContent = up(r.title);
-  document.getElementById('bd-date').textContent  = cats.map(up).join(' · ') || '—';
-  document.getElementById('bd-idea').textContent  = s(r.title);
-  document.getElementById('bd-hook').textContent   = s(r.hook) || 'Sin hook definido';
-  document.getElementById('bd-desc').textContent   = s(r.comentarios) || 'Sin comentarios';
+  document.getElementById('bd-date').textContent  = cats.map(up).join(' · ') || (custom ? 'POST PROPIO' : '—');
+  // Campos del brief: editables cuando es un post propio (mismo screen que una referencia).
+  bdField('bd-idea', s(r.title), custom, v => { r.title = v || 'Nuevo post'; document.getElementById('bd-title').textContent = up(r.title); persistCustomEdit(r); }, 'Título del post');
+  bdField('bd-hook', s(r.hook), custom, v => { r.hook = v; persistCustomEdit(r); }, 'Hook / gancho', !custom && !r.hook ? 'Sin hook definido' : '');
+  bdField('bd-desc', s(r.comentarios), custom, v => { r.comentarios = v; persistCustomEdit(r); }, 'Descripción / cómo grabarlo', !custom && !r.comentarios ? 'Sin comentarios' : '');
 
-  // Tags & Keywords = cat + for
-  const tagHTML = [
-    ...cats.map(c => `<span class="brief-tag accent">${s(c)}</span>`),
-    ...fors.map(f => `<span class="brief-tag">${s(f)}</span>`)
-  ].join('');
-  document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:11px;color:var(--text-dim)">Sin tags</span>';
+  // Tags & Keywords = cat + for (editable cuando es post propio)
+  if (custom) {
+    document.getElementById('bd-tags').innerHTML = `<input class="input" style="font-size:11px;max-width:320px" value="${s(cats.join(', '))}" placeholder="categorías separadas por coma (ej. bts, storytelling)" onblur="refSetCats(${idx}, this.value)">`;
+  } else {
+    const tagHTML = [
+      ...cats.map(c => `<span class="brief-tag accent">${s(c)}</span>`),
+      ...fors.map(f => `<span class="brief-tag">${s(f)}</span>`)
+    ].join('');
+    document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:11px;color:var(--text-dim)">Sin tags</span>';
+  }
 
   // Badge de categoría en header
   const badge = document.getElementById('bd-cat-badge');
@@ -437,9 +481,11 @@ function openRefBoxdrop(idx) {
   const link  = s(r.link).trim();
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
-  const linkFooter = link
-    ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${s(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
-    : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`;
+  const linkFooter = custom
+    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:11px;width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${s(link)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
+    : (link
+      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${s(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
+      : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`);
   card.innerHTML = `
     <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${s(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
       onerror="this.style.display='none';this.parentNode.querySelector('.brief-thumb-fallback').style.display='flex'">
@@ -455,13 +501,34 @@ function openRefBoxdrop(idx) {
     <button onclick="generarContenidoBanco(${idx})"
       style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.35);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
-      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>`;
+      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
+    ${custom ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-brief').classList.add('active');
   document.querySelectorAll('.boxdrop-tab')[0].classList.add('active');
   document.getElementById('boxdrop').classList.add('open');
+}
+// Campo del brief: editable (contentEditable) cuando es un post propio; guarda al perder foco.
+function bdField(id, val, editable, onSave, label, fallback) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = val || (editable ? '' : (fallback || ''));
+  el.contentEditable = editable ? 'true' : 'false';
+  el.setAttribute('data-ph', editable ? (label || '') : '');
+  el.classList.toggle('bd-editable', !!editable);
+  el.onblur = editable ? function () { onSave(el.textContent.trim()); } : null;
+}
+function refSetCats(idx, value) {
+  const r = referencias[idx]; if (!r) return;
+  r.cat = s(value).split(',').map(t => trim(t).toLowerCase()).filter(Boolean);
+  r.icon = catIcon(r.cat);
+  persistCustomEdit(r); openRefBoxdrop(idx);
+}
+function refSetLink(idx, value) {
+  const r = referencias[idx]; if (!r) return;
+  if (s(r.link) === s(value).trim()) return;
+  r.link = s(value).trim(); persistCustomEdit(r); openRefBoxdrop(idx);
 }
 
 // ══════════════════════════════════════════
@@ -854,6 +921,19 @@ function prodSetPauta(val) {
   ci.pauta = val; saveLaunches();
   if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
 }
+// Mueve la pieza actual a otra campaña (otro launch del mismo artista).
+function moveCalItem(targetId) {
+  const ci = prodItem(); if (!ci) return;
+  const srcL = launches.find(x => x.id === prodCtx.launchId);
+  const tgtL = launches.find(x => x.id === targetId);
+  if (!srcL || !tgtL || srcL.id === tgtL.id) return;
+  srcL.cal = (srcL.cal || []).filter(c => c.id !== ci.id);
+  tgtL.cal = tgtL.cal || []; tgtL.cal.push(ci);
+  prodCtx.launchId = tgtL.id; // sigue editando la misma pieza, ahora en la campaña destino
+  saveLaunches();
+  if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
+  if (typeof uiToast === 'function') uiToast('✓ Movido a ' + s(tgtL.name));
+}
 function renderProd() {
   const ci = prodItem(); const body = document.getElementById('prod-body'); if (!ci || !body) return;
   const p = ensureProduction(ci);
@@ -867,7 +947,13 @@ function prodBriefHTML(ci, p) {
   const respSel = (typeof assigneeSelectHTML === 'function')
     ? assigneeSelectHTML(p.responsable, `onchange="prodSet('responsable',this.value)"`)
     : `<select class="input" onchange="prodSet('responsable',this.value)"><option value="">— Sin asignar —</option></select>`;
+  // Selector de campaña: mueve la pieza entre campañas del artista (release ↔ evergreen).
+  const srcL = launches.find(x => x.id === prodCtx.launchId);
+  const artId = srcL && srcL.artistId;
+  const campOpts = launches.filter(l => l.artistId === artId)
+    .map(l => `<option value="${l.id}" ${l.id === prodCtx.launchId ? 'selected' : ''}>${s(l.name)}${l.type === 'evergreen' ? ' · always-on' : ''}</option>`).join('');
   return `
+    <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:10px">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)">${campOpts}</select></div>
     <div class="field-grid" style="margin-bottom:16px">
       <div class="field"><label>Objetivo</label><input class="input" value="${s(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
       <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
@@ -1232,7 +1318,7 @@ function renderObjetivos() {
     return `<div class="goal-row${cls}">
       <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'};display:flex;align-items:center;justify-content:center;color:var(--text)">${icon(ICONS[s(g.icon)]?s(g.icon):'goals',18)}</div>
       <div><div class="goal-metric">${s(g.metric)}</div><div class="goal-sub">${s(g.sub)}${dl}</div>${progHTML}</div>
-      <div class="goal-target">${s(g.target)}<small>OBJETIVO</small></div>
+      <div class="goal-target"><input class="goal-target-input" value="${s(g.target)}" title="Edita el objetivo manualmente" onclick="event.stopPropagation()" onchange="goalSetTarget(${i},this.value)"><small>OBJETIVO</small></div>
       <div class="goal-ai">${s(g.ai || (g.source === 'manual' ? 'manual' : ''))}</div>
       <div class="goal-actions">
         <div class="goal-btn accept${accOn}" title="Aceptar" onclick="goalSetStatus(${i},'accepted')">${icon('check',13)}</div>
@@ -1246,6 +1332,15 @@ function goalSetStatus(i, status) {
   if (!a || !a.goals[i]) return;
   a.goals[i].status = (a.goals[i].status === status) ? 'proposed' : status;
   saveLaunches(); renderObjetivos();
+}
+// Editar manualmente el objetivo (las metas sugeridas por IA suelen estar altas → se ajustan al contexto del proyecto).
+function goalSetTarget(i, val) {
+  if (typeof requireCan === 'function' && !requireCan('use_generador_ia')) return;
+  const a = activeLaunch();
+  if (!a || !a.goals[i]) return;
+  a.goals[i].target = s(val).trim();
+  if (a.goals[i].ai && a.goals[i].source !== 'manual') a.goals[i].ai = 'IA · editado'; // marca que se ajustó a mano
+  saveLaunches(); renderObjetivos(); // re-render para recalcular el % de progreso vs el nuevo objetivo
 }
 // ── Catálogo de plataformas/métricas POR ARTISTA (reutilizable) ──
 const DEFAULT_METRIC_CATALOG = [
@@ -2236,6 +2331,44 @@ async function borrarCampania(id) {
   if (!(await uiConfirm(`¿Eliminar la campaña "${s(l.name)}" y su contenido?`))) return;
   launches = launches.filter(x => x.id !== id); delete _calHidden[id]; saveLaunches(); renderCalendar();
   uiToast('✓ Campaña eliminada');
+}
+// ── Página "Campañas en curso" (acceso directo a todas las campañas activas del workspace) ──
+function inProgressCampaigns() {
+  return launches.filter(l => l.type === 'evergreen' || ['active', 'planning', 'analisis', 'bloqueado'].indexOf(l.status) >= 0);
+}
+function renderCampanias() {
+  const body = document.getElementById('campanias-body'); if (!body) return;
+  const list = inProgressCampaigns();
+  const sub = document.getElementById('campanias-sub'); if (sub) sub.textContent = list.length + ' campaña' + (list.length === 1 ? '' : 's') + ' en curso';
+  if (!list.length) { body.innerHTML = '<div class="empty-hint">No hay campañas en curso. Crea un lanzamiento o una campaña always-on desde el Calendario.</div>'; return; }
+  const today = dateKey(new Date());
+  body.innerHTML = list.map(l => {
+    const art = artists.find(a => a.id === l.artistId);
+    const pieces = (l.cal || []).length;
+    const next = (l.cal || []).filter(c => c.fecha && c.fecha >= today).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0];
+    const isEv = l.type === 'evergreen';
+    const col = isEv ? (l.color || 'var(--beat)') : 'var(--accent)';
+    const st = isEv ? 'always-on' : ((STATUS_MAP[l.status] || {}).word || l.status);
+    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="width:11px;height:11px;border-radius:3px;background:${col};flex-shrink:0"></span>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:15px;font-weight:600">${s(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${art ? s(art.name) : '—'} · ${s(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
+      </div>
+      <span class="chip" style="cursor:default">Ver →</span>
+    </div>`;
+  }).join('');
+}
+function goToCampaign(id) {
+  const l = launches.find(x => x.id === id); if (!l) return;
+  if (typeof setActiveArtist === 'function' && l.artistId) setActiveArtist(l.artistId);
+  if (l.type === 'evergreen') {
+    const rel = launches.find(x => x.artistId === l.artistId && x.type !== 'evergreen');
+    if (rel && typeof openLaunch === 'function') { openLaunch(rel.id); setTimeout(() => { if (typeof _releaseSubTab !== 'undefined') _releaseSubTab['campana'] = 'calendario'; if (typeof setReleaseTab === 'function') setReleaseTab('campana'); }, 90); }
+    else uiAlert('Esta campaña always-on aún no tiene un lanzamiento del artista donde mostrar el calendario. Crea uno para verla en contexto.');
+  } else if (typeof openLaunch === 'function') {
+    openLaunch(id); setTimeout(() => { if (typeof setReleaseTab === 'function') setReleaseTab('campana'); }, 90);
+  }
 }
 
 let launches = [];
