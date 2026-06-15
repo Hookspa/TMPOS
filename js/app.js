@@ -578,7 +578,12 @@ function confirmarCal() {
   } else {
     const r = referencias[src.idx]; if (!r) return;
     const cats = (r.cat || []).filter(Boolean);
-    item = { id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0] || 'awareness', fecha, pauta, refIdx: src.idx, refLink: s(r.link) };
+    // Arrastra TODA la info de la referencia del banco (cats, for, link, miniatura, ícono + hook/descripción al brief).
+    item = { id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0] || 'awareness', cats: cats,
+      for: (r.for || []).filter(Boolean), fecha, pauta, refIdx: src.idx, refLink: s(r.link),
+      thumb: s(r.thumb || ''), icon: s(r.icon || ''),
+      production: { objetivo: '', hook: s(r.hook || ''), descripcion: s(r.comentarios || ''),
+        plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
   }
   target.cal = target.cal || [];
   target.cal.push(item);
@@ -589,6 +594,21 @@ function confirmarCal() {
   setTimeout(() => { document.getElementById('modal-cal').classList.remove('open'); }, 800);
 }
 
+// Crea un post directo en el calendario (NO se guarda en el banco de referencias) al hacer click en un día.
+// Cae en la campaña activa (o la primera visible) y abre el Centro de Producción para editar título/info.
+function crearPostEnDia(dk) {
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return; }
+  const camps = (typeof calCampaigns === 'function') ? calCampaigns() : [];
+  const target = activeLaunch() || (camps[0] && camps[0].launch);
+  if (!target) { if (typeof uiToast === 'function') uiToast('Crea una campaña o lanzamiento primero'); return; }
+  const item = { id: 'ci-' + Date.now(), title: 'Nuevo post', cat: 'awareness', fecha: dk, pauta: 'organico',
+    production: { objetivo: '', hook: '', descripcion: '', plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
+  target.cal = target.cal || []; target.cal.push(item);
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof openProduction === 'function') openProduction(target.id, item.id);
+}
+
 // ══════════════════════════════════════════
 // CALENDARIO (scoped al lanzamiento activo)
 // ══════════════════════════════════════════
@@ -597,7 +617,7 @@ const MESES_CAL = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','
 let weekOffset = 0;
 let monthOffset = 0;
 let calView = 'calendar';   // 'calendar' | 'kanban'
-let calRange = '1w';        // '1w' | '2w' | '1m'
+let calRange = '1m';        // '1w' | '2w' | '1m' — default: vista de 1 mes (mes en curso)
 
 function launchBaseMonday() {
   const a = activeLaunch();
@@ -678,8 +698,8 @@ function dpRender() {
     <div class="dp-foot"><span class="dp-legend"><span class="dp-dot"></span> ya hay contenido</span><button type="button" class="dp-today" onclick="dpToday()">Hoy</button></div>`;
 }
 function calMonthGrid() {
-  const a = activeLaunch();
-  const base = (a && a.date) ? new Date(a.date + 'T00:00:00') : new Date(2026, 5, 2);
+  // Ancla en el MES EN CURSO (no en la fecha del lanzamiento); las flechas mueven con monthOffset.
+  const base = new Date();
   base.setDate(1); base.setMonth(base.getMonth() + monthOffset);
   const year = base.getFullYear(), month = base.getMonth();
   const first = new Date(year, month, 1);
@@ -747,15 +767,17 @@ function renderCalGrid() {
       const est = (ci.production && ci.production.estado) || 'pendiente';
       const estIcon = ESTADO_ICON[est] || '';
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
-      return `<div onclick="openProduction('${ci._campId}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
+      return `<div onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
-    div.className = 'cal-day' + (isToday ? ' today' : '');
+    div.className = 'cal-day' + (isToday ? ' today' : '') + (outMonth ? '' : ' addable');
     if (calRange === '1m') div.style.minHeight = '78px';
     if (isDrop) div.style.borderColor = 'rgba(255,107,48,0.5)';
     if (outMonth) div.style.opacity = '0.38';
     div.innerHTML = `<div class="cal-day-num">${day.getDate()}</div>${dropBadge}${itemsHTML}`;
+    // Click en el día (zona vacía) = crear post directo en el calendario, sin tocar el banco.
+    if (!outMonth) { div.title = '+ Crear post este día'; div.onclick = () => crearPostEnDia(dk); }
     grid.appendChild(div);
   });
 
