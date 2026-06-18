@@ -22,6 +22,13 @@ let bancoSearch   = '';        // búsqueda por texto (título/hook/tags)
 let bancoMine     = false;     // filtro "Mis referencias" (solo personalizadas)
 let bancoRandom   = false;     // orden aleatorio on/off
 let _shuffleKey   = 0;         // semilla del orden aleatorio (cambia al re-randomizar)
+let bancoSort     = 'default'; // 'default' | 'recientes' | 'usadas'
+// ── Contador de uso de referencias (para "Más usadas") ──
+function _refUsageMap() { try { return JSON.parse(localStorage.getItem('ao_ref_usage')) || {}; } catch (e) { return {}; } }
+function refUsage(r) { return _refUsageMap()[refKey(r)] || 0; }
+function bumpRefUsage(r) { try { const m = _refUsageMap(); m[refKey(r)] = (m[refKey(r)] || 0) + 1; localStorage.setItem('ao_ref_usage', JSON.stringify(m)); } catch (e) {} }
+// Timestamp aproximado de una referencia (custom/comunidad llevan 'custom-<ts>' en el id; CSV → 0).
+function refTime(r) { const m = s(r && r.id).match(/(\d{12,})/); return m ? parseInt(m[1], 10) : 0; }
 
 const CAT_PALETTE = ['#FF6B30','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
@@ -229,6 +236,62 @@ async function communityCloudLoad() {
     if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
   } catch (e) {}
 }
+// ── Moderación ligera del pool de comunidad ──
+// Reportar (cualquier usuario) → fila en community_flags. Ocultar (super-admin) → status='hidden'.
+async function reportCommunityRef(idx) {
+  const r = referencias[idx]; if (!r || !r.community) return;
+  if (typeof authed !== 'function' || !authed()) { uiToast('Inicia sesión para reportar'); return; }
+  const reason = await uiPrompt('¿Por qué la reportas? (opcional)', { title: 'Reportar referencia' });
+  if (reason === null || reason === undefined) return; // cancelado
+  try {
+    const sb = await getSb(); if (!sb) return;
+    await sb.from('community_flags').insert([{ ref_id: r.id, reporter: _user && _user.id, reason: s(reason) }]);
+    uiToast('✓ Reporte enviado');
+  } catch (e) { uiToast('No se pudo reportar (¿falta correr el SQL?)'); }
+}
+async function hideCommunityRef(idx) {
+  const r = referencias[idx]; if (!r || !r.community) return;
+  if (!(typeof isAdmin === 'function' && isAdmin())) return;
+  if (!await uiConfirm('¿Ocultar esta referencia de la comunidad para todos?')) return;
+  try {
+    const sb = await getSb(); if (!sb) return;
+    const res = await sb.from('community_refs').update({ status: 'hidden' }).eq('id', r.id);
+    if (res.error) throw new Error(res.error.message);
+    referencias.splice(idx, 1); referencias.forEach((x, i) => { x._idx = i; });
+    document.getElementById('boxdrop').classList.remove('open');
+    if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
+    uiToast('✓ Oculta de la comunidad');
+  } catch (e) { uiToast('No se pudo ocultar'); }
+}
+
+// ══════════════════════════════════════════
+// IMPORTAR REFERENCIA DESDE UN LINK (oEmbed auto-rellena título + miniatura)
+// ══════════════════════════════════════════
+async function resolveOEmbed(url) {
+  try {
+    let ep = null;
+    if (/tiktok\.com/.test(url)) ep = 'https://www.tiktok.com/oembed?url=' + encodeURIComponent(url);
+    else if (/(youtube\.com|youtu\.be)/.test(url)) ep = 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url);
+    else if (/vimeo\.com/.test(url)) ep = 'https://vimeo.com/api/oembed.json?url=' + encodeURIComponent(url);
+    if (!ep) return null;
+    const r = await fetch(ep); if (!r.ok) return null;
+    const d = await r.json();
+    return { title: d.title || '', thumbnail: d.thumbnail_url || '', author: d.author_name || '' };
+  } catch (e) { return null; }
+}
+async function importarRefDesdeLink() {
+  const url = (await uiPrompt('Pega el link (TikTok, YouTube, Vimeo, IG…):', { title: 'Importar referencia' }) || '').trim();
+  if (!url) return;
+  const platformIcon = /(youtube|youtu\.be|tiktok|vimeo)/.test(url) ? 'video' : 'link';
+  const c = { id: 'custom-' + Date.now(), title: 'Importado', hook: '', cat: ['custom'], for: [], link: url, thumb: '', comentarios: '', icon: platformIcon, custom: true, owned: true, shared: false };
+  const arr = loadCustomRefs(); arr.push(c); saveCustomRefs(arr);
+  c._idx = referencias.length; referencias.push(c);
+  uiToast('Importando…');
+  const meta = await resolveOEmbed(url);
+  if (meta) { if (meta.title) c.title = meta.title; if (meta.thumbnail) c.thumb = meta.thumbnail; persistCustomEdit(c); }
+  if (typeof openRefBoxdrop === 'function') openRefBoxdrop(c._idx);
+  uiToast(meta ? '✓ Referencia importada' : '✓ Creada (sin metadata; complétala a mano)');
+}
 
 // ══════════════════════════════════════════
 // NAVEGACIÓN
@@ -400,6 +463,8 @@ function renderBanco() {
       (r.for||[]).some(f => s(f).toLowerCase().includes(q))
     ));
   }
+  if (bancoSort === 'recientes') filtered = filtered.slice().sort((a, b) => refTime(b) - refTime(a));
+  else if (bancoSort === 'usadas') filtered = filtered.slice().sort((a, b) => refUsage(b) - refUsage(a));
   if (bancoRandom) filtered = shuffleSeeded(filtered.slice(), _shuffleKey);
   if (!filtered.length) {
     grid.style.gridTemplateColumns = '1fr';
@@ -474,29 +539,43 @@ function customBadgeHTML(r) {
     style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:8px;font-family:var(--font-mono);letter-spacing:0.5px;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
 }
 
-// ── Toolbar del banco: búsqueda + "Mis referencias" + aleatorio (on/off + re-mezclar) ──
+// ── Toolbar del banco: búsqueda + "Mis referencias" + orden + aleatorio + importar desde link ──
 function renderBancoToolbar() {
   const host = document.getElementById('banco-toolbar'); if (!host) return;
   const mineN = referencias.filter(r => r.custom).length;
+  const sortOpts = [['default','Por defecto'],['recientes','Recientes'],['usadas','Más usadas']];
   host.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-      <div style="flex:1;min-width:180px;position:relative;display:flex;align-items:center">
+      <div style="flex:1;min-width:170px;position:relative;display:flex;align-items:center">
         <span style="position:absolute;left:10px;color:var(--text-dim);display:flex;pointer-events:none">${icon('search',14)}</span>
         <input id="banco-search" class="input" type="text" value="${s(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
           oninput="bancoSetSearch(this.value)" style="width:100%;padding-left:32px;font-size:12px">
         ${bancoSearch ? `<button onclick="bancoSetSearch('')" title="Limpiar" style="position:absolute;right:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex">${icon('close',12)}</button>` : ''}
       </div>
+      <select class="input" title="Ordenar" onchange="setBancoSort(this.value)" style="font-size:11px;padding:7px 10px;width:auto">
+        ${sortOpts.map(o => `<option value="${o[0]}" ${bancoSort===o[0]?'selected':''}>Orden: ${o[1]}</option>`).join('')}
+      </select>
       <button onclick="toggleBancoMine()" title="Ver solo tus referencias personalizadas"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoMine?'var(--accent)':'var(--border)'};background:${bancoMine?'rgba(255,107,48,0.1)':'transparent'};color:${bancoMine?'var(--accent)':'var(--text-muted)'}">${icon(bancoMine?'starFill':'star',13)} Mis referencias${mineN?` · ${mineN}`:''}</button>
       <button onclick="toggleBancoRandom()" title="Orden aleatorio (on/off)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoRandom?'var(--accent)':'var(--border)'};background:${bancoRandom?'rgba(255,107,48,0.1)':'transparent'};color:${bancoRandom?'var(--accent)':'var(--text-muted)'}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
       ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
+      <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent)">${icon('link',13)} Importar desde link</button>
     </div>`;
+  ensureTagDatalist();
   if (typeof hydrateIcons === 'function') hydrateIcons(host);
 }
+// Datalist global con todos los tags existentes → autocompletar al escribir un tag (boxdrop + import).
+function ensureTagDatalist() {
+  let dl = document.getElementById('tag-suggestions');
+  if (!dl) { dl = document.createElement('datalist'); dl.id = 'tag-suggestions'; document.body.appendChild(dl); }
+  dl.innerHTML = getUniqueTags('cat').map(t => `<option value="${s(t)}"></option>`).join('');
+}
 function bancoSetSearch(v) { bancoSearch = v || ''; paginaActual = 1; renderBanco(); const el = document.getElementById('banco-search'); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} } }
+function setBancoSort(v) { bancoSort = v || 'default'; if (bancoSort !== 'default') bancoRandom = false; paginaActual = 1; renderBanco(); }
 function toggleBancoMine() { bancoMine = !bancoMine; paginaActual = 1; renderBanco(); }
-function toggleBancoRandom() { bancoRandom = !bancoRandom; if (bancoRandom) _shuffleKey = Date.now(); paginaActual = 1; renderBanco(); }
+function toggleBancoRandom() { bancoRandom = !bancoRandom; if (bancoRandom) { _shuffleKey = Date.now(); bancoSort = 'default'; } paginaActual = 1; renderBanco(); }
 function reshuffleBanco() { _shuffleKey = Date.now(); paginaActual = 1; renderBanco(); }
 // Shuffle determinista por semilla (Fisher-Yates + mulberry32) → estable entre re-renders/paginación hasta re-mezclar.
 function shuffleSeeded(arr, seed) {
@@ -520,6 +599,7 @@ function toggleIdea(idx, btn) {
   else {
     a.ideas.push({ key, title:r.title, hook:r.hook, cat:r.cat, for:r.for, link:r.link, comentarios:r.comentarios, icon:r.icon });
     selected = true;
+    bumpRefUsage(r);   // contador para "Más usadas"
   }
   saveLaunches();
   if (btn) { btn.innerHTML = icon(selected ? 'starFill' : 'star', 15); btn.style.color = selected ? 'var(--accent)' : 'var(--text-dim)'; btn.style.opacity = selected ? '1' : '0.5'; }
@@ -610,8 +690,9 @@ function openRefBoxdrop(idx) {
       return `<span class="brief-tag" style="display:inline-flex;align-items:center;gap:4px;background:${col}22;color:${col};border:1px solid ${col}55">${s(c)}${locked ? `<span title="Tag fijo" style="opacity:.6;display:inline-flex">${icon('lock',9)}</span>` : `<button onclick="refRemoveTag(${idx},'${s(c).replace(/'/g,"\\'")}')" title="Quitar tag" style="background:none;border:none;color:inherit;cursor:pointer;display:inline-flex;padding:0">${icon('close',9)}</button>`}</span>`;
     }).join('');
     const forChips = fors.map(f => `<span class="brief-tag">${s(f)}</span>`).join('');
+    ensureTagDatalist();
     document.getElementById('bd-tags').innerHTML = chips + forChips +
-      `<input class="input" style="font-size:11px;width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
+      `<input class="input" list="tag-suggestions" style="font-size:11px;width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
   } else {
     const tagHTML = [
       ...cats.map(c => `<span class="brief-tag accent">${s(c)}</span>`),
@@ -655,7 +736,9 @@ function openRefBoxdrop(idx) {
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
     ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
-    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>` : ''}
+    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
+    <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
+    ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
     ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -732,6 +815,7 @@ function confirmarCal() {
       production: { objetivo: s(g.objetivo || ''), hook: s(g.hook || ''), descripcion: s(g.descripcion || ''), plataforma: s(g.format || ''), estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
   } else {
     const r = referencias[src.idx]; if (!r) return;
+    bumpRefUsage(r);   // contador para "Más usadas"
     const cats = (r.cat || []).filter(Boolean);
     // Arrastra TODA la info de la referencia del banco (cats, for, link, miniatura, ícono + hook/descripción al brief).
     item = { id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0] || 'awareness', cats: cats,
