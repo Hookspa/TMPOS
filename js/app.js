@@ -847,6 +847,19 @@ function crearPostEnDia(dk) {
   if (typeof renderCalendar === 'function') renderCalendar();
   if (typeof openProduction === 'function') openProduction(target.id, item.id);
 }
+// Elimina una pieza del calendario (de su campaña). Confirma antes de borrar.
+async function deleteCalItem(campId, itemId, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return; }
+  const l = launches.find(x => x.id === campId); if (!l) return;
+  const ci = (l.cal || []).find(c => c.id === itemId);
+  const title = ci ? s(ci.title) : 'este contenido';
+  if (typeof uiConfirm === 'function' && !(await uiConfirm(`¿Eliminar "${title}" del calendario?`))) return;
+  l.cal = (l.cal || []).filter(c => c.id !== itemId);
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof uiToast === 'function') uiToast('✓ Eliminado del calendario');
+}
 
 // ══════════════════════════════════════════
 // CALENDARIO (scoped al lanzamiento activo)
@@ -994,6 +1007,7 @@ function renderCalGrid() {
   const today = new Date(); today.setHours(0,0,0,0);
   const dropKey = (a && a.date) ? a.date : null;
   const items = calVisibleItems(); // piezas de TODAS las campañas visibles (release + evergreen)
+  const canEditCal = (typeof canDo !== 'function') || canDo('edit_launch');
 
   days.forEach(day => {
     const dk = dateKey(day);
@@ -1006,7 +1020,8 @@ function renderCalGrid() {
       const est = (ci.production && ci.production.estado) || 'pendiente';
       const estIcon = ESTADO_ICON[est] || '';
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
-      return `<div onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="border-radius:3px;padding:3px 5px;font-size:9px;font-weight:500;margin-bottom:3px;cursor:pointer;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</div>`;
+      const delX = canEditCal ? `<button onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
+      return `<div style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</span></div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
