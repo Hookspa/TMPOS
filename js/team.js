@@ -87,6 +87,8 @@ async function cloudLoad() {
     } catch (e) {}
     // capa colaborativa: cargar de la nube (best-effort)
     if (typeof collabCloudLoad === 'function') { try { await collabCloudLoad(sb, _teamId); } catch (e) {} }
+    // pool de referencias de la comunidad (best-effort; se mezcla en el banco)
+    if (typeof communityCloudLoad === 'function') { try { await communityCloudLoad(); } catch (e) {} }
     saveArtistsLocal(); saveLaunchesLocal();
     // Migrar launches de la nube que aún no tengan track, y persistir si cambió
     let _migrated = migrateLaunchesToTracks();

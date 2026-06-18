@@ -18,6 +18,10 @@ let activeForFilter = 'all';
 let activeCatFilter = 'all';
 let paginaActual  = 1;
 let porPagina     = 25;
+let bancoSearch   = '';        // búsqueda por texto (título/hook/tags)
+let bancoMine     = false;     // filtro "Mis referencias" (solo personalizadas)
+let bancoRandom   = false;     // orden aleatorio on/off
+let _shuffleKey   = 0;         // semilla del orden aleatorio (cambia al re-randomizar)
 
 const CAT_PALETTE = ['#FF6B30','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
@@ -115,33 +119,115 @@ setReferencias(DEMO);
 // ── Posts propios "desde cero" (mismo modelo que una referencia, persistidos en localStorage) ──
 function loadCustomRefs() { try { return JSON.parse(localStorage.getItem('ao_custom_refs')) || []; } catch (e) { return []; } }
 function saveCustomRefs(arr) { try { localStorage.setItem('ao_custom_refs', JSON.stringify(arr)); } catch (e) {} }
+// El primer tag SIEMPRE es 'custom' (organización: las personalizadas quedan agrupadas y filtrables).
+function ensureCustomCat(r) {
+  let cats = (r.cat || []).map(c => trim(c).toLowerCase()).filter(Boolean).filter(c => c !== 'custom');
+  // dedup conservando orden
+  cats = cats.filter((c, i) => cats.indexOf(c) === i);
+  r.cat = ['custom', ...cats];
+  return r.cat;
+}
 // Mezcla los posts propios en el banco (se llama al cargar, después del CSV) y reindexa.
 function mergeCustomRefs() {
-  loadCustomRefs().forEach(c => { if (!referencias.some(r => refKey(r) === refKey(c))) referencias.push(Object.assign({ custom: true }, c)); });
+  loadCustomRefs().forEach(c => {
+    if (!referencias.some(r => refKey(r) === refKey(c))) {
+      const ref = Object.assign({ custom: true, owned: true, shared: false }, c);
+      ensureCustomCat(ref);
+      referencias.push(ref);
+    }
+  });
   referencias.forEach((r, i) => { r._idx = i; });
 }
 function persistCustomEdit(r) {
-  if (!r || !r.custom) return;
+  if (!r || !r.custom || r.owned === false) return; // las de la comunidad (de otros) no se persisten local
+  ensureCustomCat(r);
   const arr = loadCustomRefs();
-  const snap = { id: r.id, title: r.title, hook: r.hook, cat: r.cat, for: r.for, link: r.link, thumb: r.thumb, comentarios: r.comentarios, icon: r.icon, custom: true };
+  const snap = { id: r.id, title: r.title, hook: r.hook, cat: r.cat, for: r.for, link: r.link, thumb: r.thumb, comentarios: r.comentarios, icon: r.icon, custom: true, shared: !!r.shared };
   const i = arr.findIndex(x => x.id === r.id);
   if (i >= 0) arr[i] = snap; else arr.push(snap);
   saveCustomRefs(arr);
+  if (r.shared) communityCloudPush(r);   // si está compartida, re-sube el snapshot a la comunidad
 }
 // Crea un post desde cero (post propio) con la misma tarjeta/opciones que una referencia y abre su boxdrop editable.
+// PRIVADO por defecto (shared:false); la casilla del boxdrop lo comparte con la comunidad.
 function crearPostDesdeCero() {
-  const c = { id: 'custom-' + Date.now(), title: 'Nuevo post', hook: '', cat: ['custom'], for: [], link: '', thumb: '', comentarios: '', icon: 'pin', custom: true };
+  const c = { id: 'custom-' + Date.now(), title: 'Nuevo post', hook: '', cat: ['custom'], for: [], link: '', thumb: '', comentarios: '', icon: 'pin', custom: true, owned: true, shared: false };
   const arr = loadCustomRefs(); arr.push(c); saveCustomRefs(arr);
   c._idx = referencias.length; referencias.push(c);
   if (typeof openRefBoxdrop === 'function') openRefBoxdrop(c._idx);
 }
 function eliminarPostCustom(idx) {
-  const r = referencias[idx]; if (!r || !r.custom) return;
+  const r = referencias[idx]; if (!r || !r.custom || r.owned === false) return;
   saveCustomRefs(loadCustomRefs().filter(x => x.id !== r.id));
+  if (r.shared) communityCloudRemove(r.id);   // si estaba compartida, quítala de la comunidad
   referencias.splice(idx, 1); referencias.forEach((x, i) => { x._idx = i; });
   document.getElementById('boxdrop').classList.remove('open');
   if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
   uiToast('✓ Post eliminado');
+}
+// ── Tags como chips (agregar/quitar); 'custom' es fijo y no se puede quitar ──
+function refAddTag(idx, value) {
+  const r = referencias[idx]; if (!r || !r.custom || r.owned === false) return;
+  const t = trim(value).toLowerCase();
+  if (!t || t === 'custom') { openRefBoxdrop(idx); return; }
+  r.cat = (r.cat || []); if (!r.cat.includes(t)) r.cat.push(t);
+  r.icon = catIcon(r.cat);
+  persistCustomEdit(r); openRefBoxdrop(idx);
+}
+function refRemoveTag(idx, tag) {
+  const r = referencias[idx]; if (!r || !r.custom || r.owned === false) return;
+  if (trim(tag).toLowerCase() === 'custom') return; // protegido
+  r.cat = (r.cat || []).filter(c => c !== tag);
+  ensureCustomCat(r); r.icon = catIcon(r.cat);
+  persistCustomEdit(r); openRefBoxdrop(idx);
+}
+// ── Compartir / privar una referencia personalizada ──
+function refSetShared(idx, on) {
+  const r = referencias[idx]; if (!r || !r.custom || r.owned === false) return;
+  r.shared = !!on; persistCustomEdit(r);
+  if (on) { communityCloudPush(r); uiToast('✓ Compartida con la comunidad'); }
+  else    { communityCloudRemove(r.id); uiToast('✓ Vuelta a privada'); }
+  openRefBoxdrop(idx);
+}
+
+// ══════════════════════════════════════════
+// COMUNIDAD — referencias compartidas (tabla Supabase community_refs)
+// Privadas por defecto; al compartir se suben; cualquier usuario autenticado las ve (pool comunidad).
+// ══════════════════════════════════════════
+function _communityAuthor() {
+  try { return (typeof _user !== 'undefined' && _user && (_user.email || _user.id)) || ''; } catch (e) { return ''; }
+}
+async function communityCloudPush(r) {
+  if (!r || typeof getSb !== 'function' || typeof authed !== 'function' || !authed()) return;
+  try {
+    const sb = await getSb(); if (!sb) return;
+    const data = { id: r.id, title: r.title, hook: r.hook, cat: r.cat, for: r.for, link: r.link, thumb: r.thumb, comentarios: r.comentarios, icon: r.icon };
+    await sb.from('community_refs').upsert([{ id: r.id, owner: _user && _user.id, team_id: (typeof _teamId !== 'undefined' ? _teamId : null), author: _communityAuthor(), data, updated_at: new Date().toISOString() }]);
+  } catch (e) { /* tabla aún no creada → no-op */ }
+}
+async function communityCloudRemove(id) {
+  if (!id || typeof getSb !== 'function' || typeof authed !== 'function' || !authed()) return;
+  try { const sb = await getSb(); if (sb) await sb.from('community_refs').delete().eq('id', id); } catch (e) {}
+}
+// Carga el pool de comunidad y mezcla en el banco (sin duplicar lo que ya tengo local). Best-effort.
+async function communityCloudLoad() {
+  if (typeof getSb !== 'function' || typeof authed !== 'function' || !authed()) return;
+  try {
+    const sb = await getSb(); if (!sb) return;
+    const res = await sb.from('community_refs').select('id, owner, author, data');
+    if (res.error || !res.data) return;
+    const myId = (typeof _user !== 'undefined' && _user) ? _user.id : null;
+    res.data.forEach(row => {
+      const d = row.data || {};
+      if (row.owner === myId) return;                       // las mías ya están locales
+      if (referencias.some(r => s(r.id) === s(row.id))) return; // dedup por id
+      const ref = Object.assign({}, d, { id: row.id, custom: true, community: true, owned: false, shared: true, author: row.author || '' });
+      ensureCustomCat(ref);
+      referencias.push(ref);
+    });
+    referencias.forEach((r, i) => { r._idx = i; });
+    if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
+  } catch (e) {}
 }
 
 // ══════════════════════════════════════════
@@ -298,10 +384,23 @@ function renderBancoContext() {
 }
 function renderBanco() {
   renderBancoContext();
+  renderBancoToolbar();
   const grid = document.getElementById('refs-grid');
   let filtered = referencias;
+  if (bancoMine) filtered = filtered.filter(r => r.custom);
   if (activeForFilter !== 'all') filtered = filtered.filter(r => (r.for||[]).includes(activeForFilter));
   if (activeCatFilter !== 'all') filtered = filtered.filter(r => (r.cat||[]).includes(activeCatFilter));
+  if (bancoSearch) {
+    const q = bancoSearch.toLowerCase();
+    filtered = filtered.filter(r => (
+      s(r.title).toLowerCase().includes(q) ||
+      s(r.hook).toLowerCase().includes(q) ||
+      s(r.comentarios).toLowerCase().includes(q) ||
+      (r.cat||[]).some(c => s(c).toLowerCase().includes(q)) ||
+      (r.for||[]).some(f => s(f).toLowerCase().includes(q))
+    ));
+  }
+  if (bancoRandom) filtered = shuffleSeeded(filtered.slice(), _shuffleKey);
   if (!filtered.length) {
     grid.style.gridTemplateColumns = '1fr';
     grid.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px">SIN REFERENCIAS CON ESTOS FILTROS</div></div>`;
@@ -323,6 +422,7 @@ function renderBanco() {
           : `<img id="${iid}" class="ref-thumb-img" alt="${s(r.title)}" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
+        ${r.custom ? customBadgeHTML(r) : ''}
         ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
@@ -362,6 +462,49 @@ function renderBanco() {
 }
 function cambiarPagina(n) { paginaActual = n; renderBanco(); document.querySelector('.content').scrollTop = 0; }
 function cambiarPorPagina(n) { porPagina = n; paginaActual = 1; renderBanco(); }
+
+// ── Badge de privacidad en las tarjetas personalizadas ──
+function customBadgeHTML(r) {
+  const community = r.community || r.owned === false;
+  const shared = !!r.shared;
+  const label = community ? (s(r.author) ? 'COMUNIDAD' : 'COMUNIDAD') : (shared ? 'COMPARTIDA' : 'PRIVADA');
+  const col = community ? '#a78bfa' : (shared ? '#4ade80' : 'var(--text-dim)');
+  const ico = community ? 'star' : (shared ? 'eye' : 'lock');
+  return `<span title="${community ? ('De la comunidad' + (s(r.author)?(' · '+s(r.author)):'')) : (shared ? 'Compartida con la comunidad' : 'Privada (solo tú)')}"
+    style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:8px;font-family:var(--font-mono);letter-spacing:0.5px;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
+}
+
+// ── Toolbar del banco: búsqueda + "Mis referencias" + aleatorio (on/off + re-mezclar) ──
+function renderBancoToolbar() {
+  const host = document.getElementById('banco-toolbar'); if (!host) return;
+  const mineN = referencias.filter(r => r.custom).length;
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="flex:1;min-width:180px;position:relative;display:flex;align-items:center">
+        <span style="position:absolute;left:10px;color:var(--text-dim);display:flex;pointer-events:none">${icon('search',14)}</span>
+        <input id="banco-search" class="input" type="text" value="${s(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
+          oninput="bancoSetSearch(this.value)" style="width:100%;padding-left:32px;font-size:12px">
+        ${bancoSearch ? `<button onclick="bancoSetSearch('')" title="Limpiar" style="position:absolute;right:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex">${icon('close',12)}</button>` : ''}
+      </div>
+      <button onclick="toggleBancoMine()" title="Ver solo tus referencias personalizadas"
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoMine?'var(--accent)':'var(--border)'};background:${bancoMine?'rgba(255,107,48,0.1)':'transparent'};color:${bancoMine?'var(--accent)':'var(--text-muted)'}">${icon(bancoMine?'starFill':'star',13)} Mis referencias${mineN?` · ${mineN}`:''}</button>
+      <button onclick="toggleBancoRandom()" title="Orden aleatorio (on/off)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoRandom?'var(--accent)':'var(--border)'};background:${bancoRandom?'rgba(255,107,48,0.1)':'transparent'};color:${bancoRandom?'var(--accent)':'var(--text-muted)'}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
+      ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
+    </div>`;
+  if (typeof hydrateIcons === 'function') hydrateIcons(host);
+}
+function bancoSetSearch(v) { bancoSearch = v || ''; paginaActual = 1; renderBanco(); const el = document.getElementById('banco-search'); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} } }
+function toggleBancoMine() { bancoMine = !bancoMine; paginaActual = 1; renderBanco(); }
+function toggleBancoRandom() { bancoRandom = !bancoRandom; if (bancoRandom) _shuffleKey = Date.now(); paginaActual = 1; renderBanco(); }
+function reshuffleBanco() { _shuffleKey = Date.now(); paginaActual = 1; renderBanco(); }
+// Shuffle determinista por semilla (Fisher-Yates + mulberry32) → estable entre re-renders/paginación hasta re-mezclar.
+function shuffleSeeded(arr, seed) {
+  let t = seed >>> 0;
+  const rand = () => { t += 0x6D2B79F5; let x = t; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; }
+  return arr;
+}
 
 // ══════════════════════════════════════════
 // FAVORITOS
@@ -446,20 +589,29 @@ function openRefBoxdrop(idx) {
   const r = referencias[idx];
   if (!r) return;
   const custom = !!r.custom;
+  const community = custom && r.owned === false;   // referencia de OTRO usuario (de la comunidad) → solo lectura
+  const editable = custom && !community;            // referencia propia → editable
   const cats = (r.cat||[]).filter(Boolean);
   const fors = (r.for||[]).filter(Boolean);
   const a = activeLaunch();
   const sel = ideaSelected(r);
   document.getElementById('bd-title').textContent = up(r.title);
-  document.getElementById('bd-date').textContent  = cats.map(up).join(' · ') || (custom ? 'POST PROPIO' : '—');
+  document.getElementById('bd-date').textContent  = community ? ('DE LA COMUNIDAD' + (s(r.author)?(' · '+up(r.author)):'')) : (cats.map(up).join(' · ') || (custom ? 'POST PROPIO' : '—'));
   // Campos del brief: editables cuando es un post propio (mismo screen que una referencia).
-  bdField('bd-idea', s(r.title), custom, v => { r.title = v || 'Nuevo post'; document.getElementById('bd-title').textContent = up(r.title); persistCustomEdit(r); }, 'Título del post');
-  bdField('bd-hook', s(r.hook), custom, v => { r.hook = v; persistCustomEdit(r); }, 'Hook / gancho', !custom && !r.hook ? 'Sin hook definido' : '');
-  bdField('bd-desc', s(r.comentarios), custom, v => { r.comentarios = v; persistCustomEdit(r); }, 'Descripción / cómo grabarlo', !custom && !r.comentarios ? 'Sin comentarios' : '');
+  bdField('bd-idea', s(r.title), editable, v => { r.title = v || 'Nuevo post'; document.getElementById('bd-title').textContent = up(r.title); persistCustomEdit(r); }, 'Título del post');
+  bdField('bd-hook', s(r.hook), editable, v => { r.hook = v; persistCustomEdit(r); }, 'Hook / gancho', !editable && !r.hook ? 'Sin hook definido' : '');
+  bdField('bd-desc', s(r.comentarios), editable, v => { r.comentarios = v; persistCustomEdit(r); }, 'Descripción / cómo grabarlo', !editable && !r.comentarios ? 'Sin comentarios' : '');
 
-  // Tags & Keywords = cat + for (editable cuando es post propio)
-  if (custom) {
-    document.getElementById('bd-tags').innerHTML = `<input class="input" style="font-size:11px;max-width:320px" value="${s(cats.join(', '))}" placeholder="categorías separadas por coma (ej. bts, storytelling)" onblur="refSetCats(${idx}, this.value)">`;
+  // Tags & Keywords = cat + for. Editable (chips agregar/quitar) si es post propio; 'custom' fijo.
+  if (editable) {
+    const chips = cats.map(c => {
+      const locked = (c === 'custom');
+      const col = catColor(c);
+      return `<span class="brief-tag" style="display:inline-flex;align-items:center;gap:4px;background:${col}22;color:${col};border:1px solid ${col}55">${s(c)}${locked ? `<span title="Tag fijo" style="opacity:.6;display:inline-flex">${icon('lock',9)}</span>` : `<button onclick="refRemoveTag(${idx},'${s(c).replace(/'/g,"\\'")}')" title="Quitar tag" style="background:none;border:none;color:inherit;cursor:pointer;display:inline-flex;padding:0">${icon('close',9)}</button>`}</span>`;
+    }).join('');
+    const forChips = fors.map(f => `<span class="brief-tag">${s(f)}</span>`).join('');
+    document.getElementById('bd-tags').innerHTML = chips + forChips +
+      `<input class="input" style="font-size:11px;width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
   } else {
     const tagHTML = [
       ...cats.map(c => `<span class="brief-tag accent">${s(c)}</span>`),
@@ -481,7 +633,7 @@ function openRefBoxdrop(idx) {
   const link  = s(r.link).trim();
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
-  const linkFooter = custom
+  const linkFooter = editable
     ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:11px;width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${s(link)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
     : (link
       ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${s(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
@@ -502,7 +654,9 @@ function openRefBoxdrop(idx) {
       style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.35);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
-    ${custom ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
+    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
+    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>` : ''}
+    ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
@@ -522,6 +676,7 @@ function bdField(id, val, editable, onSave, label, fallback) {
 function refSetCats(idx, value) {
   const r = referencias[idx]; if (!r) return;
   r.cat = s(value).split(',').map(t => trim(t).toLowerCase()).filter(Boolean);
+  if (r.custom) ensureCustomCat(r);   // 'custom' siempre primero
   r.icon = catIcon(r.cat);
   persistCustomEdit(r); openRefBoxdrop(idx);
 }

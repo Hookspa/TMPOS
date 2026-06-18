@@ -42,6 +42,8 @@ const ICONS = {
   music:      '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   warning:    '<path d="M12 3L2 20.5h20z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17.3" r="0.7" fill="currentColor" stroke="none"/>',
   refresh:    '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-7.6-4.1"/><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 7.6 4.1"/><path d="M21 3.5V8h-4.5"/><path d="M3 20.5V16h4.5"/>',
+  search:     '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  shuffle:    '<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
   close:      '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
   arrowLeft:  '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
   check:      '<path d="M5 12.5l4.5 4.5L19 7"/>',
