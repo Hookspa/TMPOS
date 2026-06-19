@@ -860,6 +860,28 @@ async function deleteCalItem(campId, itemId, ev) {
   if (typeof renderCalendar === 'function') renderCalendar();
   if (typeof uiToast === 'function') uiToast('✓ Eliminado del calendario');
 }
+// ── Drag & drop en la vista de calendario: arrastrar una pieza a otro día la reprograma ──
+let _calDrag = null;
+function calDragStart(e, campId, itemId) {
+  _calDrag = { campId, itemId };
+  if (e.dataTransfer) { e.dataTransfer.setData('text/plain', campId + '|' + itemId); e.dataTransfer.effectAllowed = 'move'; }
+}
+function calDragEnd() { _calDrag = null; document.querySelectorAll('.cal-day.cal-drop').forEach(d => d.classList.remove('cal-drop')); }
+function calDropOnDay(e, dk) {
+  if (e && e.preventDefault) e.preventDefault();
+  let p = _calDrag;
+  if ((!p || !p.itemId) && e && e.dataTransfer) { const t = (e.dataTransfer.getData('text/plain') || '').split('|'); if (t.length === 2) p = { campId: t[0], itemId: t[1] }; }
+  _calDrag = null;
+  if (!p) return;
+  if (typeof canDo === 'function' && !canDo('edit_launch')) return;
+  const l = launches.find(x => x.id === p.campId); if (!l) return;
+  const ci = (l.cal || []).find(c => c.id === p.itemId); if (!ci) return;
+  if (ci.fecha === dk) return;  // mismo día → nada
+  ci.fecha = dk;
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof uiToast === 'function') uiToast('✓ Movido a ' + dk);
+}
 
 // ══════════════════════════════════════════
 // CALENDARIO (scoped al lanzamiento activo)
@@ -1021,7 +1043,8 @@ function renderCalGrid() {
       const estIcon = ESTADO_ICON[est] || '';
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
       const delX = canEditCal ? `<button onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
-      return `<div style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</span></div>`;
+      const drag = canEditCal ? `draggable="true" ondragstart="calDragStart(event,'${ci._campId}','${ci.id}')" ondragend="calDragEnd(event)"` : '';
+      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</span></div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
@@ -1032,6 +1055,12 @@ function renderCalGrid() {
     div.innerHTML = `<div class="cal-day-num">${day.getDate()}</div>${dropBadge}${itemsHTML}`;
     // Click en el día (zona vacía) = crear post directo en el calendario, sin tocar el banco.
     if (!outMonth) { div.title = '+ Crear post este día'; div.onclick = () => crearPostEnDia(dk); }
+    // Drop: arrastrar una pieza a este día la reprograma a esta fecha.
+    if (canEditCal) {
+      div.ondragover = (e) => { e.preventDefault(); div.classList.add('cal-drop'); };
+      div.ondragleave = () => div.classList.remove('cal-drop');
+      div.ondrop = (e) => { div.classList.remove('cal-drop'); calDropOnDay(e, dk); };
+    }
     grid.appendChild(div);
   });
 
