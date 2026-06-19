@@ -523,6 +523,16 @@ function renderIdeas() {
     </div>
 
     <div class="panel">
+      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Letra de la canción</span><span class="ph-sub">Genera el Campaign DNA desde la letra</span></div>
+      <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA desde la letra</button>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Lee la letra + el ADN del artista → llena Concepto/Emoción/Problema/Mensaje/Keywords</span>
+      </div>
+      <div id="letra-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+    </div>
+
+    <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
       <div class="ideas-grid">${ideasHTML}</div>
     </div>
@@ -613,6 +623,7 @@ function plantillaIdeas(a, count) {
 function generarIdeasPlantilla() {
   const a = activeLaunch(); if (!a) return;
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
+  if (a.generated && a.generated.length) { a.generatedPrev = a.generated.slice(); a.generatedPrevAt = Date.now(); }
   a.generated = plantillaIdeas(a, count);
   a.lastUsage = null;
   saveLaunches(); renderResults();
@@ -643,8 +654,32 @@ function renderResults() {
           ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${s(it.refLink)}" target="_blank">↗ ref</a>` : ''}
         </div>
       </div>`;
+    }).join('')}</div>
+    ${prevResultsHTML(a)}`;
+}
+// Generación IA anterior — se conserva para complementar; se reemplaza solo al regenerar.
+function prevResultsHTML(a) {
+  const prev = (a && a.generatedPrev) || [];
+  if (!prev.length) return '';
+  return `
+    <div class="section-header" style="margin-top:22px"><div class="section-title" style="color:var(--text-dim)">GENERACIÓN ANTERIOR · ${prev.length}${a.generatedPrevAt ? ` · ${new Date(a.generatedPrevAt).toLocaleDateString()}` : ''}</div></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar de nuevo.</div>
+    <div class="ideas-grid">${prev.map((it, i) => {
+      const col = catColor(it.cat);
+      return `<div class="idea-card" style="cursor:default;opacity:.82">
+        <span class="idea-cat" style="background:${col}18;color:${col}">${up(it.cat || 'idea')}</span>
+        <div class="idea-title">${s(it.title)}</div>
+        ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">${s(it.descripcion || '')}</div>
+        <div class="idea-meta">${s(it.format || '')}${it.objetivo ? ' · ' + s(it.objetivo) : ''}</div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="addGeneratedPrevToCal(${i})">+ Calendario</button>
+          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${s(it.refLink)}" target="_blank">↗ ref</a>` : ''}
+        </div>
+      </div>`;
     }).join('')}</div>`;
 }
+function addGeneratedPrevToCal(i) { if (typeof abrirModalCalGen === 'function') abrirModalCalGen(i, 'prev'); }
 function addGeneratedToCal(i) {
   // Mismo box que las referencias: campaña + pauta + selector de fecha con días ocupados.
   if (typeof abrirModalCalGen === 'function') abrirModalCalGen(i);
@@ -788,6 +823,8 @@ async function generarIdeasIA() {
     const { text, usage } = await callClaude(prompt, maxTok, 'ideas');
     const ideas = parseIdeasJSON(text);
     if (!ideas.length) throw new Error('La IA no devolvió ideas en formato válido.');
+    // Conserva la generación anterior para complementar (no se borra; se reemplaza solo al regenerar).
+    if (a.generated && a.generated.length) { a.generatedPrev = a.generated.slice(); a.generatedPrevAt = Date.now(); }
     a.generated = ideas.map(x => ({
       cat: x.cat || 'idea', format: x.format || '', title: x.title || 'Idea',
       hook: x.hook || '', objetivo: x.objetivo || '', descripcion: x.descripcion || '', refLink: '', source: 'ia'
@@ -798,6 +835,57 @@ async function generarIdeasIA() {
     if (typeof updateCostLine === 'function') updateCostLine();
   } catch (e) {
     res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">${icon('warning',13)} Error con la IA: ${s(e.message)}.<br>Revisa tu API key / modelo en ${icon('settings',12)} API. (También puede ser límite de CORS o de créditos.)</div>`;
+  }
+}
+// ── Letra de la canción → Campaign DNA (IA) ──
+function setLaunchLetra(v) {
+  const a = activeLaunch(); if (!a) return;
+  a.letra = s(v); saveLaunches();
+}
+function buildDNAfromLyricsPrompt(a, letra) {
+  const art = activeArtist() || {}; const adn = art.adn || {};
+  return `Eres estratega de marketing musical. A partir de la LETRA de la canción y el ADN del artista, define el "Campaign DNA" (ADN de campaña) del lanzamiento: el concepto narrativo con el que se va a comunicar la canción en redes.
+
+ARTISTA: ${s(art.name)}
+Arquetipos: ${((adn.personality||{}).archetypes||[]).join(', ')}
+Tono: ${s((adn.personality||{}).tone)}
+Temas: ${s((adn.universe||{}).themes)}
+Audiencia ideal: ${s((adn.audience||{}).ideal)}
+
+CANCIÓN: ${s(a.name)}
+LETRA:
+${letra}
+
+Devuelve SOLO un objeto JSON válido, sin texto adicional, con esta forma exacta:
+{"about":"concepto central de la campaña en 1-2 frases","emotion":"emoción principal que evoca la canción","problem":"tensión o problema humano que toca la letra","conversation":"pregunta que abre conversación con la audiencia","message":"mensaje/frase clave memorable","keywords":"5-8 palabras clave separadas por coma"}`;
+}
+async function generarDNADesdeLetra() {
+  const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  const letra = s((document.getElementById('letra-input') || {}).value || a.letra).trim();
+  if (!letra) { uiAlert('Escribe o pega la letra de la canción primero.'); return; }
+  a.letra = letra;
+  if (!aiReady()) { abrirAISettings(); return; }
+  const d = a.dna || {};
+  if ((s(d.about) || s(d.message) || s(d.emotion)) && !(await uiConfirm('Esto reemplazará el Campaign DNA actual con uno generado desde la letra. ¿Continuar?'))) return;
+  const ai = aiSettings();
+  const prompt = buildDNAfromLyricsPrompt(a, letra);
+  const st = document.getElementById('letra-status');
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el Campaign DNA desde la letra (${s(ai.model)})…`; }
+  try {
+    const { text, usage } = await callClaude(prompt, 900, 'campaign_dna');
+    const obj = parseJSONObj(text);
+    if (!obj) throw new Error('La IA no devolvió un DNA en formato válido.');
+    a.dna = {
+      about: s(obj.about), emotion: s(obj.emotion), problem: s(obj.problem),
+      conversation: s(obj.conversation), message: s(obj.message), keywords: s(obj.keywords),
+    };
+    a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    saveLaunches();
+    renderIdeas();
+    if (typeof uiToast === 'function') uiToast('✓ Campaign DNA generado desde la letra');
+  } catch (e) {
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(e.message)}. Revisa la API en ${icon('settings',12)}.`; }
   }
 }
 function abrirAISettings() {

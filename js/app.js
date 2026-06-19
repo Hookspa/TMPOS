@@ -790,9 +790,11 @@ function abrirModalCal(idx) {            // desde una referencia / post propio
   calModalIdx = idx; _mcSource = { kind: 'ref', idx };
   _mcPopulate((referencias[idx] || {}).title || '');
 }
-function abrirModalCalGen(i) {           // desde una idea generada con IA (a.generated)
-  const a = activeLaunch(); const it = a && (a.generated || [])[i]; if (!it) return;
-  _mcSource = { kind: 'gen', idx: i };
+function abrirModalCalGen(i, which) {     // desde una idea generada con IA (a.generated o a.generatedPrev)
+  const a = activeLaunch(); if (!a) return;
+  const arr = which === 'prev' ? (a.generatedPrev || []) : (a.generated || []);
+  const it = arr[i]; if (!it) return;
+  _mcSource = { kind: which === 'prev' ? 'genprev' : 'gen', idx: i };
   _mcPopulate(it.title || 'Idea');
 }
 function cerrarModalCal(e) {
@@ -808,8 +810,10 @@ function confirmarCal() {
   const pauta = (document.getElementById('mc-pauta') || {}).value || 'organico';
   const src = _mcSource || { kind: 'ref', idx: calModalIdx };
   let item;
-  if (src.kind === 'gen') {
-    const g = ((activeLaunch() || {}).generated || [])[src.idx]; if (!g) return; // las ideas IA viven en el release activo
+  if (src.kind === 'gen' || src.kind === 'genprev') {
+    const _a = activeLaunch() || {};
+    const arr = src.kind === 'genprev' ? (_a.generatedPrev || []) : (_a.generated || []);
+    const g = arr[src.idx]; if (!g) return; // las ideas IA viven en el release activo
 
     item = { id: 'ci-' + Date.now(), title: s(g.title), cat: s(g.cat) || 'awareness', fecha, pauta, refLink: s(g.refLink || ''),
       production: { objetivo: s(g.objetivo || ''), hook: s(g.hook || ''), descripcion: s(g.descripcion || ''), plataforma: s(g.format || ''), estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
@@ -2593,6 +2597,8 @@ function normalizeLaunch(l) {
   if (!Array.isArray(l.metrics.weeks)) l.metrics.weeks = [];
   l.ideas = Array.isArray(l.ideas) ? l.ideas : [];
   l.generated = Array.isArray(l.generated) ? l.generated : [];
+  l.generatedPrev = Array.isArray(l.generatedPrev) ? l.generatedPrev : []; // generación IA anterior (no se borra hasta regenerar)
+  l.letra = typeof l.letra === 'string' ? l.letra : '';                    // letra de la canción (para generar el Campaign DNA)
   l.metricEntries = Array.isArray(l.metricEntries) ? l.metricEntries : [];
   l.screenshots = Array.isArray(l.screenshots) ? l.screenshots : [];
   l.revenue = (l.revenue && typeof l.revenue === 'object') ? l.revenue : {};
