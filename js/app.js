@@ -1388,7 +1388,34 @@ function prodContentHTML(ci, p) {
       ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
-    <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, script y hashtags a partir del ADN del artista + el Campaign DNA + esta pieza.</div>'}</div>`;
+    <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, script y hashtags a partir del ADN del artista + el Campaign DNA + esta pieza.</div>'}</div>
+    ${p.contentPrev ? `<div class="section-header" style="margin-top:22px"><div class="section-title" style="color:var(--text-dim)">GENERACIÓN ANTERIOR${p.contentPrev.at ? ` · ${new Date(p.contentPrev.at).toLocaleDateString()}` : ''}</div></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar.</div>
+      ${contentResultPrevHTML(p.contentPrev)}` : ''}`;
+}
+// Render read-only de la generación de contenido ANTERIOR (estado global propio para no chocar con el actual).
+let viewContentPrev = null;
+function copyContentPrev(key, btn) {
+  if (!viewContentPrev) return;
+  const v = key === 'hashtags' ? (viewContentPrev.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContentPrev[key]);
+  if (navigator.clipboard) navigator.clipboard.writeText(v);
+  if (btn) { const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = t; }, 1200); }
+}
+function contentResultPrevHTML(c) {
+  viewContentPrev = c;
+  const blk = (label, key, pre) => {
+    const v = s(c[key]); if (!v) return '';
+    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContentPrev('${key}',this)">Copiar</button></div><div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'};opacity:.85">${v}</div></div>`;
+  };
+  const tags = (c.hashtags || []);
+  return `<div style="opacity:.95">
+    ${blk('Hook (primeros 3s)', 'hook')}
+    ${blk('Caption · Instagram', 'caption_ig')}
+    ${blk('Caption · TikTok', 'caption_tiktok')}
+    ${blk('Story', 'story')}
+    ${blk('Guión 30–60s', 'script', true)}
+    ${tags.length ? `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContentPrev('hashtags',this)">Copiar todos</button></div><div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('')}</div></div>` : ''}
+  </div>`;
 }
 async function generarContenidoIA() {
   const ci = prodItem(); if (!ci) return;
@@ -1400,7 +1427,10 @@ async function generarContenidoIA() {
     const obj = parseJSONObj(text);
     if (!obj) throw new Error('La IA no devolvió contenido en formato válido.');
     obj.at = Date.now();
-    ensureProduction(ci).content = obj;
+    const prod = ensureProduction(ci);
+    // Conserva el contenido anterior para complementar (no se borra; se reemplaza solo al regenerar).
+    if (prod.content) prod.contentPrev = prod.content;
+    prod.content = obj;
     saveLaunches();
     renderProd();
   } catch (e) {
