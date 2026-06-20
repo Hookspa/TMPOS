@@ -2841,6 +2841,8 @@ function setActiveLaunch(id) {
   if (p === 'page-ideas')      renderIdeas();
 }
 function launchContextHTML() {
+  // Dentro de una pestaña del release (página embebida) el selector de contexto es redundante → no se pinta.
+  if (window._embeddingNow) return '';
   const a = activeLaunch();
   if (!a) return '';
   const st = STATUS_MAP[a.status] || STATUS_MAP.planning;

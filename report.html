@@ -1246,12 +1246,13 @@ async function generatePPTX(){
   const artist=(identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');
   const project=(identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');
   await pres.writeFile({fileName:`reporte_${artist}_${project}_${Date.now()}.pptx`});
+  logReportAudit('Presentación .pptx');
 }
 
 // ── SNAPSHOT / DOWNLOAD ────────────────────────────────
 function buildSnapshot(){return{_lrg:true,version:'2.0',createdAt:new Date().toISOString(),sc:ST.sc,identity:ST.identity,manual:captureManualFields(),data:ST.parsedData,aiInsights:ST.aiInsights,csvHeaders:ST.csvHeaders};}
-function dlJSON(){const snap=buildSnapshot();const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const fname=`lrg_${artist}_${project}_${Date.now()}.json`;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}));a.download=fname;a.click();toast('✓ Snapshot guardado — '+fname);}
-function dlHTML(){const body=document.getElementById('report').innerHTML;const full=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reporte — ${ST.identity.artist||'Artista'} · ${ST.identity.project||'Lanzamiento'}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet"><style>${document.querySelector('style').innerHTML}</style></head><body style="background:var(--bg)">${body}</body></html>`;const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([full],{type:'text/html'}));a.download=`reporte_${artist}_${project}_${Date.now()}.html`;a.click();toast('✓ Reporte HTML descargado');}
+function dlJSON(){const snap=buildSnapshot();const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const fname=`lrg_${artist}_${project}_${Date.now()}.json`;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:'application/json'}));a.download=fname;a.click();toast('✓ Snapshot guardado — '+fname);logReportAudit('Snapshot .json');}
+function dlHTML(){const body=document.getElementById('report').innerHTML;const full=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reporte — ${ST.identity.artist||'Artista'} · ${ST.identity.project||'Lanzamiento'}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet"><style>${document.querySelector('style').innerHTML}</style></head><body style="background:var(--bg)">${body}</body></html>`;const artist=(ST.identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');const project=(ST.identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([full],{type:'text/html'}));a.download=`reporte_${artist}_${project}_${Date.now()}.html`;a.click();toast('✓ Reporte HTML descargado');logReportAudit('Reporte .html');}
 function goBack(){document.getElementById('setup').style.display='block';document.getElementById('report').style.display='none';killCharts();}
 
 // ── NUBE (Supabase) — guardar/listar reportes para comparar temporalidades ──
@@ -1280,6 +1281,16 @@ async function saveReportCloud(snap){
   const row={id,team_id:ctx.teamId,artist_id:ctx.artistId||null,release_id:repReleaseId(),track_id:ctx.trackId||null,scenario:snap.sc||'ideal',data:snap};
   try{ const {error}=await sb.from('reports').insert(row); if(error) throw error; return id; }
   catch(e){ console.warn('saveReportCloud:',e.message||e); return null; }
+}
+// Auditoría de descargas de reporte (10e): registra en audit_log (best-effort; requiere contexto de equipo + sesión).
+async function logReportAudit(label){
+  const ctx=ST.ctx||{};
+  if(!ctx.teamId) return;
+  try{
+    const u=await cloudUser(); if(!u) return;
+    const sb=await getSb(); if(!sb) return;
+    await sb.from('audit_log').insert({ team_id:ctx.teamId, actor:u.email||u.id||'desconocido', action:'descargar', target_type:'reporte', target_id:repReleaseId()||null, label:label||null });
+  }catch(e){}
 }
 async function listReportsCloud(relId){
   if(!relId) return [];

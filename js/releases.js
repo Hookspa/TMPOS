@@ -122,7 +122,9 @@ function embedPageInto(target, id){
   releaseRestorePages();
   const el=document.getElementById('page-'+id); if(!el||!target) return;
   el.classList.add('embedded'); el.style.display='block'; target.appendChild(el); _embeddedPages.push(id);
-  const fn=EMBED_RENDER[id]; if(fn && typeof window[fn]==='function') window[fn]();
+  const fn=EMBED_RENDER[id];
+  // Marca "estamos embebiendo" para que launchContextHTML() no pinte el selector de contexto (redundante dentro del release).
+  if(fn && typeof window[fn]==='function'){ window._embeddingNow=true; try{ window[fn](); } finally { window._embeddingNow=false; } }
 }
 // Mapea nombres viejos/sub (que aún llaman otros módulos: finance/accountability/crm) a la nueva estructura.
 // valor string = pestaña simple renombrada; array [grupo, sub] = sub-pestaña dentro de un grupo.
@@ -372,7 +374,7 @@ function releaseResumenContentHTML(l) {
           <div class="progress-track" style="margin-top:6px"><div class="progress-fill" style="width:${pr.pct}%"></div></div>
         </div>
       </div>
-      <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="showPage('calendario');setTimeout(()=>setCalView('kanban'),50)">▤ Ver Tablero de Producción</button>
+      <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="setReleaseTab('calendario');setTimeout(()=>setCalView('kanban'),60)">▤ Ver Tablero de Producción</button>
     </div>`; })()}
 
     <div class="panel">
@@ -396,7 +398,7 @@ function releaseResumenContentHTML(l) {
         </div>
         <div class="brief-label" style="margin-bottom:6px">Mix de contenido</div>
         <div>${mixBadges(c.mix)}</div>
-        <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="showPage('calendario')">▦ Ver Calendario</button>
+        <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="setReleaseTab('calendario')">▦ Ver Calendario</button>
       </div>
 
       <div class="panel" style="margin:0">
@@ -410,7 +412,7 @@ function releaseResumenContentHTML(l) {
             `<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">${k}</span><span style="font-family:var(--font-mono)">${money(v)}</span></div>`
           ).join('')}
         </div>
-        <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="showPage('objetivos')">◎ Ver Objetivos SMART</button>
+        <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="setReleaseTab('objetivos')">◎ Ver Objetivos SMART</button>
       </div>
     </div>
 
@@ -419,7 +421,7 @@ function releaseResumenContentHTML(l) {
       ${(l.ideas||[]).length
         ? `<div class="chips">${l.ideas.slice(0,8).map(it => `<span class="chip on" style="cursor:default;display:inline-flex;align-items:center;gap:5px">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:default">+${l.ideas.length-8} más</span>`:''}</div>`
         : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ${icon('star',12)} en el Banco de Referencias.</div>`}
-      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="showPage('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
+      <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="setReleaseTab('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
     </div>
 
     ${revenuePanelHTML(l)}`;
@@ -1418,6 +1420,67 @@ function renderArtistForms() {
     cont.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', arr.includes(ch.textContent.trim())));
   });
   renderTeam();
+  renderMoodboard();
+}
+
+// ── Moodboard (ADN · Estética): subir/pegar imágenes de referencia ──
+// Las imágenes subidas se redimensionan en el cliente (canvas) para no inflar el JSON del artista.
+function moodboardArr(a) {
+  a = a || activeArtist(); if (!a) return [];
+  a.adn = a.adn || {}; a.adn.aesthetics = a.adn.aesthetics || {};
+  if (!Array.isArray(a.adn.aesthetics.moodboard)) a.adn.aesthetics.moodboard = [];
+  return a.adn.aesthetics.moodboard;
+}
+function renderMoodboard() {
+  const host = document.getElementById('moodboard-grid'); if (!host) return;
+  const arr = moodboardArr();
+  const canE = (typeof canEdit !== 'function') || canEdit();
+  host.innerHTML = arr.length
+    ? arr.map((src, i) => `<div class="mb-item"><img src="${s(src)}" alt="moodboard ${i + 1}" loading="lazy" onerror="this.style.opacity=.25">${canE ? `<button class="mb-del" title="Quitar" onclick="removeMoodboard(${i})">${icon('close', 12)}</button>` : ''}</div>`).join('')
+    : '<div class="empty-hint" style="grid-column:1/-1">Sin imágenes aún. Sube referencias visuales o pega URLs para armar el moodboard.</div>';
+  if (typeof hydrateIcons === 'function') hydrateIcons(host);
+}
+function _resizeImage(file, maxSide, quality) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const scale = Math.min(1, (maxSide || 800) / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      try { res(cv.toDataURL('image/jpeg', quality || 0.72)); } catch (e) { rej(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('imagen ilegible')); };
+    img.src = url;
+  });
+}
+async function moodboardUpload(files) {
+  if (!requireCan('edit_perfil_adn')) return;
+  const a = activeArtist(); if (!a) return;
+  const arr = moodboardArr(a);
+  let added = 0;
+  for (const f of Array.from(files || [])) {
+    if (!/^image\//.test(f.type)) continue;
+    try { arr.push(await _resizeImage(f, 800, 0.72)); added++; } catch (e) {}
+  }
+  const inp = document.getElementById('moodboard-file'); if (inp) inp.value = '';
+  if (added) { saveArtists(); renderMoodboard(); if (typeof uiToast === 'function') uiToast(`✓ ${added} imagen(es) agregada(s)`); }
+}
+async function moodboardAddUrl() {
+  if (!requireCan('edit_perfil_adn')) return;
+  const a = activeArtist(); if (!a) return;
+  const url = s(await uiPrompt('Pega la URL de la imagen:', { title: 'Agregar al moodboard' }) || '').trim();
+  if (!url) return;
+  moodboardArr(a).push(url); saveArtists(); renderMoodboard();
+  if (typeof uiToast === 'function') uiToast('✓ Imagen agregada');
+}
+async function removeMoodboard(i) {
+  if (!requireCan('edit_perfil_adn')) return;
+  const arr = moodboardArr();
+  if (i < 0 || i >= arr.length) return;
+  arr.splice(i, 1); saveArtists(); renderMoodboard();
 }
 function toggleArchetype(ch) {
   const cont = ch.closest('[data-bind-array]'); if (!cont) return;
