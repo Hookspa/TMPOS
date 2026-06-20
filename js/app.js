@@ -263,6 +263,61 @@ async function hideCommunityRef(idx) {
     uiToast('✓ Oculta de la comunidad');
   } catch (e) { uiToast('No se pudo ocultar'); }
 }
+// ── Panel de moderación (super-admin): lista reportes (community_flags) + ocultar/restaurar ──
+function abrirModeracion() {
+  if (!(typeof isAdmin === 'function' && isAdmin())) return;
+  document.getElementById('modal-moderacion').classList.add('open');
+  renderModeracion();
+}
+function cerrarModeracion(e) {
+  if (!e || e.target === document.getElementById('modal-moderacion')) document.getElementById('modal-moderacion').classList.remove('open');
+}
+async function renderModeracion() {
+  const host = document.getElementById('moderacion-body'); if (!host) return;
+  host.innerHTML = '<div class="empty-hint">Cargando…</div>';
+  try {
+    const sb = await getSb(); if (!sb) { host.innerHTML = '<div class="empty-hint">Sin conexión a la nube.</div>'; return; }
+    const [fr, rr] = await Promise.all([
+      sb.from('community_flags').select('ref_id, reporter, reason, created_at'),
+      sb.from('community_refs').select('id, data, status, author'),
+    ]);
+    if (fr.error) throw new Error(fr.error.message);
+    const flags = fr.data || [];
+    const refsById = {}; (rr.data || []).forEach(r => { refsById[r.id] = r; });
+    // agrupa reportes por referencia
+    const byRef = {};
+    flags.forEach(f => { (byRef[f.ref_id] = byRef[f.ref_id] || []).push(f); });
+    const ids = Object.keys(byRef).sort((a, b) => byRef[b].length - byRef[a].length);
+    if (!ids.length) { host.innerHTML = '<div class="empty-hint">Sin reportes. El pool de la comunidad está limpio.</div>'; return; }
+    host.innerHTML = ids.map(id => {
+      const ref = refsById[id] || {}; const d = ref.data || {};
+      const reps = byRef[id]; const hidden = ref.status === 'hidden';
+      const reasons = reps.filter(r => s(r.reason).trim()).map(r => `"${s(r.reason)}"`).join(' · ');
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${s(d.title) || '(sin título)'} ${hidden ? `<span style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);border:1px solid var(--accent2);border-radius:3px;padding:1px 5px;margin-left:4px">OCULTA</span>` : ''}</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${reps.length} reporte(s)${ref.author ? ' · por ' + s(ref.author) : ''}</div>
+          </div>
+          ${hidden
+            ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px" onclick="moderationSetStatus('${id}','active')">Restaurar</button>`
+            : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="moderationSetStatus('${id}','hidden')">${icon('eyeOff',12)} Ocultar</button>`}
+        </div>
+        ${reasons ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${reasons}</div>` : ''}
+      </div>`;
+    }).join('');
+    if (typeof hydrateIcons === 'function') hydrateIcons(host);
+  } catch (e) { host.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">Error: ${s(e.message)} (¿corriste community_refs.sql?)</div>`; }
+}
+async function moderationSetStatus(id, status) {
+  try {
+    const sb = await getSb(); if (!sb) return;
+    const res = await sb.from('community_refs').update({ status }).eq('id', id);
+    if (res.error) throw new Error(res.error.message);
+    uiToast(status === 'hidden' ? '✓ Oculta' : '✓ Restaurada');
+    renderModeracion();
+  } catch (e) { uiToast('No se pudo actualizar'); }
+}
 
 // ══════════════════════════════════════════
 // IMPORTAR REFERENCIA DESDE UN LINK (oEmbed auto-rellena título + miniatura)
@@ -472,10 +527,10 @@ function renderBanco() {
     return;
   }
   grid.style.gridTemplateColumns = '';
-  const totalPags = Math.ceil(filtered.length / porPagina);
+  const totalPags = Math.max(1, Math.ceil(filtered.length / porPagina));
   paginaActual = Math.max(1, Math.min(paginaActual, totalPags));
-  const inicio = (paginaActual - 1) * porPagina;
-  const slice  = filtered.slice(inicio, inicio + porPagina);
+  const shown = Math.min(paginaActual * porPagina, filtered.length); // "Cargar más": acumulativo (no por páginas)
+  const slice  = filtered.slice(0, shown);
   const cards = slice.map(r => {
     const sel = ideaSelected(r);
     return `
@@ -498,24 +553,23 @@ function renderBanco() {
       </div>
     </div>`;
   }).join('');
-  // Tarjeta "+ Crear post desde cero" al inicio (solo en la primera página).
-  const addCard = (paginaActual === 1)
-    ? `<div class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
+  // Tarjeta "+ Crear post desde cero" siempre al inicio (con "Cargar más" el inicio siempre está visible).
+  const addCard = `<div class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
         <div style="text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<div style="font-size:11px;font-family:var(--font-mono);margin-top:8px;letter-spacing:1px">CREAR POST<br>DESDE CERO</div></div>
-      </div>`
-    : '';
-  const desde = inicio + 1, hasta = Math.min(inicio + porPagina, filtered.length);
+      </div>`;
+  const restantes = filtered.length - shown;
   const paginacion = `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 4px 0;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">Mostrar</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">Cargar de a</span>
         ${[10,25,50].map(n => `<button onclick="cambiarPorPagina(${n})" style="padding:4px 9px;border-radius:3px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border:1px solid ${porPagina===n?'var(--accent)':'var(--border)'};background:${porPagina===n?'rgba(255,107,48,0.1)':'transparent'};color:${porPagina===n?'var(--accent)':'var(--text-muted)'}">${n}</button>`).join('')}
       </div>
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">${desde}–${hasta} de ${filtered.length}</span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">${shown} de ${filtered.length}</span>
       <div style="display:flex;align-items:center;gap:6px">
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" ${paginaActual===1?'disabled':''} onclick="cambiarPagina(${paginaActual-1})">‹</button>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);min-width:56px;text-align:center">Pág ${paginaActual}/${totalPags}</span>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" ${paginaActual===totalPags?'disabled':''} onclick="cambiarPagina(${paginaActual+1})">›</button>
+        ${restantes > 0
+          ? `<button class="btn btn-ghost" style="padding:5px 14px;font-size:11px" onclick="cargarMasBanco()">Cargar más (+${Math.min(porPagina, restantes)})</button>
+             <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px;color:var(--text-dim)" onclick="verTodasBanco()">Ver todas</button>`
+          : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">${icon('check',11)} todas cargadas</span>`}
       </div>
     </div>`;
   grid.innerHTML = addCard + cards + paginacion;
@@ -525,7 +579,8 @@ function renderBanco() {
     if (!r.thumb && /tiktok\.com/.test(link) && !_thumbCache()[link]) resolveTikTokThumb(link, 'rthumb-' + r._idx);
   });
 }
-function cambiarPagina(n) { paginaActual = n; renderBanco(); document.querySelector('.content').scrollTop = 0; }
+function cargarMasBanco() { paginaActual++; renderBanco(); }
+function verTodasBanco() { paginaActual = 999999; renderBanco(); }
 function cambiarPorPagina(n) { porPagina = n; paginaActual = 1; renderBanco(); }
 
 // ── Badge de privacidad en las tarjetas personalizadas ──
@@ -562,6 +617,8 @@ function renderBancoToolbar() {
       ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
       <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent)">${icon('link',13)} Importar desde link</button>
+      ${(typeof isAdmin === 'function' && isAdmin()) ? `<button onclick="abrirModeracion()" title="Moderar el pool de la comunidad (reportes)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}
     </div>`;
   ensureTagDatalist();
   if (typeof hydrateIcons === 'function') hydrateIcons(host);
@@ -1141,8 +1198,11 @@ function kanbanCardHTML(launchId, ci) {
   const col = catColor(ci.cat);
   const est = (ci.production && ci.production.estado) || 'pendiente';
   const fecha = ci.fecha ? `${MESES_CAL[new Date(ci.fecha+'T00:00:00').getMonth()]} ${new Date(ci.fecha+'T00:00:00').getDate()}` : '—';
-  return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="border-left:3px solid ${col}">
-    <div class="kc-title">${s(ci.title)}</div>
+  const canEditCal = (typeof canDo !== 'function') || canDo('edit_launch');
+  const delX = canEditCal ? `<button class="kc-del" onclick="event.stopPropagation();deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
+  return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="border-left:3px solid ${col};position:relative">
+    ${delX}
+    <div class="kc-title" style="padding-right:16px">${s(ci.title)}</div>
     <div class="kc-meta">${fecha} · ${ESTADO_ICON[est] || ''} ${est}</div>
   </div>`;
 }
