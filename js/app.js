@@ -30,6 +30,65 @@ function bumpRefUsage(r) { try { const m = _refUsageMap(); m[refKey(r)] = (m[ref
 // Timestamp aproximado de una referencia (custom/comunidad llevan 'custom-<ts>' en el id; CSV → 0).
 function refTime(r) { const m = s(r && r.id).match(/(\d{12,})/); return m ? parseInt(m[1], 10) : 0; }
 
+// ══════════════════════════════════════════
+// TRADUCCIÓN AL ESPAÑOL (banco de referencias) — toggle + caché + Google (gratis, CORS ok)
+// ══════════════════════════════════════════
+let bancoTranslate = (function(){ try { return localStorage.getItem('ao_bank_lang') === 'es'; } catch(e){ return false; } })();
+// Diccionario de tags (set conocido) → instantáneo, sin red.
+const CAT_ES = {
+  'performance':'Performance','vibes':'Vibes / ambiente','transition hook':'Gancho de transición','relatable':'Identificable',
+  'storytelling':'Narrativa','educational':'Educativo','comedy/sketch':'Comedia / sketch','about me':'Sobre mí','reaction':'Reacción',
+  'motivational / emotional':'Motivacional / emocional','behind the scenes':'Detrás de cámaras','behind the scene':'Detrás de cámaras',
+  'engagement':'Interacción','song promotion':'Promoción de la canción','show your skills / challenge':'Muestra tu talento / reto',
+  'talking to camera':'Hablando a cámara','trending sounds':'Sonidos en tendencia','tutorials/recommendations':'Tutoriales / recomendaciones',
+  'funny videos for inspiration':'Videos graciosos para inspirar','custom':'Personalizada','awareness':'Reconocimiento','pov':'POV',
+  'trend':'Tendencia','bts':'Detrás de cámaras','humor':'Humor',
+};
+const FOR_ES = { 'musician/band':'Músico / banda','vocalist/rapper':'Vocalista / rapero','producer':'Productor','dj':'DJ' };
+function trTag(tag, kind) {
+  if (!bancoTranslate) return tag;
+  const k = s(tag).toLowerCase();
+  return (kind === 'for' ? (FOR_ES[k] || tag) : (CAT_ES[k] || tag));
+}
+// Caché de traducciones de texto libre (título/hook/descripción).
+function _trCache() { try { return JSON.parse(localStorage.getItem('ao_tr_cache')) || {}; } catch(e){ return {}; } }
+let _trMem = _trCache();
+function _trSave() { try { localStorage.setItem('ao_tr_cache', JSON.stringify(_trMem)); } catch(e){} }
+// Devuelve el texto traducido si está en caché; si no, el original (y se traducirá async).
+function trText(text) {
+  if (!bancoTranslate) return text;
+  const t = s(text).trim(); if (!t) return text;
+  return _trMem[t] || text;
+}
+// Traduce en lote los textos faltantes (Google gtx, concurrencia limitada). Devuelve cuántos nuevos cacheó.
+let _trInflight = {};
+async function translateBatch(texts) {
+  if (!bancoTranslate) return 0;
+  const todo = [...new Set(texts.map(x => s(x).trim()).filter(t => t && !_trMem[t] && !_trInflight[t]))];
+  if (!todo.length) return 0;
+  todo.forEach(t => { _trInflight[t] = true; });
+  let added = 0, i = 0;
+  async function worker() {
+    while (i < todo.length) {
+      const t = todo[i++];
+      try {
+        const r = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=' + encodeURIComponent(t));
+        if (r.ok) { const d = await r.json(); const out = (d[0] || []).map(seg => seg[0]).join(''); if (out) { _trMem[t] = out; added++; } }
+      } catch (e) {}
+      delete _trInflight[t];
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(6, todo.length) }, worker));
+  if (added) _trSave();
+  return added;
+}
+function toggleBancoTranslate() {
+  bancoTranslate = !bancoTranslate;
+  try { localStorage.setItem('ao_bank_lang', bancoTranslate ? 'es' : 'en'); } catch(e){}
+  if (typeof renderFiltros === 'function') renderFiltros();
+  renderBanco();
+}
+
 const CAT_PALETTE = ['#FF6B30','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
 let paletteIdx = 0;
@@ -474,7 +533,7 @@ function iniciarBanco() {
 function renderFiltros() {
   const forTags = getUniqueTags('for');
   const catTags = getUniqueTags('cat');
-  function makeBtns(tags, containerId, activeFn, activeVal) {
+  function makeBtns(tags, containerId, activeFn, activeVal, kind) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
     const allBtn = document.createElement('button');
@@ -485,13 +544,13 @@ function renderFiltros() {
     tags.forEach(t => {
       const btn = document.createElement('button');
       btn.className = 'filter-btn' + (activeVal === t ? ' active' : '');
-      btn.textContent = t;
+      btn.textContent = trTag(t, kind);   // muestra traducido si el toggle está ON; el filtro sigue por el valor real
       btn.addEventListener('click', function() { activeFn(this, t); });
       container.appendChild(btn);
     });
   }
-  makeBtns(forTags, 'filtros-for', setForFilter, activeForFilter);
-  makeBtns(catTags, 'filtros-cat', setCatFilter, activeCatFilter);
+  makeBtns(forTags, 'filtros-for', setForFilter, activeForFilter, 'for');
+  makeBtns(catTags, 'filtros-cat', setCatFilter, activeCatFilter, 'cat');
 }
 function setForFilter(btn, val) {
   activeForFilter = val; paginaActual = 1;
@@ -507,13 +566,13 @@ function catBadgeHTML(cats, small) {
   return (cats || []).filter(Boolean).map(c => {
     const col = catColor(c);
     const sz = small ? '9px' : '10px';
-    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${up(c)}</span>`;
+    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${up(trTag(c,'cat'))}</span>`;
   }).join('');
 }
 function forBadgeHTML(fors, small) {
   const sz = small ? '9px' : '10px';
   return (fors || []).filter(Boolean).map(f =>
-    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid var(--border)">${s(f)}</span>`
+    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
   ).join('');
 }
 function renderBancoContext() {
@@ -569,8 +628,8 @@ function renderBanco() {
         ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
-        <div class="ref-page-title">${s(r.title)}</div>
-        ${r.hook ? `<div style="font-size:10px;color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(r.hook)}"</div>` : ''}
+        <div class="ref-page-title">${s(trText(r.title))}</div>
+        ${r.hook ? `<div style="font-size:10px;color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(trText(r.hook))}"</div>` : ''}
         <div style="margin-bottom:3px;display:flex;flex-wrap:wrap">${catBadgeHTML(r.cat, true) || '<span style="font-size:9px;color:var(--text-dim)">sin cat</span>'}</div>
         <div style="display:flex;flex-wrap:wrap">${forBadgeHTML(r.for, true)}</div>
       </div>
@@ -601,6 +660,11 @@ function renderBanco() {
     const link = s(r.link).trim();
     if (!r.thumb && /tiktok\.com/.test(link) && !_thumbCache()[link]) resolveTikTokThumb(link, 'rthumb-' + r._idx);
   });
+  // Traducción al español de lo visible (título/hook) → cuando llega, re-render una vez.
+  if (bancoTranslate) {
+    const txts = []; slice.forEach(r => { if (r.title) txts.push(r.title); if (r.hook) txts.push(r.hook); });
+    translateBatch(txts).then(n => { if (n > 0 && bancoTranslate && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco(); });
+  }
 }
 function cargarMasBanco() { paginaActual++; renderBanco(); }
 function verTodasBanco() { paginaActual = 999999; renderBanco(); }
@@ -638,6 +702,8 @@ function renderBancoToolbar() {
       <button onclick="toggleBancoRandom()" title="Orden aleatorio (on/off)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoRandom?'var(--accent)':'var(--border)'};background:${bancoRandom?'rgba(255,107,48,0.1)':'transparent'};color:${bancoRandom?'var(--accent)':'var(--text-muted)'}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
       ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
+      <button onclick="toggleBancoTranslate()" title="Traducir las referencias al español (Google)"
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoTranslate?'var(--accent)':'var(--border)'};background:${bancoTranslate?'rgba(255,107,48,0.1)':'transparent'};color:${bancoTranslate?'var(--accent)':'var(--text-muted)'}">${icon('globe',13)} ${bancoTranslate?'Español ON':'Traducir'}</button>
       <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent)">${icon('link',13)} Importar desde link</button>
       ${(typeof isAdmin === 'function' && isAdmin()) ? `<button onclick="abrirModeracion()" title="Moderar el pool de la comunidad (reportes)"
@@ -755,12 +821,13 @@ function openRefBoxdrop(idx) {
   const fors = (r.for||[]).filter(Boolean);
   const a = activeLaunch();
   const sel = ideaSelected(r);
-  document.getElementById('bd-title').textContent = up(r.title);
-  document.getElementById('bd-date').textContent  = community ? ('DE LA COMUNIDAD' + (s(r.author)?(' · '+up(r.author)):'')) : (cats.map(up).join(' · ') || (custom ? 'POST PROPIO' : '—'));
+  const tx = (v) => (bancoTranslate && !editable) ? trText(v) : v;   // traduce solo lo no editable (refs del banco/comunidad)
+  document.getElementById('bd-title').textContent = up(tx(r.title));
+  document.getElementById('bd-date').textContent  = community ? ('DE LA COMUNIDAD' + (s(r.author)?(' · '+up(r.author)):'')) : (cats.map(c=>up(trTag(c,'cat'))).join(' · ') || (custom ? 'POST PROPIO' : '—'));
   // Campos del brief: editables cuando es un post propio (mismo screen que una referencia).
-  bdField('bd-idea', s(r.title), editable, v => { r.title = v || 'Nuevo post'; document.getElementById('bd-title').textContent = up(r.title); persistCustomEdit(r); }, 'Título del post');
-  bdField('bd-hook', s(r.hook), editable, v => { r.hook = v; persistCustomEdit(r); }, 'Hook / gancho', !editable && !r.hook ? 'Sin hook definido' : '');
-  bdField('bd-desc', s(r.comentarios), editable, v => { r.comentarios = v; persistCustomEdit(r); }, 'Descripción / cómo grabarlo', !editable && !r.comentarios ? 'Sin comentarios' : '');
+  bdField('bd-idea', s(tx(r.title)), editable, v => { r.title = v || 'Nuevo post'; document.getElementById('bd-title').textContent = up(r.title); persistCustomEdit(r); }, 'Título del post');
+  bdField('bd-hook', s(tx(r.hook)), editable, v => { r.hook = v; persistCustomEdit(r); }, 'Hook / gancho', !editable && !r.hook ? 'Sin hook definido' : '');
+  bdField('bd-desc', s(tx(r.comentarios)), editable, v => { r.comentarios = v; persistCustomEdit(r); }, 'Descripción / cómo grabarlo', !editable && !r.comentarios ? 'Sin comentarios' : '');
 
   // Tags & Keywords = cat + for. Editable (chips agregar/quitar) si es post propio; 'custom' fijo.
   if (editable) {
@@ -775,8 +842,8 @@ function openRefBoxdrop(idx) {
       `<input class="input" list="tag-suggestions" style="font-size:11px;width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
   } else {
     const tagHTML = [
-      ...cats.map(c => `<span class="brief-tag accent">${s(c)}</span>`),
-      ...fors.map(f => `<span class="brief-tag">${s(f)}</span>`)
+      ...cats.map(c => `<span class="brief-tag accent">${s(trTag(c,'cat'))}</span>`),
+      ...fors.map(f => `<span class="brief-tag">${s(trTag(f,'for'))}</span>`)
     ].join('');
     document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:11px;color:var(--text-dim)">Sin tags</span>';
   }
@@ -826,6 +893,12 @@ function openRefBoxdrop(idx) {
   document.getElementById('tab-brief').classList.add('active');
   document.querySelectorAll('.boxdrop-tab')[0].classList.add('active');
   document.getElementById('boxdrop').classList.add('open');
+  // Traducción al español del brief (refs del banco/comunidad) → al llegar, re-abre con el texto traducido.
+  if (bancoTranslate && !editable) {
+    translateBatch([r.title, r.hook, r.comentarios]).then(n => {
+      if (n > 0 && document.getElementById('boxdrop').classList.contains('open') && referencias[idx] === r) openRefBoxdrop(idx);
+    });
+  }
 }
 // Campo del brief: editable (contentEditable) cuando es un post propio; guarda al perder foco.
 function bdField(id, val, editable, onSave, label, fallback) {
