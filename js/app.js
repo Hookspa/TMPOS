@@ -145,6 +145,29 @@ function mergeCustomRefs() {
   });
   referencias.forEach((r, i) => { r._idx = i; });
 }
+// Carga un banco externo (CSV en el repo) en runtime y lo mezcla (dedup por link/clave).
+// Mantiene app.html liviano: los bancos grandes viven en archivos .csv servidos por Pages.
+async function loadExternalBank(url) {
+  try {
+    const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) return 0;
+    const txt = await r.text(); if (!txt.trim()) return 0;
+    const parsed = (typeof parsearCSV === 'function') ? parsearCSV(txt) : []; if (!parsed.length) return 0;
+    const haveLinks = new Set(referencias.map(x => s(x.link).trim()).filter(Boolean));
+    const haveKeys = new Set(referencias.map(refKey));
+    let added = 0;
+    parsed.forEach(p => {
+      const lk = s(p.link).trim();
+      if (lk && haveLinks.has(lk)) return;
+      if (haveKeys.has(refKey(p))) return;
+      referencias.push(p); if (lk) haveLinks.add(lk); haveKeys.add(refKey(p)); added++;
+    });
+    if (added) {
+      referencias.forEach((x, i) => { x._idx = i; });
+      if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
+    }
+    return added;
+  } catch (e) { return 0; }
+}
 function persistCustomEdit(r) {
   if (!r || !r.custom || r.owned === false) return; // las de la comunidad (de otros) no se persisten local
   ensureCustomCat(r);

@@ -24,5 +24,8 @@ if (typeof mergeCustomRefs === 'function') mergeCustomRefs(); // posts propios p
 
 iniciarBanco();
 
+// Banco externo grande (CSV en el repo, miniaturas en Supabase) → se mezcla en runtime para no inflar app.html
+if (typeof loadExternalBank === 'function') loadExternalBank('refs_02.csv');
+
 // sincronización en la nube al arrancar (si está configurada → pide login)
 if (cloudEnabled()) { showAuthGate(true); setSyncStatus('syncing'); authInit(); } else { setSyncStatus('off'); }
