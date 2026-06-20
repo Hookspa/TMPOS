@@ -1337,6 +1337,166 @@ function kanbanDrop(e, stageKey) {
 }
 
 // ══════════════════════════════════════════
+// EXPORTAR CALENDARIO (para enviar al artista) — HTML interactivo + PDF
+// ══════════════════════════════════════════
+function _esc(t) { return s(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+const _ESTADO_LBL = { pendiente:'Pendiente', aprobado:'Aprobado', grabando:'Grabando', editando:'Editando', programado:'Programado', publicado:'Publicado' };
+// Junta las piezas visibles del calendario con todo su detalle de producción.
+function calExportPieces() {
+  const items = (typeof calVisibleItems === 'function') ? calVisibleItems() : [];
+  return items.filter(ci => ci.fecha).map(ci => {
+    const p = ci.production || {};
+    return {
+      id: ci.id, title: s(ci.title) || 'Pieza', fecha: ci.fecha, campaign: s(ci._campName || ''),
+      cat: s(ci.cat || ''), plataforma: s(p.plataforma || ''), estado: _ESTADO_LBL[p.estado] || 'Pendiente',
+      pauta: ci.pauta === 'pautado' ? 'Pautado (paid)' : 'Orgánico',
+      objetivo: s(p.objetivo || ''), hook: s(p.hook || ''), descripcion: s(p.descripcion || ''),
+      guion: Array.isArray(p.guion) ? p.guion : [], shots: Array.isArray(p.shots) ? p.shots : [], assets: Array.isArray(p.assets) ? p.assets : [],
+      content: (p.content && typeof p.content === 'object') ? p.content : null,
+      refLink: s(ci.refLink || ci.link || ''), thumb: s(ci.thumb || (typeof refThumbImmediate === 'function' ? (refThumbImmediate(ci) || '') : '')),
+    };
+  }).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+}
+// Detalle completo de una pieza (se usa en el modal interactivo y en la vista de impresión).
+function _pieceDetailHTML(p) {
+  const row = (lbl, val) => val ? `<div class="x-row"><span class="x-k">${lbl}</span><span class="x-v">${_esc(val)}</span></div>` : '';
+  const guion = (p.guion || []).filter(b => s(b.text).trim() || s(b.time).trim()).map(b =>
+    `<div class="x-block"><div class="x-time">${_esc(b.time) || '—'}</div><div>${_esc(b.text)}</div>${s(b.note).trim() ? `<div class="x-note">${_esc(b.note)}</div>` : ''}</div>`).join('');
+  const shots = (p.shots || []).filter(sh => s(sh.name).trim() || s(sh.detail).trim()).map((sh, i) =>
+    `<div class="x-shot"><span class="x-num">${String(i+1).padStart(2,'0')}</span><div><strong>${_esc(sh.name) || 'Plano'}</strong>${s(sh.detail).trim() ? `<div class="x-note">${_esc(sh.detail)}</div>` : ''}</div></div>`).join('');
+  const assets = (p.assets || []).filter(a => s(a.link).trim()).map(a =>
+    `<a class="x-asset" href="${_esc(a.link)}" target="_blank" rel="noopener">↗ ${_esc(a.label) || 'Archivo'}</a>`).join('');
+  const c = p.content;
+  const cBlock = (lbl, v) => s(v).trim() ? `<div class="x-row"><span class="x-k">${lbl}</span><span class="x-v">${_esc(v)}</span></div>` : '';
+  const content = c ? `${cBlock('Hook', c.hook)}${cBlock('Caption IG', c.caption_ig)}${cBlock('Caption TikTok', c.caption_tiktok)}${cBlock('Story', c.story)}${s(c.script).trim() ? `<div class="x-block"><div class="x-time">GUIÓN</div><div>${_esc(c.script)}</div></div>` : ''}${(c.hashtags||[]).length ? `<div class="x-tags">${(c.hashtags||[]).map(h => `<span class="x-tag">${_esc(s(h).startsWith('#')?h:'#'+h)}</span>`).join('')}</div>` : ''}` : '';
+  return `
+    <div class="x-head">
+      ${p.thumb ? `<img class="x-thumb" src="${_esc(p.thumb)}" alt="" loading="lazy">` : ''}
+      <div>
+        <div class="x-title">${_esc(p.title)}</div>
+        <div class="x-meta">${[p.fecha, p.plataforma, p.estado, p.pauta, p.cat].filter(Boolean).map(_esc).join(' · ')}</div>
+        ${p.campaign ? `<div class="x-camp">${_esc(p.campaign)}</div>` : ''}
+      </div>
+    </div>
+    ${row('Objetivo', p.objetivo)}${row('Hook', p.hook)}${row('Descripción / brief', p.descripcion)}
+    ${guion ? `<div class="x-sec">Guión</div>${guion}` : ''}
+    ${shots ? `<div class="x-sec">Shot list</div>${shots}` : ''}
+    ${content ? `<div class="x-sec">Contenido sugerido</div>${content}` : ''}
+    ${assets ? `<div class="x-sec">Archivos</div><div class="x-assets">${assets}</div>` : ''}
+    ${p.refLink ? `<div class="x-sec">Referencia</div><a class="x-asset" href="${_esc(p.refLink)}" target="_blank" rel="noopener">↗ Ver video de referencia</a>` : ''}`;
+}
+// Grilla de calendario por mes (solo meses con piezas).
+function _calGridHTML(pieces) {
+  const byDate = {}; pieces.forEach(p => { (byDate[p.fecha] = byDate[p.fecha] || []).push(p); });
+  const months = [...new Set(pieces.map(p => p.fecha.slice(0, 7)))].sort();
+  return months.map(ym => {
+    const [y, m] = ym.split('-').map(Number); const year = y, month = m - 1;
+    const first = new Date(year, month, 1); const startDow = (first.getDay() + 6) % 7;
+    let cells = '';
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(year, month, 1 - startDow + i);
+      const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const out = d.getMonth() !== month;
+      const list = byDate[dk] || [];
+      cells += `<div class="x-cell${out ? ' x-out' : ''}"><div class="x-daynum">${d.getDate()}</div>${list.map(p => `<button class="x-chip" onclick="op('${p.id}')">${_esc(p.title)}</button>`).join('')}</div>`;
+    }
+    return `<div class="x-monthlbl">${MESES_CAL[month]} ${year}</div>
+      <div class="x-grid">${['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'].map(d => `<div class="x-dow">${d}</div>`).join('')}${cells}</div>`;
+  }).join('');
+}
+function buildCalDoc(printMode) {
+  const a = (typeof activeLaunch === 'function') ? activeLaunch() : null;
+  const art = (typeof activeArtist === 'function') ? activeArtist() : null;
+  const pieces = calExportPieces();
+  const title = (art ? s(art.name) + ' — ' : '') + (a ? s(a.name) : 'Plan de contenido');
+  const drop = (a && a.date) ? a.date : '';
+  const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p.id}">${_pieceDetailHTML(p)}</div>`).join('');
+  const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
+  const CSS = `
+    :root{--ac:#FF6B30;--bg:#0c0e0c;--surf:#14171420;--card:#16191680;--bd:#2a2e2a;--tx:#f3f0f3;--mut:#9aa39a;--dim:#6b726b}
+    *{box-sizing:border-box} body{margin:0;background:#0c0e0c;color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5}
+    a{color:var(--ac)} .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
+    .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:22px}
+    .brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--ac)}
+    .h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;margin:0}
+    .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut);letter-spacing:1px}
+    .btn{margin-left:auto;background:var(--ac);color:#1a0e08;border:none;border-radius:6px;padding:9px 16px;font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;font-weight:700}
+    .x-monthlbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin:24px 0 8px;color:var(--ac)}
+    .x-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .x-dow{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);text-align:center;letter-spacing:1px;padding-bottom:4px}
+    .x-cell{background:var(--surf);border:1px solid var(--bd);border-radius:6px;min-height:84px;padding:6px}
+    .x-out{opacity:.35} .x-daynum{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);margin-bottom:5px}
+    .x-chip{display:block;width:100%;text-align:left;background:rgba(255,107,48,.12);color:var(--ac);border:none;border-left:2px solid var(--ac);border-radius:3px;padding:4px 6px;font-size:10px;margin-bottom:4px;cursor:pointer;font-family:inherit;line-height:1.3}
+    .x-chip:hover{background:rgba(255,107,48,.22)}
+    .x-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto}
+    .x-modal{background:#131613;border:1px solid var(--bd);border-radius:12px;max-width:680px;width:100%;padding:22px}
+    .x-close{float:right;background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;line-height:1}
+    .x-detail,.x-card{} .x-card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:14px;break-inside:avoid}
+    .x-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+    .x-thumb{width:74px;height:120px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#222}
+    .x-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.5px;line-height:1.1}
+    .x-meta{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut);margin-top:5px}
+    .x-camp{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
+    .x-row{margin:10px 0} .x-k{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+    .x-v{white-space:pre-wrap}
+    .x-sec{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--ac);text-transform:uppercase;margin:16px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
+    .x-block{background:var(--surf);border-radius:6px;padding:10px;margin-bottom:7px}
+    .x-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--ac);margin-bottom:4px}
+    .x-note{font-size:12px;color:var(--mut);margin-top:4px}
+    .x-shot{display:flex;gap:10px;margin-bottom:8px} .x-num{font-family:'Space Mono',monospace;color:var(--ac);font-size:12px}
+    .x-assets{display:flex;flex-direction:column;gap:6px} .x-asset{font-family:'Space Mono',monospace;font-size:12px;text-decoration:none}
+    .x-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .x-tag{background:rgba(255,107,48,.12);color:var(--ac);border-radius:3px;padding:2px 7px;font-family:'Space Mono',monospace;font-size:11px}
+    .x-hide{display:none}
+    @media print{ body{background:#fff;color:#111} .btn,.x-ov{display:none!important} .x-cal{display:none} .x-print{display:block!important}
+      .x-card{border:1px solid #ccc;background:#fff;page-break-inside:avoid} .x-thumb{background:#eee} .x-title,.x-monthlbl,.x-brand,.brand{color:#c2410c}
+      .x-sec{color:#c2410c} .x-time{color:#c2410c} .x-num{color:#c2410c} .x-chip{color:#c2410c} a{color:#c2410c} .x-v,.x-block{color:#111} .x-block{background:#f4f4f4}
+    }`;
+  const body = `
+    <div class="wrap">
+      <div class="top">
+        <span class="brand">TEMPO OS</span>
+        <div><h1 class="h1">${_esc(title)}</h1><div class="sub">PLAN DE CONTENIDO${drop ? ' · DROP ' + _esc(drop) : ''} · ${pieces.length} pieza(s)</div></div>
+        <button class="btn" onclick="window.print()">Guardar como PDF</button>
+      </div>
+      <div class="x-cal">${pieces.length ? _calGridHTML(pieces) : '<div class="sub">No hay contenido programado en este calendario.</div>'}
+        <div class="sub" style="margin-top:18px;color:var(--dim)">Toca cualquier pieza para ver el guión, las tomas y el brief completo.</div>
+      </div>
+      <div class="x-print" style="display:none">${flat}</div>
+    </div>
+    <div class="x-ov" id="ov" onclick="if(event.target===this)oc()"><div class="x-modal"><button class="x-close" onclick="oc()">×</button><div id="ov-body"></div></div></div>
+    <div class="x-hide">${detailBlocks}</div>
+    <script>
+      function op(id){var d=document.getElementById('p-'+id);if(!d)return;document.getElementById('ov-body').innerHTML=d.innerHTML;document.getElementById('ov').style.display='flex';}
+      function oc(){document.getElementById('ov').style.display='none';}
+      document.addEventListener('keydown',function(e){if(e.key==='Escape')oc();});
+      ${printMode ? 'window.addEventListener("load",function(){setTimeout(function(){window.print();},500);});' : ''}
+    <\/script>`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${_esc(title)} · Plan de contenido</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>${CSS}</style></head><body>${body}</body></html>`;
+}
+function _calDocFilename(ext) {
+  const a = (typeof activeLaunch === 'function') ? activeLaunch() : null;
+  const base = (a ? s(a.name) : 'calendario').toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
+  return `plan-contenido_${base || 'calendario'}_${new Date().toISOString().slice(0,10)}.${ext}`;
+}
+function exportCalHTML() {
+  if (!calExportPieces().length) { if (typeof uiAlert === 'function') uiAlert('No hay contenido en el calendario para exportar.'); return; }
+  const blob = new Blob([buildCalDoc(false)], { type: 'text/html;charset=utf-8' });
+  const aEl = document.createElement('a'); aEl.href = URL.createObjectURL(blob); aEl.download = _calDocFilename('html'); aEl.click();
+  setTimeout(() => URL.revokeObjectURL(aEl.href), 4000);
+  if (typeof uiToast === 'function') uiToast('✓ HTML interactivo exportado');
+}
+function exportCalPDF() {
+  if (!calExportPieces().length) { if (typeof uiAlert === 'function') uiAlert('No hay contenido en el calendario para exportar.'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { if (typeof uiAlert === 'function') uiAlert('Permite las ventanas emergentes para exportar el PDF (o usa Exportar HTML y guarda como PDF desde ahí).'); return; }
+  w.document.open(); w.document.write(buildCalDoc(true)); w.document.close();
+  if (typeof uiToast === 'function') uiToast('✓ Abriendo el diálogo de impresión → Guardar como PDF');
+}
+
+// ══════════════════════════════════════════
 // CENTRO DE PRODUCCIÓN (Módulo 9) — por pieza del calendario
 // ══════════════════════════════════════════
 const ESTADO_ICON = { pendiente:'', aprobado:icon('thumb',13), grabando:icon('video',13), editando:icon('scissors',13), programado:icon('calendar',13), publicado:icon('check',13) };
