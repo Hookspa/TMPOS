@@ -1495,6 +1495,31 @@ function exportCalPDF() {
   w.document.open(); w.document.write(buildCalDoc(true)); w.document.close();
   if (typeof uiToast === 'function') uiToast('✓ Abriendo el diálogo de impresión → Guardar como PDF');
 }
+// Crea un LINK de solo-lectura alojado en la plataforma (ver.html?s=token) con un snapshot del plan.
+// Seguro: token aleatorio + tabla `shares` con RLS (anon no lee directo; solo vía RPC get_share por token).
+async function crearShareLink() {
+  if (!(typeof authed === 'function' && authed())) { if (typeof uiAlert === 'function') uiAlert('Inicia sesión (modo equipo) para crear un link compartible.'); return; }
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return;
+  if (!calExportPieces().length) { if (typeof uiAlert === 'function') uiAlert('No hay contenido en el calendario para compartir.'); return; }
+  const a = (typeof activeLaunch === 'function') ? activeLaunch() : null;
+  const art = (typeof activeArtist === 'function') ? activeArtist() : null;
+  const title = (art ? s(art.name) + ' — ' : '') + (a ? s(a.name) : 'Plan de contenido');
+  const html = buildCalDoc(false);
+  let token;
+  try { token = 'sh_' + crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8); }
+  catch (e) { token = 'sh_' + Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+  if (typeof uiToast === 'function') uiToast('Creando link…');
+  try {
+    const sb = await getSb(); if (!sb) throw new Error('Sin conexión a la nube');
+    const { error } = await sb.from('shares').insert({ token, team_id: _teamId, release_id: a ? a.id : null, title, html, created_by: _user && _user.id });
+    if (error) throw new Error(error.message);
+    const url = location.origin + location.pathname.replace(/[^/]*$/, 'ver.html') + '?s=' + token;
+    let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) {}
+    if (typeof uiAlert === 'function') uiAlert(`✓ Link de solo-lectura creado${copied ? ' y copiado al portapapeles' : ''}:\n\n${url}\n\nCualquiera con el link puede ver el plan (sin necesidad de cuenta). Es un snapshot: si cambias el calendario, crea un link nuevo. Para revocarlo, bórralo en Supabase (tabla shares) o te agrego un panel.`);
+  } catch (e) {
+    if (typeof uiAlert === 'function') uiAlert('No se pudo crear el link: ' + s(e.message) + '\n(¿Ya corriste supabase/sql/shares.sql?)');
+  }
+}
 
 // ══════════════════════════════════════════
 // CENTRO DE PRODUCCIÓN (Módulo 9) — por pieza del calendario
