@@ -1520,6 +1520,75 @@ async function crearShareLink() {
     if (typeof uiAlert === 'function') uiAlert('No se pudo crear el link: ' + s(e.message) + '\n(¿Ya corriste supabase/sql/shares.sql?)');
   }
 }
+// ── Panel "Mis links": listar / copiar / expiración / revocar ──
+function _shareUrl(token) { return location.origin + location.pathname.replace(/[^/]*$/, 'ver.html') + '?s=' + token; }
+function abrirShares() {
+  if (!(typeof authed === 'function' && authed())) { if (typeof uiAlert === 'function') uiAlert('Inicia sesión (modo equipo) para ver tus links.'); return; }
+  document.getElementById('modal-shares').classList.add('open');
+  renderShares();
+}
+function cerrarShares(e) {
+  if (!e || e.target === document.getElementById('modal-shares')) document.getElementById('modal-shares').classList.remove('open');
+}
+async function renderShares() {
+  const host = document.getElementById('shares-body'); if (!host) return;
+  host.innerHTML = '<div class="empty-hint">Cargando…</div>';
+  try {
+    const sb = await getSb(); if (!sb) { host.innerHTML = '<div class="empty-hint">Sin conexión a la nube.</div>'; return; }
+    const q = sb.from('shares').select('token,title,release_id,created_at,expires_at,revoked').order('created_at', { ascending: false });
+    if (typeof _teamId !== 'undefined' && _teamId) q.eq('team_id', _teamId);
+    const res = await q;
+    if (res.error) throw new Error(res.error.message);
+    const rows = res.data || [];
+    if (!rows.length) { host.innerHTML = '<div class="empty-hint">Aún no has creado links. Usa "Crear link" en el calendario.</div>'; return; }
+    const now = Date.now();
+    host.innerHTML = rows.map(r => {
+      const exp = r.expires_at ? Date.parse(r.expires_at) : null;
+      const expired = exp && exp < now;
+      const estado = r.revoked ? ['REVOCADO', 'var(--accent2)'] : expired ? ['EXPIRADO', 'var(--text-dim)'] : ['ACTIVO', '#4ade80'];
+      const fecha = new Date(r.created_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
+      const expLbl = r.expires_at ? `expira ${new Date(r.expires_at).toLocaleDateString('es', { day: '2-digit', month: 'short' })}` : 'sin expiración';
+      const active = !r.revoked && !expired;
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${s(r.title) || '(sin título)'} <span style="font-size:9px;font-family:var(--font-mono);color:${estado[1]};border:1px solid ${estado[1]};border-radius:3px;padding:1px 5px;margin-left:4px">${estado[0]}</span></div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">creado ${fecha} · ${expLbl}</div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 11px" onclick="shareCopy('${r.token}')">${icon('link',12)} Copiar</button>
+          ${active ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="shareRevoke('${r.token}')">Revocar</button>` : ''}
+        </div>
+        ${active ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px">EXPIRACIÓN</span>
+          ${[['7d','7 días'],['30d','30 días'],['90d','90 días'],['never','Nunca']].map(o => `<button class="btn btn-ghost" style="font-size:10px;padding:3px 9px" onclick="shareSetExpiry('${r.token}','${o[0]}')">${o[1]}</button>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+    if (typeof hydrateIcons === 'function') hydrateIcons(host);
+  } catch (e) { host.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">Error: ${s(e.message)} (¿corriste shares.sql?)</div>`; }
+}
+async function shareCopy(token) {
+  const url = _shareUrl(token);
+  try { await navigator.clipboard.writeText(url); if (typeof uiToast === 'function') uiToast('✓ Link copiado'); }
+  catch (e) { if (typeof uiAlert === 'function') uiAlert('Copia el link:\n\n' + url); }
+}
+async function shareRevoke(token) {
+  if (typeof uiConfirm === 'function' && !(await uiConfirm('¿Revocar este link? Dejará de funcionar para quien lo tenga.'))) return;
+  try {
+    const sb = await getSb(); const res = await sb.from('shares').update({ revoked: true }).eq('token', token);
+    if (res.error) throw new Error(res.error.message);
+    if (typeof uiToast === 'function') uiToast('✓ Link revocado'); renderShares();
+  } catch (e) { if (typeof uiAlert === 'function') uiAlert('No se pudo revocar: ' + s(e.message)); }
+}
+async function shareSetExpiry(token, opt) {
+  let expires_at = null;
+  if (opt !== 'never') { const days = parseInt(opt, 10) || 30; expires_at = new Date(Date.now() + days * 864e5).toISOString(); }
+  try {
+    const sb = await getSb(); const res = await sb.from('shares').update({ expires_at }).eq('token', token);
+    if (res.error) throw new Error(res.error.message);
+    if (typeof uiToast === 'function') uiToast(opt === 'never' ? '✓ Sin expiración' : '✓ Expiración actualizada'); renderShares();
+  } catch (e) { if (typeof uiAlert === 'function') uiAlert('No se pudo actualizar: ' + s(e.message)); }
+}
 
 // ══════════════════════════════════════════
 // CENTRO DE PRODUCCIÓN (Módulo 9) — por pieza del calendario
