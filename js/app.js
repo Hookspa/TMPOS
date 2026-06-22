@@ -5,6 +5,8 @@
 const s  = v => (v == null ? '' : String(v));
 const up = v => s(v).toUpperCase();
 const trim = v => s(v).replace(/^["'﻿\r\s]+|["'\r\s]+$/g, '');
+const esc = v => s(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const safeUrl = v => /^https?:\/\//i.test(s(v)) ? s(v) : (s(v).startsWith('data:image/') ? s(v) : '#');
 
 // ══════════════════════════════════════════
 // ESTADO GLOBAL
@@ -639,12 +641,12 @@ function renderBanco() {
       <div class="ref-page-thumb">
         ${(() => { const th = refThumbImmediate(r); const iid = 'rthumb-' + r._idx;
           return th
-          ? `<img id="${iid}" class="ref-thumb-img" src="${s(th)}" alt="${s(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
-          : `<img id="${iid}" class="ref-thumb-img" alt="${s(r.title)}" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
+          ? `<img id="${iid}" class="ref-thumb-img" src="${s(th)}" alt="${esc(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
+          : `<img id="${iid}" class="ref-thumb-img" alt="${esc(r.title)}" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.custom ? customBadgeHTML(r) : ''}
-        ${r.link ? `<a href="${s(r.link)}" target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
+        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
         <div class="ref-page-title">${s(trText(r.title))}</div>
@@ -881,12 +883,12 @@ function openRefBoxdrop(idx) {
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
   const linkFooter = editable
-    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:11px;width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${s(link)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
+    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:11px;width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
     : (link
-      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${s(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
+      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
       : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`);
   card.innerHTML = `
-    <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${s(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
+    <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${esc(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
       onerror="this.style.display='none';this.parentNode.querySelector('.brief-thumb-fallback').style.display='flex'">
     <div class="brief-thumb-fallback" style="display:${thumb?'none':'flex'}">${briefIco}</div>
     ${linkFooter}`;
@@ -948,13 +950,13 @@ let calModalIdx = null;            // compat
 let _mcSource = null;              // { kind:'ref'|'gen', idx }
 // Setup común del modal: selector de campaña + pauta + fecha limpia.
 function _mcPopulate(title) {
-  document.getElementById('mc-title').innerHTML = s(title);
+  document.getElementById('mc-title').textContent = s(title);
   document.getElementById('mc-fecha').value = '';
   document.getElementById('mc-status').textContent = '';
   document.getElementById('mc-status').style.color = 'var(--accent2)';
   const camps = calCampaigns();
   const csel = document.getElementById('mc-camp');
-  if (csel) csel.innerHTML = camps.map(c => `<option value="${c.id}">${s(c.name)}${c.isEvergreen ? ' · always-on' : ''}</option>`).join('') || '<option value="">— sin campaña —</option>';
+  if (csel) csel.innerHTML = camps.map(c => `<option value="${esc(c.id)}">${esc(c.name)}${c.isEvergreen ? ' · always-on' : ''}</option>`).join('') || '<option value="">— sin campaña —</option>';
   const psel = document.getElementById('mc-pauta'); if (psel) psel.value = 'organico';
   document.getElementById('modal-cal').classList.add('open');
 }
@@ -1220,7 +1222,7 @@ function renderCalGrid() {
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
       const delX = canEditCal ? `<button onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
       const drag = canEditCal ? `draggable="true" ondragstart="calDragStart(event,'${ci._campId}','${ci.id}')" ondragend="calDragEnd(event)"` : '';
-      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${s(ci._campName||'')} · ${s(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${s(ci.title)}</span></div>`;
+      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</span></div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
@@ -1245,7 +1247,7 @@ function renderCalGrid() {
     const cats = (r.cat||[]).filter(Boolean); const col = catColor(cats[0]);
     return `<div class="ref-item" onclick="openRefBoxdrop(${r._idx})">
       <div style="width:26px;height:26px;border-radius:4px;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s(r.icon)||'pin',15)}</div>
-      <div class="ref-info"><div class="ref-title">${s(r.title)}</div><div class="ref-meta">${cats.map(up).join(' · ') || '—'}</div></div>
+      <div class="ref-info"><div class="ref-title">${esc(r.title)}</div><div class="ref-meta">${cats.map(up).join(' · ') || '—'}</div></div>
     </div>`;
   }).join('');
 }
@@ -1317,7 +1319,7 @@ function kanbanCardHTML(launchId, ci) {
   const delX = canEditCal ? `<button class="kc-del" onclick="event.stopPropagation();deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
   return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="position:relative">
     ${delX}
-    <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${s(ci.title)}</div>
+    <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${esc(ci.title)}</div>
     <div class="kc-meta">${fecha} · ${ESTADO_ICON[est] || ''} ${est}</div>
   </div>`;
 }
@@ -1358,7 +1360,7 @@ function kanbanDrop(e, stageKey) {
 // ══════════════════════════════════════════
 // EXPORTAR CALENDARIO (para enviar al artista) — HTML interactivo + PDF
 // ══════════════════════════════════════════
-function _esc(t) { return s(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+const _esc = esc;
 const _ESTADO_LBL = { pendiente:'Pendiente', aprobado:'Aprobado', grabando:'Grabando', editando:'Editando', programado:'Programado', publicado:'Publicado' };
 // Junta las piezas visibles del calendario con todo su detalle de producción.
 function calExportPieces() {
@@ -1571,7 +1573,7 @@ async function renderShares() {
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500">${s(r.title) || '(sin título)'} <span style="font-size:9px;font-family:var(--font-mono);color:${estado[1]};border:1px solid ${estado[1]};border-radius:3px;padding:1px 5px;margin-left:4px">${estado[0]}</span></div>
+            <div style="font-size:13px;font-weight:500">${esc(r.title) || '(sin título)'} <span style="font-size:9px;font-family:var(--font-mono);color:${estado[1]};border:1px solid ${estado[1]};border-radius:3px;padding:1px 5px;margin-left:4px">${estado[0]}</span></div>
             <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">creado ${fecha} · ${expLbl}</div>
           </div>
           <button class="btn btn-ghost" style="font-size:11px;padding:5px 11px" onclick="shareCopy('${r.token}')">${icon('link',12)} Copiar</button>
@@ -1708,7 +1710,7 @@ function prodBriefHTML(ci, p) {
   const srcL = launches.find(x => x.id === prodCtx.launchId);
   const artId = srcL && srcL.artistId;
   const campOpts = launches.filter(l => l.artistId === artId)
-    .map(l => `<option value="${l.id}" ${l.id === prodCtx.launchId ? 'selected' : ''}>${s(l.name)}${l.type === 'evergreen' ? ' · always-on' : ''}</option>`).join('');
+    .map(l => `<option value="${esc(l.id)}" ${l.id === prodCtx.launchId ? 'selected' : ''}>${esc(l.name)}${l.type === 'evergreen' ? ' · always-on' : ''}</option>`).join('');
   return `
     <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:10px">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)">${campOpts}</select></div>
     <div class="field-grid" style="margin-bottom:16px">
@@ -1720,7 +1722,7 @@ function prodBriefHTML(ci, p) {
     </div>
     <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
     <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${s(p.descripcion)}</textarea></div>
-    ${ci.refLink ? `<div style="margin-top:14px"><a href="${s(ci.refLink)}" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">↗ Referencia de inspiración</a></div>` : ''}`;
+    ${ci.refLink ? `<div style="margin-top:14px"><a href="${safeUrl(ci.refLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">↗ Referencia de inspiración</a></div>` : ''}`;
 }
 function prodGuionHTML(p) {
   const blocks = p.guion.map((b, i) => `
@@ -2084,7 +2086,7 @@ function renderObjetivos() {
       host.innerHTML = `<div class="empty-hint">No hay suficiente información para sugerir metas todavía.<br>
         <span style="color:var(--text-muted)">Agrégalas con <b>“+ Meta manual”</b>, o completa el <b>ADN</b> del artista y los datos del lanzamiento (fecha, campaña). Tener métricas de lanzamientos anteriores también ayuda a que la IA proponga metas.</span></div>`;
     } else {
-      host.innerHTML = `<div class="empty-hint">Aún no hay metas para “${s(a.name)}”. Usa <b>“Sugerir con IA”</b> o <b>“+ Meta manual”</b>.</div>`;
+      host.innerHTML = `<div class="empty-hint">Aún no hay metas para “${esc(a.name)}”. Usa <b>“Sugerir con IA”</b> o <b>“+ Meta manual”</b>.</div>`;
     }
     return;
   }
@@ -2285,10 +2287,10 @@ function renderLabel() {
       legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
       next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
     ].filter(Boolean).join(' ');
-    return `<div onclick="setActiveArtist('${art.id}');showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${s(art.name)}</div>
+        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
         ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>` : ''}
         ${bar}
@@ -2417,18 +2419,16 @@ function renderAprendizajes() {
   const host = document.getElementById('aprend-list'); if (!host) return;
   if (!art) { host.innerHTML = ''; return; }
   const L = art.learnings || [];
-  if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${s(art.name)}. Usa “Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
+  if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${esc(art.name)}. Usa “Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
   host.innerHTML = L.map((it, i) => {
-    // antes el color vivía solo en el border-left de la tarjeta (patrón de borde lateral
-    // que no debería usarse); ahora es un punto + etiqueta junto al tag, mismo significado.
     const sigCol = it.type === 'good' ? '#4ade80' : (it.type === 'bad' ? 'var(--accent2)' : '');
     const sigLabel = it.type === 'good' ? 'Funcionó' : (it.type === 'bad' ? 'No funcionó' : '');
     const sig = sigCol ? `<span class="learn-sig-dot" style="background:${sigCol}"></span><span style="color:${sigCol}">${sigLabel}</span> · ` : '';
     return `<div class="learn-card">
       <button class="goal-btn reject" style="float:right" onclick="quitarAprendizaje(${i})" title="Quitar">${icon('close',12)}</button>
       <div class="learn-tag" style="display:flex;align-items:center;gap:6px">${sig}${s(it.tag || art.name)}</div>
-      <div class="learn-q">${s(it.q)}</div>
-      <div class="learn-a">${s(it.a)}</div>
+      <div class="learn-q">${esc(it.q)}</div>
+      <div class="learn-a">${esc(it.a)}</div>
       ${it.meta ? `<div class="learn-meta">${s(it.meta)}</div>` : ''}
     </div>`;
   }).join('');
@@ -2514,12 +2514,12 @@ function renderIA() {
   const promptStr = buildStrategyPrompt(art);
   host.innerHTML = `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('ai',18)}</span><span class="ph-title">Recomendaciones para ${s(art.name)}</span>
+      <div class="panel-head"><span class="ph-icon">${icon('ai',18)}</span><span class="ph-title">Recomendaciones para ${esc(art.name)}</span>
         <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
       </div>
       ${aiHintHTML(promptStr, 900)}
     </div>
-    <div id="ia-results">${(st && st.items && st.items.length) ? strategyCardsHTML(st) : `<div class="empty-hint">Aún no hay recomendaciones para ${s(art.name)}. Genera con IA usando ADN, lanzamientos, métricas y aprendizajes. (Mientras más datos, mejores recomendaciones.)</div>`}</div>`;
+    <div id="ia-results">${(st && st.items && st.items.length) ? strategyCardsHTML(st) : `<div class="empty-hint">Aún no hay recomendaciones para ${esc(art.name)}. Genera con IA usando ADN, lanzamientos, métricas y aprendizajes. (Mientras más datos, mejores recomendaciones.)</div>`}</div>`;
 }
 async function generarEstrategiaIA() {
   const art = activeArtist(); if (!art) return;
@@ -2627,7 +2627,7 @@ function screenshotsStripHTML() {
                          (a ? a.screenshots : []).map(x => Object.assign({scope:a.name}, x)));
   if (!shots.length) return '';
   return `<div class="section-header" style="margin-top:24px"><div class="section-title">CAPTURAS DE RESPALDO</div></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">${shots.map(sc => `<a href="${sc.dataUrl}" target="_blank" title="${s(sc.label)} · ${s(sc.scope)} · ${s(sc.date)}"><img src="${sc.dataUrl}" class="screenshot-thumb"></a>`).join('')}</div>`;
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${shots.map(sc => `<a href="${safeUrl(sc.dataUrl)}" target="_blank" title="${esc(sc.label)} · ${esc(sc.scope)} · ${esc(sc.date)}"><img src="${safeUrl(sc.dataUrl)}" class="screenshot-thumb" loading="lazy"></a>`).join('')}</div>`;
 }
 
 // ── Sub-pestañas ──
@@ -3145,8 +3145,8 @@ function renderCampanias() {
     return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600">${s(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${art ? s(art.name) : '—'} · ${s(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
+        <div style="font-size:15px;font-weight:600">${esc(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${art ? esc(art.name) : '—'} · ${esc(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
       </div>
       <span class="chip" style="cursor:default">Ver →</span>
     </div>`;
@@ -3280,7 +3280,7 @@ function launchContextHTML() {
   if (!a) return '';
   const st = STATUS_MAP[a.status] || STATUS_MAP.planning;
   const opts = artistLaunches().map(l =>
-    `<option value="${l.id}" ${l.id===a.id?'selected':''}>${s(l.name)}</option>`).join('');
+    `<option value="${esc(l.id)}" ${l.id===a.id?'selected':''}>${esc(l.name)}</option>`).join('');
   return `
     <div class="launch-ctx">
       <span class="ctx-label">Lanzamiento</span>
@@ -3338,7 +3338,7 @@ function launchCardHTML(l) {
       <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
       <div class="launch-cover ${cover}">${alertBadge}${up(l.name).slice(0,9)}</div>
       <div class="launch-info">
-        <div class="launch-name">${s(l.name)}</div>
+        <div class="launch-name">${esc(l.name)}</div>
         <div class="launch-date">${launchDateLabel(l)}</div>
         <span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>
       </div>
@@ -3559,7 +3559,7 @@ function renderDashboard() {
         const dlabel = dr === 0 ? 'HOY' : (dr === 1 ? 'MAÑANA' : (() => { const d = new Date(ci.fecha + 'T00:00:00'); return `${MESES_CAL[d.getMonth()]} ${d.getDate()}`; })());
         return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;cursor:pointer;">
           <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
-          <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${s(ci.title)}</span>
+          <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${esc(ci.title)}</span>
           <div style="margin-left:auto;font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${s(ci.launch)}</div>
         </div>`;
       }).join('');

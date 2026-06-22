@@ -31,7 +31,7 @@ function releaseInversionHTML(l){
       <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s(catLabel(e.categoria))}</span>
       <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${money(+e.monto || 0)}${e.proveedor ? ` <span style="color:var(--text-muted);font-size:12px;font-weight:400">· ${s(e.proveedor)}</span>` : ''}</div>
         <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(e.fecha) || ''}${e.metodo ? ' · ' + s(e.metodo) : ''}${e.note ? ' · ' + s(e.note) : ''}</div></div>
-      ${e.reciboLink ? `<a href="${s(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono)">↗ recibo</a>` : ''}
+      ${e.reciboLink ? `<a href="${safeUrl(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono)">↗ recibo</a>` : ''}
       ${editable ? `<button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">${icon('close',12)}</button>` : ''}
     </div>`).join('');
   const addForm = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('plus',18)}</span><span class="ph-title">Registrar gasto</span></div>

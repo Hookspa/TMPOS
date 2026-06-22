@@ -67,7 +67,7 @@ function renderLaunchDetail() {
       <div class="launch-hero-cover launch-cover ${cover}">${up(l.name)}</div>
       <div class="launch-hero-info">
         <div style="display:flex;align-items:flex-start;gap:14px">
-          <div class="lh-name">${s(l.name)}</div>
+          <div class="lh-name">${esc(l.name)}</div>
           <div class="lh-actions">
             <button class="btn btn-ghost" onclick="abrirReporteLanzamiento('${l.id}')" title="Generar reporte de lanzamiento (PPTX/HTML con IA)">${icon('report',14)} Generar reporte</button>
             <button class="btn btn-ghost" onclick="abrirWizard('${l.id}')">${icon('pencil',13)} Editar</button>
@@ -184,7 +184,7 @@ function releaseAssetsHTML(l){
     const blocked = a.private && !seePriv;
     const body = blocked
       ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">${icon('lock',12)} Archivo privado · sin acceso</div>`
-      : `<a href="${s(a.url)}" target="_blank" rel="noopener" ${a.private?`onclick="logAssetOpen('${a.id}')"`:''} style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${s(a.url)}</a>`;
+      : `<a href="${safeUrl(a.url)}" target="_blank" rel="noopener" ${a.private?`onclick="logAssetOpen('${a.id}')"`:''} style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${esc(a.url)}</a>`;
     const copyBtn = blocked ? '' : `<button class="goal-btn" title="Copiar link" onclick="copyAssetLink('${a.id}')">${icon('link',12)}</button>`;
     return `<div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${tipoLabel}</span>
@@ -512,7 +512,7 @@ function renderIdeas() {
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
-          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${s(it.link)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
+          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${safeUrl(it.link)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
         </div>`;
       }).join('')
     : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <span style="color:var(--accent);cursor:pointer" onclick="showPage('banco')">Banco de Referencias</span> y marca ideas con la estrella ${icon('star',12)} para este lanzamiento.</div>`;
@@ -660,7 +660,7 @@ function renderResults() {
         <div class="idea-meta">${s(it.format || '')}${it.objetivo ? ' · ' + s(it.objetivo) : ''}</div>
         <div style="display:flex;gap:6px;margin-top:10px">
           <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="addGeneratedToCal(${i})">+ Calendario</button>
-          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${s(it.refLink)}" target="_blank">↗ ref</a>` : ''}
+          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
         </div>
       </div>`;
     }).join('')}</div>
@@ -683,7 +683,7 @@ function prevResultsHTML(a) {
         <div class="idea-meta">${s(it.format || '')}${it.objetivo ? ' · ' + s(it.objetivo) : ''}</div>
         <div style="display:flex;gap:6px;margin-top:10px">
           <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="addGeneratedPrevToCal(${i})">+ Calendario</button>
-          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${s(it.refLink)}" target="_blank">↗ ref</a>` : ''}
+          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -1445,8 +1445,14 @@ function handleImportFile(e) {
       if (!data || !Array.isArray(data.artists)) throw new Error('Archivo de backup inválido (falta "artists").');
       const nA = data.artists.length, nL = Array.isArray(data.launches) ? data.launches.length : 0;
       if (!await uiConfirm(`Esto REEMPLAZARÁ todos los datos actuales por el backup:\n· ${nA} artista(s)\n· ${nL} lanzamiento(s)\n\n¿Continuar?`, {danger:true, okText:'Reemplazar'})) { e.target.value = ''; return; }
-      localStorage.setItem('ao_artists', JSON.stringify(data.artists));
-      localStorage.setItem('ao_launches', JSON.stringify(data.launches || []));
+      // Sanitize IDs and dataUrls before storing — prevents javascript: injection via crafted backups.
+      const safeId = v => (typeof v === 'string' && /^[A-Za-z0-9_\-:.]+$/.test(v)) ? v : ('id-' + Date.now());
+      const safeDataUrl = v => (typeof v === 'string' && (v.startsWith('data:image/') || /^https?:\/\//.test(v))) ? v : '';
+      const sanitizeScreenshots = arr => (Array.isArray(arr) ? arr : []).map(sc => Object.assign({}, sc, { id: safeId(sc.id), dataUrl: safeDataUrl(sc.dataUrl) }));
+      const artists = data.artists.map(a => Object.assign({}, a, { id: safeId(a.id), screenshots: sanitizeScreenshots(a.screenshots) }));
+      const launches = (data.launches || []).map(l => Object.assign({}, l, { id: safeId(l.id), screenshots: sanitizeScreenshots(l.screenshots) }));
+      localStorage.setItem('ao_artists', JSON.stringify(artists));
+      localStorage.setItem('ao_launches', JSON.stringify(launches));
       if (data.activeArtist) localStorage.setItem('ao_active_artist', data.activeArtist);
       if (data.aiSettings) {
         const cur = aiSettings(); // conservar la key local

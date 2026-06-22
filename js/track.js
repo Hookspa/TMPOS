@@ -231,7 +231,7 @@ function trackLegalHTML(t) {
       <input class="input" style="flex:2;min-width:160px;padding:5px 8px;font-size:12px" value="${s(d.fileLink)}" placeholder="Link del documento (Drive/PDF)" ${setF(i,'fileLink')}>
     </div>
     <input class="input" style="margin-top:8px;padding:5px 8px;font-size:12px" value="${s(d.note)}" placeholder="Nota" ${setF(i,'note')}>
-    ${d.fileLink ? `<a href="${s(d.fileLink)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);display:inline-block;margin-top:6px">↗ abrir documento</a>` : ''}
+    ${d.fileLink ? `<a href="${safeUrl(d.fileLink)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);display:inline-block;margin-top:6px">↗ abrir documento</a>` : ''}
     <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:4px">act. ${d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('es-MX') : '—'}</div>
   </div>`).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Documentos legales de esta canción (split sheets, producer agreements, autorizaciones de feature/sample) — con estado, responsable, link y nota.</div>
