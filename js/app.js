@@ -329,7 +329,7 @@ async function reportCommunityRef(idx) {
     const sb = await getSb(); if (!sb) return;
     await sb.from('community_flags').insert([{ ref_id: r.id, reporter: _user && _user.id, reason: s(reason) }]);
     uiToast('✓ Reporte enviado');
-  } catch (e) { uiToast('No se pudo reportar (¿falta correr el SQL?)'); }
+  } catch (e) { uiToast(friendlyError(e, 'enviar el reporte')); }
 }
 async function hideCommunityRef(idx) {
   const r = referencias[idx]; if (!r || !r.community) return;
@@ -490,15 +490,34 @@ function navBack() {
 function showPage(id, skipRecord) {
   if (!skipRecord) navRecord();         // graba la vista que dejamos (antes de cambiar)
   document.body.classList.remove('sidebar-open'); // cierra el menú en móvil al navegar
+  if (typeof cerrarMoreSheet === 'function') cerrarMoreSheet(); // cierra la hoja "Más" si estaba abierta
   if (typeof releaseRestorePages === 'function') releaseRestorePages(); // devuelve páginas embebidas a .content antes de navegar
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  // Barra de pestañas inferior (móvil): dashboard/lanzamientos/tareas tienen su propia
+  // pestaña; todo lo demás (incluida la ficha de un release) cae bajo "Más".
+  const TAB_FOR_PAGE = { dashboard: 'dashboard', lanzamientos: 'lanzamientos', launch: 'lanzamientos', tareas: 'tareas' };
+  const activeTab = TAB_FOR_PAGE[id] || 'mas';
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tabPage === activeTab));
+  const titles = {dashboard:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   let _ttl = titles[id] || id;
   if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
-  document.getElementById('page-title').textContent = up(_ttl);
+  document.getElementById('page-title-text').textContent = up(_ttl);
+  // Móvil perdió el indicador permanente de "artista activo" que vivía en el sidebar;
+  // se repite acá (solo visible <860px, ver CSS) en las páginas que sí están acotadas
+  // a un artista — en Tareas/Campañas/Label/Banco no aplica, son vistas cruzadas.
+  const ARTIST_SCOPED_PAGES = { dashboard: 1, lanzamientos: 1, launch: 1, perfil: 1, adn: 1 };
+  const _artistEl = document.getElementById('topbar-title-artist');
+  if (_artistEl) {
+    const _a = (ARTIST_SCOPED_PAGES[id] && typeof activeArtist === 'function') ? activeArtist() : null;
+    _artistEl.textContent = _a ? '· ' + _a.name : '';
+  }
   document.getElementById('btn-sheet-config').style.display = id === 'banco' ? '' : 'none';
+  // "+ Nuevo Lanzamiento" only makes sense where creating a release is the relevant action.
+  // Elsewhere (Tareas, Perfil, release detail w/ its own header actions, etc.) it's a dead CTA.
+  const _ctaBtn = document.getElementById('btn-global-cta');
+  if (_ctaBtn) _ctaBtn.style.display = (id === 'dashboard' || id === 'lanzamientos') ? '' : 'none';
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
   if (id === 'banco')      { bancoCargado ? (renderFiltros(), renderBanco()) : iniciarBanco(); }
   if (id === 'calendario') renderCalendar();
@@ -1515,9 +1534,9 @@ async function crearShareLink() {
     if (error) throw new Error(error.message);
     const url = location.origin + location.pathname.replace(/[^/]*$/, 'ver.html') + '?s=' + token;
     let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) {}
-    if (typeof uiAlert === 'function') uiAlert(`✓ Link de solo-lectura creado${copied ? ' y copiado al portapapeles' : ''}:\n\n${url}\n\nCualquiera con el link puede ver el plan (sin necesidad de cuenta). Es un snapshot: si cambias el calendario, crea un link nuevo. Para revocarlo, bórralo en Supabase (tabla shares) o te agrego un panel.`);
+    if (typeof uiAlert === 'function') uiAlert(`✓ Link de solo-lectura creado${copied ? ' y copiado al portapapeles' : ''}:\n\n${url}\n\nCualquiera con el link puede ver el plan (sin necesidad de cuenta). Es un snapshot: si cambias el calendario, crea un link nuevo. Para revocarlo, ábrelo desde "Mis links" en el calendario.`);
   } catch (e) {
-    if (typeof uiAlert === 'function') uiAlert('No se pudo crear el link: ' + s(e.message) + '\n(¿Ya corriste supabase/sql/shares.sql?)');
+    if (typeof uiAlert === 'function') uiAlert(friendlyError(e, 'crear el link'));
   }
 }
 // ── Panel "Mis links": listar / copiar / expiración / revocar ──
@@ -1565,7 +1584,7 @@ async function renderShares() {
       </div>`;
     }).join('');
     if (typeof hydrateIcons === 'function') hydrateIcons(host);
-  } catch (e) { host.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">Error: ${s(e.message)} (¿corriste shares.sql?)</div>`; }
+  } catch (e) { host.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${s(friendlyError(e, 'cargar tus links'))}</div>`; }
 }
 async function shareCopy(token) {
   const url = _shareUrl(token);
@@ -1578,7 +1597,7 @@ async function shareRevoke(token) {
     const sb = await getSb(); const res = await sb.from('shares').update({ revoked: true }).eq('token', token);
     if (res.error) throw new Error(res.error.message);
     if (typeof uiToast === 'function') uiToast('✓ Link revocado'); renderShares();
-  } catch (e) { if (typeof uiAlert === 'function') uiAlert('No se pudo revocar: ' + s(e.message)); }
+  } catch (e) { if (typeof uiAlert === 'function') uiAlert(friendlyError(e, 'revocar el link')); }
 }
 async function shareSetExpiry(token, opt) {
   let expires_at = null;
@@ -1587,7 +1606,7 @@ async function shareSetExpiry(token, opt) {
     const sb = await getSb(); const res = await sb.from('shares').update({ expires_at }).eq('token', token);
     if (res.error) throw new Error(res.error.message);
     if (typeof uiToast === 'function') uiToast(opt === 'never' ? '✓ Sin expiración' : '✓ Expiración actualizada'); renderShares();
-  } catch (e) { if (typeof uiAlert === 'function') uiAlert('No se pudo actualizar: ' + s(e.message)); }
+  } catch (e) { if (typeof uiAlert === 'function') uiAlert(friendlyError(e, 'actualizar la expiración')); }
 }
 
 // ══════════════════════════════════════════
@@ -1844,7 +1863,7 @@ async function generarContenidoIA() {
     saveLaunches();
     renderProd();
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.</div>`;
   }
 }
 
@@ -1905,7 +1924,7 @@ async function generarContenidoBanco(idx) {
     if (!obj) throw new Error('La IA no devolvió contenido válido.');
     res.innerHTML = contentResultHTML(obj);
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.</div>`;
   }
 }
 
@@ -1986,7 +2005,7 @@ async function generarPOWRecomendacion() {
     const { text } = await callClaude(powRecPrompt(d), 400);
     powRecommendation = s(text).trim();
     renderPOW();
-  } catch (e) { rec.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
+  } catch (e) { rec.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.</div>`; }
 }
 function powText() {
   const d = powData(); if (!d.a) return '';
@@ -2384,7 +2403,7 @@ async function sugerirObjetivosIA(auto) {
     saveLaunches(); renderObjetivos();
   } catch (e) {
     const l = document.getElementById('obj-loading');
-    if (l) l.innerHTML = `${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.`;
+    if (l) l.innerHTML = `${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.`;
   }
 }
 
@@ -2447,7 +2466,7 @@ async function generarAprendizajesIA() {
     if (!arr.length) throw new Error('La IA no devolvió aprendizajes válidos.');
     arr.forEach(x => art.learnings.unshift({ tag: s(x.tag) || art.name, type: (x.type || 'neutral'), q: s(x.q), a: s(x.a), meta: s(x.meta) }));
     saveArtists(); renderAprendizajes();
-  } catch (e) { const l = document.getElementById('aprend-loading'); if (l) l.innerHTML = `${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.`; }
+  } catch (e) { const l = document.getElementById('aprend-loading'); if (l) l.innerHTML = `${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.`; }
 }
 
 // ══════════════════════════════════════════
@@ -2514,7 +2533,7 @@ async function generarEstrategiaIA() {
     if (!items.length) throw new Error('La IA no devolvió recomendaciones válidas.');
     art.strategy = { generatedAt: Date.now(), items };
     saveArtists(); renderIA();
-  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
+  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.</div>`; }
 }
 
 // ══════════════════════════════════════════
@@ -3305,10 +3324,15 @@ function launchDateLabel(l) {
 function launchCardHTML(l) {
   const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
   const cover = /^c[1-5]$/.test(l.cover) ? l.cover : 'c5';
+  // Surface blocking alerts (missing cover, unsigned split, etc.) right on the card —
+  // without this, "Lanzado"/"En campaña" is the *only* signal visible outside the release
+  // detail page, even when something there needs urgent attention.
+  const redAlerts = (typeof releaseAlerts === 'function') ? releaseAlerts(l).filter(a => a.level === 'red').length : 0;
+  const alertBadge = redAlerts ? `<span class="launch-alert-badge" title="${redAlerts} alerta(s) sin resolver">${icon('warning', 11)}</span>` : '';
   return `
     <div class="launch-card fade-in" onclick="openLaunch('${l.id}')">
       <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
-      <div class="launch-cover ${cover}">${up(l.name).slice(0,9)}</div>
+      <div class="launch-cover ${cover}">${alertBadge}${up(l.name).slice(0,9)}</div>
       <div class="launch-info">
         <div class="launch-name">${s(l.name)}</div>
         <div class="launch-date">${launchDateLabel(l)}</div>

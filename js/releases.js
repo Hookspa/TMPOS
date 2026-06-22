@@ -38,7 +38,9 @@ function renderLaunchDetail() {
   const host = document.getElementById('launch-detail');
   if (!l) { host.innerHTML = '<div class="empty-hint">Lanzamiento no encontrado.</div>'; return; }
 
-  document.getElementById('page-title').textContent = up(l.name);
+  // ojo: #page-title ahora envuelve dos <span> (texto + artista, ver showPage en app.js);
+  // .textContent sobre el contenedor los borraría a ambos, por eso se apunta al span de texto.
+  document.getElementById('page-title-text').textContent = up(l.name);
 
   const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
   const cover = /^c[1-5]$/.test(l.cover) ? l.cover : 'c5';
@@ -318,10 +320,15 @@ function releaseResumenHTML(l) {
   const editable = canDo('edit_launch');
   const statusSel = `<select class="input" style="width:auto;padding:5px 9px;font-size:11px;margin-left:auto" ${editable?'':'disabled'} onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k=>`<option value="${k}" ${l.status===k?'selected':''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
   const tplBtn = (typeof openTemplatePicker==='function' && canDo('gestionar_tareas')) ? `<button class="btn btn-ghost" style="margin-top:12px;font-size:12px" onclick="openTemplatePicker('${l.id}')">${icon('checklist',13)} ${l.templateApplied?'Aplicar otra plantilla':'Aplicar plantilla de proyecto'}</button>` : '';
+  // "Lanzado" (calendar fact) and "0% listo" (checklist fact) answer different questions — when there
+  // are unresolved red-level alerts, flag the macro-fase itself instead of only the bar below it,
+  // so a calm green "Lanzado" badge doesn't read as "all good" while blockers sit unresolved.
+  const hasRedAlert = releaseAlerts(l).some(a => a.level === 'red');
+  const phaseWarning = hasRedAlert ? `<span style="color:var(--accent2);display:inline-flex;margin-right:4px" title="Hay alertas sin resolver">${icon('warning',12)}</span>` : '';
   const statusPanel = `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('flag',18)}</span><span class="ph-title">Estado del release</span>
-        <span class="ph-sub">macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span>${statusSel}</div>
+      <div class="panel-head"><span class="ph-icon">${icon('rocket',18)}</span><span class="ph-title">Estado del release</span>
+        <span class="ph-sub">${phaseWarning}macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span>${statusSel}</div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
       ${alertsHTML(l)}
@@ -836,7 +843,7 @@ async function generarIdeasIA() {
     saveLaunches(); renderResults();
     if (typeof updateCostLine === 'function') updateCostLine();
   } catch (e) {
-    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">${icon('warning',13)} Error con la IA: ${s(e.message)}.<br>Revisa tu API key / modelo en ${icon('settings',12)} API. (También puede ser límite de CORS o de créditos.)</div>`;
+    res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2);color:var(--text-muted)">${icon('warning',13)} Error con la IA: ${s(friendlyError(e))}.<br>Revisa tu API key / modelo en ${icon('settings',12)} API. (También puede ser límite de CORS o de créditos.)</div>`;
   }
 }
 // ── Letra de la canción → Campaign DNA (IA) ──
@@ -887,7 +894,7 @@ async function generarDNADesdeLetra() {
     renderIdeas();
     if (typeof uiToast === 'function') uiToast('✓ Campaign DNA generado desde la letra');
   } catch (e) {
-    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(e.message)}. Revisa la API en ${icon('settings',12)}.`; }
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}. Revisa la API en ${icon('settings',12)}.`; }
   }
 }
 function abrirAISettings() {
@@ -1151,7 +1158,9 @@ function wizCalcTimeline() {
 function renderSidebarArtist() {
   const a = activeArtist();
   if (typeof updateLabelNav === 'function') updateLabelNav();
-  document.getElementById('sb-avatar').textContent = a ? up(a.name).slice(0,1) : '?';
+  // .textContent on #sb-avatar itself would wipe out the sync-status dot rendered alongside
+  // the letter (js/team.js setSyncStatus) — write to the dedicated inner span instead.
+  document.getElementById('sb-avatar-letter').textContent = a ? up(a.name).slice(0,1) : '?';
   document.getElementById('sb-name').textContent = a ? a.name : '—';
   const so = document.getElementById('topbar-signout'); if (so) so.style.display = authed() ? '' : 'none';
   const menu = document.getElementById('artist-menu');
@@ -1167,6 +1176,68 @@ function renderSidebarArtist() {
     + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
     + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + (authed() ? '' : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
+  renderMoreSheet();
+}
+// ── Hoja "Más" (móvil) — agrupa lo que no entra en la barra de pestañas inferior:
+// secciones secundarias (Campañas/Label/Perfil/ADN/Banco) + todo lo que en desktop vive
+// en el dropdown del artist-switcher (cambiar artista, cuenta, equipo, sync, admin, salir).
+function renderMoreSheet() {
+  const host = document.getElementById('more-sheet-body'); if (!host) return;
+  let html = '';
+
+  // Switcher de artista como encabezado compacto (no como lista plana mezclada con el resto):
+  // es la acción más distinta de las demás (cambia de contexto, no navega a una página),
+  // así que va primero y se reconoce de inmediato, igual que un selector de cuenta/workspace.
+  const _a = activeArtist();
+  if (!_restrictedArtist && _a) {
+    html += `<div class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:10px;margin-bottom:4px">
+      <div class="artist-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${up(_a.name).slice(0,1)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${s(_a.name)}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cambiar artista</div>
+      </div>
+      <span id="more-artist-chevron" style="color:var(--text-dim);font-size:13px;display:inline-block;transition:transform .15s">▾</span>
+    </div>
+    <div id="more-artist-list" style="display:none;padding-bottom:4px">` +
+      artists.map(ar => `<div class="more-sheet-item" style="padding-left:30px" onclick="setActiveArtist('${ar.id}');cerrarMoreSheet()">
+        <div class="artist-avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0">${up(ar.name).slice(0,1)}</div>
+        <span style="flex:1">${s(ar.name)}</span>${ar.id === currentArtistId ? icon('check', 15) : ''}
+      </div>`).join('') +
+      `<div class="more-sheet-item" style="padding-left:30px" onclick="abrirNuevoArtista();cerrarMoreSheet()"><span class="icon">${icon('plus', 17)}</span><span>Nuevo artista</span></div>
+    </div>`;
+  }
+
+  const navLabelEl = document.getElementById('nav-label');
+  const showLabel = navLabelEl && navLabelEl.style.display !== 'none';
+  const pageLinks = [['campanias','megaphone','Campañas activas']]
+    .concat(showLabel ? [['label','label','Label']] : [])
+    .concat([['perfil','artist','Perfil del Artista'], ['adn','dna','ADN Artístico'], ['banco','references','Banco de Referencias']]);
+  html += '<div class="more-sheet-label">Secciones</div>' + pageLinks.map(([id, ic, label]) =>
+    `<div class="more-sheet-item" onclick="showPage('${id}');cerrarMoreSheet()"><span class="icon">${icon(ic, 19)}</span><span>${label}</span></div>`
+  ).join('');
+
+  html += '<div style="border-top:1px solid var(--border);margin:6px 0"></div><div class="more-sheet-label">Cuenta</div>';
+  if (authed()) {
+    html += `<div class="more-sheet-item" onclick="abrirCuenta();cerrarMoreSheet()"><span class="icon">${icon('settings', 19)}</span><span>Mi cuenta</span></div>`;
+    if (!_restrictedArtist) html += `<div class="more-sheet-item" onclick="abrirTeam();cerrarMoreSheet()"><span class="icon">${icon('team', 19)}</span><span>Mi equipo · ${s(_teamName)}</span></div>`;
+    if (isAdmin()) html += `<div class="more-sheet-item" onclick="abrirAdmin();cerrarMoreSheet()"><span class="icon" style="color:var(--accent)">${icon('wrench', 19)}</span><span style="color:var(--accent)">Backend admin</span></div>`;
+    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:11px;color:${cloudEnabled() ? '#4ade80' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
+    html += `<div class="more-sheet-item" onclick="signOutTempo()"><span class="icon" style="color:var(--accent2)">${icon('logout', 19)}</span><span style="color:var(--accent2)">Cerrar sesión</span></div>`;
+  } else {
+    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span>Sincronización</span></div>`;
+    html += `<div class="more-sheet-item" onclick="exportarDatos()"><span class="icon">${icon('download', 19)}</span><span>Exportar backup (.json)</span></div>`;
+    html += `<div class="more-sheet-item" onclick="importarDatos()"><span class="icon">${icon('upload', 19)}</span><span>Importar backup</span></div>`;
+  }
+  host.innerHTML = html;
+}
+function abrirMoreSheet() { renderMoreSheet(); document.getElementById('more-sheet-overlay').classList.add('open'); }
+function cerrarMoreSheet() { document.getElementById('more-sheet-overlay').classList.remove('open'); }
+function toggleMoreArtistList() {
+  const list = document.getElementById('more-artist-list'); if (!list) return;
+  const chev = document.getElementById('more-artist-chevron');
+  const open = list.style.display !== 'none';
+  list.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 function toggleArtistMenu(force) {
   const menu = document.getElementById('artist-menu');
@@ -1313,7 +1384,7 @@ async function awGenerar() {
     if (!obj) throw new Error('La IA no devolvió un ADN válido.');
     awData.generated = obj;
     awRender();
-  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)} — revisa ${icon('settings',12)} API.</div>`; }
+  } catch (e) { res.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(e))} — revisa ${icon('settings',12)} API.</div>`; }
 }
 function awFinish() {
   const name = (awData.name || '').trim() || 'Nuevo Artista';
@@ -1384,7 +1455,7 @@ function handleImportFile(e) {
       await uiAlert('✓ Backup restaurado. La app se recargará.');
       location.reload();
     } catch (err) {
-      uiAlert('✕ No se pudo importar: ' + err.message);
+      uiAlert(err.message === 'Archivo de backup inválido (falta "artists").' ? '✕ ' + err.message : friendlyError(err, 'leer ese archivo') + ' Asegúrate de que sea un backup .json exportado desde TEMPO OS y no esté dañado.');
     } finally {
       e.target.value = '';
     }

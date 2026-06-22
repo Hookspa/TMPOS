@@ -29,7 +29,9 @@ function _dueInfo(t) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
   let cls = '', label;
   if (dr === 0) { cls = done ? '' : 'today'; label = 'HOY'; }
-  else if (dr < 0) { cls = done ? '' : 'over'; label = Math.abs(dr) + 'd atrás'; }
+  // Staleness escalates independently of priority: mild rust under 30d late, stronger red past that —
+  // never reuses the priority palette (TASK_PRI_COLOR) so the two signals stay readable apart.
+  else if (dr < 0) { cls = done ? '' : (dr < -30 ? 'over-long' : 'over'); label = Math.abs(dr) + 'd atrás'; }
   else label = 'en ' + dr + 'd';
   return { label, cls };
 }
@@ -109,9 +111,12 @@ function setTaskRespInline(id, val) {
 
 // ── Badge del nav ──
 function updateTaskBadge() {
-  const el = document.getElementById('nav-tasks-badge'); if (!el) return;
   const n = (typeof myTasks === 'function') ? myTasks().length : 0;
-  if (n) { el.textContent = n; el.style.display = ''; } else { el.style.display = 'none'; }
+  const el = document.getElementById('nav-tasks-badge');
+  if (el) { if (n) { el.textContent = n; el.style.display = ''; } else { el.style.display = 'none'; } }
+  // misma cuenta en la barra de pestañas inferior (móvil)
+  const tabEl = document.getElementById('tab-tasks-badge');
+  if (tabEl) { if (n) { tabEl.textContent = n > 9 ? '9+' : n; tabEl.style.display = ''; } else { tabEl.style.display = 'none'; } }
 }
 
 // ── Render principal ──

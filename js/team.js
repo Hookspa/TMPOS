@@ -39,6 +39,14 @@ function setSyncStatus(state, msg) {
   const m = map[state] || map.off;
   const st = document.getElementById('sync-status'); if (st) { st.textContent = m[2]; st.style.color = m[1]; }
   const dot = document.getElementById('sync-menu-dot'); if (dot) { dot.textContent = m[0]; dot.style.color = m[1]; }
+  // Sidebar dot: visible at a glance next to the artist switcher (not buried in the
+  // dropdown menu's "Sincronización" row) — only shown once cloud sync is configured at all.
+  const sbDot = document.getElementById('sb-sync-dot');
+  if (sbDot) {
+    sbDot.style.display = cloudEnabled() ? 'block' : 'none';
+    sbDot.style.background = m[1];
+    sbDot.title = 'Sincronización: ' + m[2];
+  }
 }
 function scheduleCloudSync() {
   if (!cloudEnabled() || !authed() || !canEdit()) return;
@@ -65,7 +73,7 @@ async function cloudSyncAll() {
     // capa colaborativa (tasks/comments/activity/notifications/approvals): best-effort
     if (typeof collabCloudSync === 'function') { try { await collabCloudSync(sb, now); } catch (e) {} }
     setSyncStatus('ok');
-  } catch (e) { setSyncStatus('error', e.message); }
+  } catch (e) { setSyncStatus('error', friendlyError(e, 'sincronizar')); }
 }
 async function cloudLoad() {
   try {
@@ -100,7 +108,7 @@ async function cloudLoad() {
     if (p === 'page-perfil' || p === 'page-adn') renderArtistForms();
     if (p === 'page-dashboard') renderDashboard();
     setSyncStatus('ok');
-  } catch (e) { setSyncStatus('error', e.message); }
+  } catch (e) { setSyncStatus('error', friendlyError(e, 'cargar tus datos')); }
 }
 async function cloudDelete(table, id) {
   if (!cloudEnabled()) return;
@@ -430,7 +438,7 @@ async function onAuthed() {
   await loadTeams();
   if (!_teams.length) {
     const r = await sb.rpc('provision_team');
-    if (r.error) { agStatus('Error de equipo: ' + r.error.message, true); showAuthGate(true); return; }
+    if (r.error) { agStatus(friendlyError(r.error, 'configurar tu equipo'), true); showAuthGate(true); return; }
     await loadTeams();
   }
   // Si vino por invitación, abrir ese equipo; si no, el guardado o el primero.
@@ -534,7 +542,7 @@ async function createTeam() {
   const name = (await uiPrompt('Nombre del nuevo equipo:', {title:'Nuevo equipo'}) || '').trim();
   if (!name) return;
   const r = await sb.rpc('create_team', { team_name: name });
-  if (r.error) { uiAlert('No se pudo crear el equipo: ' + r.error.message); return; }
+  if (r.error) { uiAlert(friendlyError(r.error, 'crear el equipo')); return; }
   await loadTeams();
   await switchTeam(r.data);
 }
@@ -558,17 +566,17 @@ async function moveArtistToTeam(artistId, targetId) {
     renderSidebarArtist(); renderAllLaunches();
     if (document.getElementById('modal-team').classList.contains('open')) renderTeamModal();
     setSyncStatus('ok');
-  } catch (e) { setSyncStatus('error', e.message); uiAlert('No se pudo mover: ' + e.message); }
+  } catch (e) { setSyncStatus('error', friendlyError(e, 'mover')); uiAlert(friendlyError(e, 'mover el artista')); }
 }
 async function signIn() {
   const sb = await getSb(); agStatus('Entrando…');
   const r = await sb.auth.signInWithPassword({ email: agVal('ag-email'), password: agVal('ag-pass') });
-  if (r.error) agStatus(r.error.message, true);
+  if (r.error) agStatus(friendlyError(r.error, 'iniciar sesión'), true);
 }
 async function signUp() {
   const sb = await getSb(); agStatus('Creando cuenta…');
   const r = await sb.auth.signUp({ email: agVal('ag-email'), password: agVal('ag-pass') });
-  if (r.error) return agStatus(r.error.message, true);
+  if (r.error) return agStatus(friendlyError(r.error, 'crear la cuenta'), true);
   if (r.data && r.data.session) agStatus('¡Listo!'); else agStatus('Cuenta creada. Revisa tu correo para confirmar (o usa enlace mágico).');
 }
 async function signInMagic() {
@@ -576,7 +584,7 @@ async function signInMagic() {
   if (!email) return agStatus('Escribe tu correo', true);
   agStatus('Enviando enlace…');
   const r = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
-  if (r.error) agStatus(r.error.message, true); else agStatus('Te enviamos un enlace mágico a ' + email);
+  if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true); else agStatus('Te enviamos un enlace mágico a ' + email);
 }
 async function signOutTempo() {
   const sb = await getSb(); if (sb) await sb.auth.signOut();
@@ -715,7 +723,7 @@ async function saveBranding(reset) {
   const sb = await getSb();
   if (sb && _teamId) {
     const r = await sb.from('teams').update({ brand_color: color, brand_name: name, logo_url: logo }).eq('id', _teamId);
-    if (r && r.error) { uiAlert('Se aplicó localmente, pero no se pudo guardar en la nube: ' + r.error.message); return; }
+    if (r && r.error) { uiAlert(friendlyError(r.error, 'guardar la marca en la nube') + ' (se quedó aplicada solo en este navegador por ahora.)'); return; }
   }
   uiToast(reset ? '✓ Marca restablecida' : '✓ Marca guardada');
   renderSidebarArtist();
@@ -741,7 +749,7 @@ async function renderAuditLog() {
   const host = document.getElementById('team-audit'); if (!host) return;
   const sb = await getSb(); if (!sb || !_teamId) { host.innerHTML = ''; return; }
   let r = await sb.from('audit_log').select('actor, action, target_type, label, created_at').eq('team_id', _teamId).order('created_at', { ascending: false }).limit(40);
-  if (r.error) { host.innerHTML = '<div class="empty-hint">La auditoría se activa al correr <code>permissions.sql</code>.</div>'; return; }
+  if (r.error) { host.innerHTML = '<div class="empty-hint">La auditoría no está disponible todavía para este workspace. Contacta a soporte si la necesitas.</div>'; return; }
   const rows = r.data || [];
   if (!rows.length) { host.innerHTML = '<div class="empty-hint">Sin actividad de archivos todavía.</div>'; return; }
   host.innerHTML = rows.map(e => {
@@ -784,14 +792,14 @@ async function setTeamPlan(plan) {
   if (!isWorkspaceOwner()) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
   const r = await sb.from('teams').update({ plan }).eq('id', _teamId);
-  if (r && r.error) { uiAlert(r.error.message); return; }
+  if (r && r.error) { uiAlert(friendlyError(r.error, 'cambiar el plan')); return; }
   _teamPlan = plan; renderSeats(); uiToast('✓ Plan: ' + (PLAN_LABEL[plan] || plan));
 }
 async function setMemberSeat(userId, seatType) {
   if (!isWorkspaceOwner()) return;
   const sb = await getSb(); if (!sb || !_teamId) return;
   const r = await sb.from('team_members').update({ seat_type: seatType }).eq('team_id', _teamId).eq('user_id', userId);
-  if (r && r.error) { uiAlert(r.error.message); return; }
+  if (r && r.error) { uiAlert(friendlyError(r.error, 'cambiar el asiento')); return; }
   const m = _teamMembers.find(x => x.user_id === userId); if (m) m.seat_type = seatType;
   renderSeats();
 }
@@ -818,7 +826,7 @@ async function createInvite() {
   // Inserta con metadatos; si las columnas nuevas aún no existen, cae al insert mínimo.
   let r = await sb.from('invites').insert(row);
   if (r.error) r = await sb.from('invites').insert({ token: tok, team_id: _teamId });
-  if (r.error) { document.getElementById('team-invite').innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(r.error.message)}</div>`; return; }
+  if (r.error) { document.getElementById('team-invite').innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(friendlyError(r.error, 'crear la invitación'))}</div>`; return; }
   const link = `${location.origin}${location.pathname}?invite=${tok}`;
   const meta = [PRESET_LABELS[role] || role, scopeArtist ? 'alcance: ' + s((artists.find(a => a.id === scopeArtist) || {}).name || '') : 'todo el workspace', expDays ? 'expira en ' + expDays + 'd' : 'sin caducidad'].join(' · ');
   document.getElementById('team-invite').innerHTML = `
@@ -852,7 +860,7 @@ async function revokeInvite(token) {
   const sb = await getSb(); if (!sb) return;
   let r = await sb.from('invites').update({ revoked: true }).eq('token', token).eq('team_id', _teamId);
   if (r.error) r = await sb.from('invites').delete().eq('token', token).eq('team_id', _teamId); // fallback si no hay columna revoked
-  if (r && r.error) { uiAlert(r.error.message); return; }
+  if (r && r.error) { uiAlert(friendlyError(r.error, 'revocar la invitación')); return; }
   uiToast('✓ Invitación revocada');
   renderPendingInvites();
 }
@@ -875,7 +883,7 @@ async function setArtistUser(artistId, userId) {
   const a = artists.find(x => x.id === artistId); if (!a) return;
   a.userId = userId || null; saveArtistsLocal();
   const sb = await getSb();
-  if (sb) { const r = await sb.from('artists').update({ user_id: userId || null }).eq('id', artistId); if (r && r.error) { uiAlert(r.error.message); } }
+  if (sb) { const r = await sb.from('artists').update({ user_id: userId || null }).eq('id', artistId); if (r && r.error) { uiAlert(friendlyError(r.error, 'vincular el artista')); } }
   renderTeamModal();
   uiToast(userId ? '✓ Artista vinculado a su ficha' : '✓ Vínculo quitado');
 }
@@ -892,7 +900,7 @@ async function assignArtist(userId, makeArtist) {
       if (r.error) throw new Error(r.error.message);
     }
     await loadTeam(); renderTeamModal();
-  } catch (e) { uiAlert('No se pudo asignar el artista: ' + e.message); }
+  } catch (e) { uiAlert(friendlyError(e, 'asignar el artista')); }
 }
 // Mapea un rol de negocio (preset) al rol DB que entiende RLS (owner/editor/lector).
 function seatToDbRole(seat) {
@@ -908,7 +916,7 @@ async function updateMemberRole(userId, seat) {
   // Escribe seat_role + rol DB; si la columna seat_role aún no existe, cae a solo el rol DB.
   let r = await sb.from('team_members').update({ role: dbRole, seat_role: seat }).eq('team_id', _teamId).eq('user_id', userId);
   if (r && r.error) r = await sb.from('team_members').update({ role: dbRole }).eq('team_id', _teamId).eq('user_id', userId);
-  if (r && r.error) { uiAlert(r.error.message); return; }
+  if (r && r.error) { uiAlert(friendlyError(r.error, 'cambiar el rol')); return; }
   await loadTeam(); renderTeamModal();
 }
 // Revocar acceso: saca al miembro del equipo (solo el dueño).
@@ -919,7 +927,7 @@ async function removeMember(userId, email) {
   if (!ok) return;
   const sb = await getSb(); if (!sb) return;
   const r = await sb.from('team_members').delete().eq('team_id', _teamId).eq('user_id', userId);
-  if (r && r.error) { uiAlert(r.error.message); return; }
+  if (r && r.error) { uiAlert(friendlyError(r.error, 'revocar el acceso')); return; }
   uiToast('✓ Acceso revocado');
   await loadTeam(); renderTeamModal();
 }
@@ -928,7 +936,7 @@ async function forgotPassword() {
   const sb = await getSb(); const email = agVal('ag-email');
   if (!email) return agStatus('Escribe tu correo para recuperar la contraseña', true);
   const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
-  if (r.error) agStatus(r.error.message, true); else agStatus('Enviamos un enlace para restablecer tu contraseña a ' + email);
+  if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true); else agStatus('Enviamos un enlace para restablecer tu contraseña a ' + email);
 }
 // ajustes de cuenta
 function abrirCuenta() { toggleArtistMenu(false); renderCuenta(); document.getElementById('modal-account').classList.add('open'); }
@@ -960,7 +968,7 @@ async function cambiarPassword() {
   const st = document.getElementById('acc-status');
   if (pass.length < 6) { st.style.color = 'var(--accent2)'; st.textContent = 'Mínimo 6 caracteres'; return; }
   const r = await sb.auth.updateUser({ password: pass });
-  if (r.error) { st.style.color = 'var(--accent2)'; st.textContent = r.error.message; }
+  if (r.error) { st.style.color = 'var(--accent2)'; st.textContent = friendlyError(r.error, 'actualizar la contraseña'); }
   else { st.style.color = '#4ade80'; st.textContent = '✓ Contraseña actualizada'; }
 }
 
@@ -1008,6 +1016,39 @@ function uiToast(message, ms) {
   el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(20px)'; }, ms || 2600);
+}
+
+// Traduce errores técnicos (Postgres/Supabase/red/JS) a un mensaje en español que la persona
+// que usa la app pueda entender y, cuando aplica, accionar. El error crudo siempre queda en
+// consola para quien necesite depurar — nunca se pierde, solo deja de mostrarse en la UI.
+// No usar para pantallas de admin/backend (isAdmin()): esa audiencia sí puede actuar sobre
+// mensajes técnicos (faltan tablas, falta correr un .sql, etc.) y debe seguir viéndolos tal cual.
+function friendlyError(e, actionLabel) {
+  const raw = (e && e.message) || (typeof e === 'string' ? e : '') || '';
+  console.error('[friendlyError]' + (actionLabel ? ' ' + actionLabel : ''), e);
+  const low = raw.toLowerCase();
+  const accion = actionLabel ? `No se pudo ${actionLabel}.` : 'No se pudo completar la acción.';
+  if (/failed to fetch|networkerror|network request failed|load failed/.test(low))
+    return `${accion} Revisa tu conexión a internet e intenta de nuevo.`;
+  if (/jwt|session|not authenticated|401/.test(low))
+    return `${accion} Tu sesión expiró — vuelve a iniciar sesión.`;
+  if (/row-level security|permission denied|403|not authorized|forbidden/.test(low))
+    return `${accion} No tienes permiso para hacer esto.`;
+  if (/duplicate key|unique constraint|already exists/.test(low))
+    return `${accion} Ya existe un registro con esos datos.`;
+  if (/timeout|timed out/.test(low))
+    return `${accion} La operación tardó demasiado. Intenta de nuevo.`;
+  // Errores de autenticación (Supabase Auth) — ya bastante legibles en inglés, pero el resto
+  // de la app está en español, así que se traducen los casos más comunes del login.
+  if (/invalid login credentials/.test(low)) return `${accion} Correo o contraseña incorrectos.`;
+  if (/user already registered/.test(low)) return `${accion} Ya existe una cuenta con ese correo — inicia sesión en vez de crear una nueva.`;
+  if (/email not confirmed/.test(low)) return `${accion} Confirma tu correo antes de iniciar sesión (revisa tu bandeja de entrada).`;
+  if (/password should be at least/.test(low)) return `${accion} La contraseña debe tener al menos 6 caracteres.`;
+  // Errores de la API de IA (OpenAI/Anthropic/etc., configurada por la persona en Ajustes).
+  if (/invalid[_ ]api[_ ]?key|incorrect api key/.test(low)) return `${accion} Tu API key no es válida — revísala en Ajustes.`;
+  if (/insufficient_quota|insufficient quota|exceeded.*quota/.test(low)) return `${accion} Se acabó el crédito de tu cuenta de IA, o alcanzaste su límite de uso.`;
+  if (/rate limit|too many requests|429/.test(low)) return `${accion} Demasiadas solicitudes a la IA por ahora — espera un momento e intenta de nuevo.`;
+  return `${accion} Intenta de nuevo en un momento. Si el problema sigue, contacta a soporte.`;
 }
 
 // ══════════════════════════════════════════
