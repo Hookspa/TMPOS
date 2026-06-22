@@ -240,7 +240,7 @@ function _taskCardHTML(t) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
   const du = _dueInfo(t);
   const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
-  return `<div class="tk-card" style="border-left-color:${blocked ? 'var(--accent2)' : (TASK_PRI_COLOR[t.priority] || 'var(--border)')}" onclick="openTaskContext('${t.id}')">
+  return `<div class="tk-card" onclick="openTaskContext('${t.id}')">
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
       <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}</div>

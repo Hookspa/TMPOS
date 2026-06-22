@@ -98,7 +98,7 @@ function tareasPanelHTML(kind){
   const rows=arr.map(tk=>{ const done=tk.estado===TASK_DONE; const overdue=tk.dueDate && !done && new Date(tk.dueDate+'T00:00:00')<new Date(new Date().toDateString());
     const blocked=(typeof taskIsBlocked==='function')&&taskIsBlocked(tk);
     const depsCount=(tk.deps||[]).length;
-    return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;${blocked?'border-left:3px solid var(--accent2)':''}">
+    return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       ${blocked?`<span title="${(typeof blockedReason==='function')?blockedReason(tk):'Bloqueada'}" style="color:var(--accent2);display:flex">${icon('lock',13)}</span>`:''}
       <input class="input" style="flex:1;min-width:140px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
       ${assigneeSelectHTML(tk.responsable, `onchange="setTaskField('${kind}','${tk.id}','responsable',this.value)"`, 'width:auto;min-width:130px;padding:6px 9px;font-size:12px')}
@@ -138,5 +138,5 @@ function releaseAlerts(l){
 function alertsHTML(l){
   const a = releaseAlerts(l);
   if(!a.length) return '';
-  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'};border-left:3px solid ${x.level==='red'?'var(--accent2)':'var(--beat)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
+  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
 }

@@ -1315,9 +1315,9 @@ function kanbanCardHTML(launchId, ci) {
   const fecha = ci.fecha ? `${MESES_CAL[new Date(ci.fecha+'T00:00:00').getMonth()]} ${new Date(ci.fecha+'T00:00:00').getDate()}` : '—';
   const canEditCal = (typeof canDo !== 'function') || canDo('edit_launch');
   const delX = canEditCal ? `<button class="kc-del" onclick="event.stopPropagation();deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
-  return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="border-left:3px solid ${col};position:relative">
+  return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="position:relative">
     ${delX}
-    <div class="kc-title" style="padding-right:16px">${s(ci.title)}</div>
+    <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${s(ci.title)}</div>
     <div class="kc-meta">${fecha} · ${ESTADO_ICON[est] || ''} ${est}</div>
   </div>`;
 }
@@ -2285,10 +2285,10 @@ function renderLabel() {
       legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
       next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
     ].filter(Boolean).join(' ');
-    return `<div onclick="setActiveArtist('${art.id}');showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<div onclick="setActiveArtist('${art.id}');showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 9)} ${s(art.name)}</div>
+        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${s(art.name)}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
         ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>` : ''}
         ${bar}
@@ -2419,10 +2419,14 @@ function renderAprendizajes() {
   const L = art.learnings || [];
   if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${s(art.name)}. Usa “Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
   host.innerHTML = L.map((it, i) => {
-    const cls = it.type === 'good' ? ' good' : (it.type === 'bad' ? ' bad' : '');
-    return `<div class="learn-card${cls}">
+    // antes el color vivía solo en el border-left de la tarjeta (patrón de borde lateral
+    // que no debería usarse); ahora es un punto + etiqueta junto al tag, mismo significado.
+    const sigCol = it.type === 'good' ? '#4ade80' : (it.type === 'bad' ? 'var(--accent2)' : '');
+    const sigLabel = it.type === 'good' ? 'Funcionó' : (it.type === 'bad' ? 'No funcionó' : '');
+    const sig = sigCol ? `<span class="learn-sig-dot" style="background:${sigCol}"></span><span style="color:${sigCol}">${sigLabel}</span> · ` : '';
+    return `<div class="learn-card">
       <button class="goal-btn reject" style="float:right" onclick="quitarAprendizaje(${i})" title="Quitar">${icon('close',12)}</button>
-      <div class="learn-tag">${s(it.tag || art.name)}</div>
+      <div class="learn-tag" style="display:flex;align-items:center;gap:6px">${sig}${s(it.tag || art.name)}</div>
       <div class="learn-q">${s(it.q)}</div>
       <div class="learn-a">${s(it.a)}</div>
       ${it.meta ? `<div class="learn-meta">${s(it.meta)}</div>` : ''}
@@ -3138,8 +3142,8 @@ function renderCampanias() {
     const isEv = l.type === 'evergreen';
     const col = isEv ? (l.color || 'var(--beat)') : 'var(--accent)';
     const st = isEv ? 'always-on' : ((STATUS_MAP[l.status] || {}).word || l.status);
-    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <span style="width:11px;height:11px;border-radius:3px;background:${col};flex-shrink:0"></span>
+    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
       <div style="flex:1;min-width:200px">
         <div style="font-size:15px;font-weight:600">${s(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${art ? s(art.name) : '—'} · ${s(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
