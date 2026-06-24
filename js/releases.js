@@ -562,6 +562,28 @@ function renderIdeas() {
       <div id="pitch-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
     </div>`; })()}
 
+    ${(() => {
+      const art = activeArtist(); const ready = adnReady(art); const plan = a.planContenido || [];
+      let inner;
+      if (!ready) inner = `<div class="empty-hint">Completa el ADN del artista para auto-generar el plan de contenido (prensa, performance, social…).</div>`;
+      else if (!plan.length) inner = `<div class="empty-hint">Genera el plan: la IA propone las piezas de video (prensa, performance, detrás de cámaras…) según el ADN del artista y de la campaña.</div>`;
+      else {
+        const groups = {}; plan.forEach((p, i) => { const k = s(p.categoria) || 'Otros'; (groups[k] = groups[k] || []).push({ p, i }); });
+        inner = Object.keys(groups).map(k => `<div style="margin-bottom:12px"><div class="brief-label" style="margin-bottom:6px">${esc(k)}</div>${groups[k].map(({ p, i }) => `<div class="panel" style="display:flex;gap:10px;align-items:flex-start;padding:9px 11px;margin-bottom:6px">
+          <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(p.titulo)}</div>${p.formato ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-top:2px">${esc(p.formato)}</div>` : ''}${p.porque ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4">${esc(p.porque)}</div>` : ''}</div>
+          <button class="goal-btn reject" title="Quitar pieza" onclick="quitarPlanItem(${i})">${icon('close',12)}</button></div>`).join('')}</div>`).join('');
+      }
+      return `<div class="panel">
+        <div class="panel-head"><span class="ph-icon">${icon('video',18)}</span><span class="ph-title">Contenido por ADN</span><span class="ph-sub">Prensa, performance, social… desde el ADN</span></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-primary" onclick="generarPlanContenido()"${ready ? '' : ' disabled style="opacity:.5;cursor:not-allowed"'}>${icon('ai',13)} ${plan.length ? 'Regenerar' : 'Generar'} plan</button>
+          <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Usa el ADN del artista + el ADN de la campaña</span>
+        </div>
+        ${inner}
+        <div id="plan-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+      </div>`;
+    })()}
+
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
       <div class="ideas-grid">${ideasHTML}</div>
@@ -981,9 +1003,9 @@ async function extraerHooks() {
   const st = document.getElementById('letra-status');
   if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Extrayendo ganchos de la letra…`; }
   try {
-    const prompt = `Eres estratega de contenido musical. De la LETRA, identifica los 5 fragmentos más "ganchudos" para un video corto (TikTok/Reels): frases memorables, repetibles, con tensión emocional o que funcionen como hook. Usa frases TEXTUALES de la letra (no las reescribas). Devuelve SOLO un array JSON de strings.\n\nLETRA:\n${letra}`;
-    const { text, usage } = await callClaude(prompt, 600, 'extraer_hooks');
-    const arr = parseJSONArray(text).map(x => s(x).trim()).filter(Boolean).slice(0, 8);
+    const prompt = `Eres estratega de contenido para redes (TikTok/Instagram). De la LETRA, identifica entre 7 y 10 GANCHOS (hooks) CORTOS para video social: cada uno de 5 a 8 palabras MÁXIMO — frases memorables, repetibles, con tensión o que enganchen en el primer segundo. Usa frases TEXTUALES de la letra (no las reescribas ni las alargues). Si una frase es muy larga, recórtala a su parte más ganchuda. Devuelve SOLO un array JSON de strings.\n\nLETRA:\n${letra}`;
+    const { text, usage } = await callClaude(prompt, 700, 'extraer_hooks');
+    const arr = parseJSONArray(text).map(x => s(x).trim()).filter(Boolean).slice(0, 10);
     if (!arr.length) throw new Error('No se identificaron ganchos en la letra.');
     a.hooks = arr;
     a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
@@ -1046,6 +1068,55 @@ function copyPitch(which) {
   const t = s(a.pitchEditorial[which]); if (!t) return;
   if (navigator.clipboard) { navigator.clipboard.writeText(t).then(() => { if (typeof uiToast === 'function') uiToast('✓ Copiado'); }); }
 }
+
+// ── Plan de contenido por ADN — call-out de videos (prensa, performance, social…) ──
+// Se auto-genera desde el ADN del artista, tomando en cuenta el ADN de la campaña.
+function adnReady(art) {
+  const adn = (art && art.adn) || {};
+  return !!(((adn.personality || {}).tone) || (((adn.personality || {}).archetypes || []).length) ||
+            ((adn.sound || {}).genres) || ((adn.universe || {}).themes));
+}
+function buildPlanContenidoPrompt(a) {
+  const c = songContext(a); const adn = c.adn || {}; const d = c.dna || {};
+  return `Eres director de contenido de un sello musical. Con base en el ADN del ARTISTA (su identidad) y el ADN de la CAMPAÑA (este lanzamiento), propón un PLAN DE VIDEOS/CONTENIDO: las piezas que corresponden a ESTE artista, agrupadas por tipo. Incluye SIEMPRE una categoría "Prensa/EPK" y suma las que de verdad encajen con su identidad (ej. Performance, Detrás de cámaras, Social/Hook, Lyric/Visualizer, Entrevista, Live session). No fuerces categorías que no peguen con su ADN.
+
+ARTISTA: ${c.artistName}
+Arquetipos: ${((adn.personality||{}).archetypes||[]).join(', ')}
+Tono: ${s((adn.personality||{}).tone)}
+Temas: ${s((adn.universe||{}).themes)}
+Sonido/Géneros: ${s((adn.sound||{}).genres)}
+Audiencia ideal: ${s((adn.audience||{}).ideal)}
+
+CAMPAÑA (${s(a.name)}):
+Concepto: ${s(d.about)}
+Emoción: ${s(d.emotion)}
+Mensaje: ${s(d.message)}
+${songContextBlock(a)}
+Devuelve SOLO un array JSON de 6 a 9 piezas, con objetos de esta forma exacta:
+{"categoria":"tipo (ej. Prensa/EPK, Performance, Detrás de cámaras, Social/Hook, Lyric/Visualizer)","formato":"plataforma + duración","titulo":"título de la pieza","porque":"por qué encaja con el ADN del artista/campaña, en 1 frase"}`;
+}
+async function generarPlanContenido() {
+  const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  const art = activeArtist();
+  if (!adnReady(art)) { uiAlert('Primero completa el ADN del artista — el plan de contenido se arma desde ahí.'); return; }
+  if (!aiReady()) { abrirAISettings(); return; }
+  const ai = aiSettings();
+  const st = document.getElementById('plan-status');
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Armando el plan de contenido desde el ADN (${s(ai.model)})…`; }
+  try {
+    const { text, usage } = await callClaude(buildPlanContenidoPrompt(a), 1400, 'plan_contenido');
+    const arr = parseJSONArray(text).filter(x => x && (x.titulo || x.categoria)).slice(0, 12);
+    if (!arr.length) throw new Error('La IA no devolvió un plan en formato válido.');
+    a.planContenido = arr;
+    a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    saveLaunches(); renderIdeas();
+    if (typeof uiToast === 'function') uiToast(`✓ ${arr.length} piezas sugeridas por ADN`);
+  } catch (e) {
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}.`; }
+  }
+}
+function quitarPlanItem(i) { const a = activeLaunch(); if (!a || !Array.isArray(a.planContenido)) return; a.planContenido.splice(i, 1); saveLaunches(); renderIdeas(); }
 
 function abrirAISettings() {
   if (authed() && !isAdmin()) return; // config de IA: solo super-admin en modo equipo
