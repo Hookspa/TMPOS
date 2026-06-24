@@ -532,14 +532,35 @@ function renderIdeas() {
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Letra de la canción</span><span class="ph-sub">Genera el Campaign DNA desde la letra</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span></div>
       <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA desde la letra</button>
-        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Lee la letra + el ADN del artista → llena Concepto/Emoción/Problema/Mensaje/Keywords</span>
+        <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA</button>
+        <button class="btn btn-ghost" onclick="traducirLetra()">${icon('ai',13)} Traducir</button>
+        <button class="btn btn-ghost" onclick="extraerHooks()">${icon('ai',13)} Extraer ganchos</button>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">La letra → Concepto/Emoción/Mensaje/Keywords y semilla de ideas</span>
       </div>
+      ${s(a.letraTraducida) ? `<div style="margin-top:12px"><div class="brief-label" style="margin-bottom:4px">Traducción (editable)</div>
+        <textarea class="textarea" placeholder="Traducción de la letra…" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetraTraducida(this.value)">${s(a.letraTraducida)}</textarea></div>` : ''}
+      ${(a.hooks && a.hooks.length) ? `<div style="margin-top:12px"><div class="brief-label" style="margin-bottom:6px">Ganchos de la letra (${a.hooks.length}) · para "Burn the Song"</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${a.hooks.map((h, i) => `<div class="panel" style="display:flex;gap:8px;align-items:center;padding:7px 10px;margin:0"><span style="flex:1;font-size:12px;line-height:1.4">${esc(h)}</span><button class="goal-btn reject" title="Quitar gancho" onclick="quitarHook(${i})">${icon('close',12)}</button></div>`).join('')}</div></div>` : ''}
       <div id="letra-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
     </div>
+
+    ${(() => { const pe = a.pitchEditorial || {}; const sLen = s(pe.spotify).length; return `<div class="panel">
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Pitch editorial</span><span class="ph-sub">Spotify for Artists · máx 500 car.</span></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-primary" onclick="generarPitchEditorial()">${icon('ai',13)} ${pe.spotify ? 'Regenerar' : 'Generar'} pitch</button>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Usa ADN + Campaign DNA + la letra</span>
+      </div>
+      ${pe.spotify ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span class="brief-label">Spotify</span><span id="pitch-count" style="font-size:10px;font-family:var(--font-mono);color:${pitchCountColor(sLen)}">${sLen}/500</span></div>
+        <textarea class="textarea" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" oninput="setPitchField('spotify',this.value)" onchange="setPitchField('spotify',this.value)">${s(pe.spotify)}</textarea>
+        <div style="margin:6px 0 14px"><button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="copyPitch('spotify')">${icon('copy',12)} Copiar Spotify</button></div>
+        <div class="brief-label" style="margin-bottom:4px">Apple Music</div>
+        <textarea class="textarea" style="min-height:70px;width:100%;font-size:13px;line-height:1.5" onchange="setPitchField('apple',this.value)">${s(pe.apple)}</textarea>
+        <div style="margin-top:6px"><button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="copyPitch('apple')">${icon('copy',12)} Copiar Apple</button></div>` : '<div class="empty-hint">Genera el pitch para tener tu draft de Spotify y Apple, listo para copiar.</div>'}
+      <div id="pitch-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+    </div>`; })()}
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
@@ -779,7 +800,7 @@ Emoción: ${s(d.emotion)}
 Problema: ${s(d.problem)}
 Mensaje: ${s(d.message)}
 Keywords: ${s(d.keywords)}
-
+${songContextBlock(a)}
 REFERENCIAS DE INSPIRACIÓN SELECCIONADAS:
 ${refs}
 
@@ -897,6 +918,135 @@ async function generarDNADesdeLetra() {
     if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}. Revisa la API en ${icon('settings',12)}.`; }
   }
 }
+
+// ══════════════════════════════════════════
+// LA CANCIÓN COMO SEMILLA (Tier 0) — la letra alimenta TODOS los generadores
+// ══════════════════════════════════════════
+// Contexto único de la canción que consumen los prompts (DNA, ideas, pitch, hooks).
+function songContext(a) {
+  a = a || activeLaunch() || {};
+  const art = activeArtist() || {}; const adn = art.adn || {};
+  return {
+    letra: s(a.letra),
+    traduccion: s(a.letraTraducida),
+    hooks: Array.isArray(a.hooks) ? a.hooks : [],
+    dna: a.dna || {},
+    artistName: s(art.name),
+    adn,
+  };
+}
+// Bloque de texto reutilizable para inyectar la letra en cualquier prompt (vacío si no hay letra).
+function songContextBlock(a) {
+  const c = songContext(a);
+  if (!c.letra) return '';
+  let b = `\nLETRA DE LA CANCIÓN (fuente principal — cita frases reales de la letra, no inventes):\n${c.letra}\n`;
+  if (c.traduccion) b += `\nTRADUCCIÓN (referencia de significado):\n${c.traduccion}\n`;
+  if (c.hooks.length) b += `\nGANCHOS YA IDENTIFICADOS (priorízalos):\n${c.hooks.map(h => '- ' + s(h)).join('\n')}\n`;
+  return b;
+}
+function setLaunchLetraTraducida(v) { const a = activeLaunch(); if (!a) return; a.letraTraducida = s(v); saveLaunches(); }
+
+// ── Traducir la letra (IA, robusto para texto largo — no el endpoint gtx) ──
+async function traducirLetra() {
+  const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  const letra = s((document.getElementById('letra-input') || {}).value || a.letra).trim();
+  if (!letra) { uiAlert('Escribe o pega la letra de la canción primero.'); return; }
+  a.letra = letra; saveLaunches();
+  if (!aiReady()) { abrirAISettings(); return; }
+  const ai = aiSettings();
+  const st = document.getElementById('letra-status');
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Traduciendo la letra (${s(ai.model)})…`; }
+  try {
+    const prompt = `Traduce al español la siguiente letra de canción. Conserva el sentido, el tono y los modismos; si hay un regionalismo o slang, acláralo brevemente entre [corchetes]. Devuelve SOLO la traducción, sin comentarios ni encabezados.\n\nLETRA:\n${letra}`;
+    const { text, usage } = await callClaude(prompt, 1200, 'traducir_letra');
+    a.letraTraducida = s(text).trim();
+    a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    saveLaunches(); renderIdeas();
+    if (typeof uiToast === 'function') uiToast('✓ Letra traducida');
+  } catch (e) {
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}.`; }
+  }
+}
+
+// ── Extraer ganchos de la letra → alimenta "Burn the Song" (testeo A/B de hooks) ──
+async function extraerHooks() {
+  const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  const letra = s((document.getElementById('letra-input') || {}).value || a.letra).trim();
+  if (!letra) { uiAlert('Escribe o pega la letra de la canción primero.'); return; }
+  a.letra = letra; saveLaunches();
+  if (!aiReady()) { abrirAISettings(); return; }
+  const ai = aiSettings();
+  const st = document.getElementById('letra-status');
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Extrayendo ganchos de la letra…`; }
+  try {
+    const prompt = `Eres estratega de contenido musical. De la LETRA, identifica los 5 fragmentos más "ganchudos" para un video corto (TikTok/Reels): frases memorables, repetibles, con tensión emocional o que funcionen como hook. Usa frases TEXTUALES de la letra (no las reescribas). Devuelve SOLO un array JSON de strings.\n\nLETRA:\n${letra}`;
+    const { text, usage } = await callClaude(prompt, 600, 'extraer_hooks');
+    const arr = parseJSONArray(text).map(x => s(x).trim()).filter(Boolean).slice(0, 8);
+    if (!arr.length) throw new Error('No se identificaron ganchos en la letra.');
+    a.hooks = arr;
+    a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    saveLaunches(); renderIdeas();
+    if (typeof uiToast === 'function') uiToast(`✓ ${arr.length} ganchos extraídos`);
+  } catch (e) {
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}.`; }
+  }
+}
+function quitarHook(i) { const a = activeLaunch(); if (!a || !Array.isArray(a.hooks)) return; a.hooks.splice(i, 1); saveLaunches(); renderIdeas(); }
+
+// ── Pitch editorial (Spotify ≤500c + Apple) — Tier 1 #1 ──
+function buildPitchPrompt(a) {
+  const c = songContext(a); const d = c.dna || {}; const adn = c.adn || {};
+  return `Eres el artista escribiéndole DIRECTAMENTE al editor de playlists de Spotify (Spotify for Artists). Redacta un PITCH EDITORIAL para esta canción.
+
+REGLAS:
+- Máximo 480 caracteres en el de Spotify (el límite duro es 500). Cuenta los caracteres.
+- Tono humano y personal, NO corporativo — como si hablara el artista.
+- Incluye: de qué trata la canción, el mood/vibe, 1-2 influencias o comparaciones, y algo único del artista o la historia detrás.
+- En español.
+
+ARTISTA: ${c.artistName}
+Arquetipos: ${((adn.personality||{}).archetypes||[]).join(', ')}
+Sonido/Géneros: ${s((adn.sound||{}).genres)}
+CANCIÓN: ${s(a.name)}
+Concepto de campaña: ${s(d.about)}
+Emoción: ${s(d.emotion)}
+Mensaje clave: ${s(d.message)}
+${songContextBlock(a)}
+Devuelve SOLO un objeto JSON válido: {"spotify":"pitch de máximo 480 caracteres","apple":"versión más corta para Apple Music, máximo 250 caracteres"}`;
+}
+async function generarPitchEditorial() {
+  const a = activeLaunch(); if (!a) return;
+  if (!requireCan('use_generador_ia')) return;
+  if (!aiReady()) { abrirAISettings(); return; }
+  const ai = aiSettings();
+  const st = document.getElementById('pitch-status');
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el pitch editorial (${s(ai.model)})…`; }
+  try {
+    const { text, usage } = await callClaude(buildPitchPrompt(a), 700, 'pitch_editorial');
+    const obj = parseJSONObj(text);
+    if (!obj || !obj.spotify) throw new Error('La IA no devolvió un pitch en formato válido.');
+    a.pitchEditorial = { spotify: s(obj.spotify).trim(), apple: s(obj.apple).trim() };
+    a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
+    saveLaunches(); renderIdeas();
+    if (typeof uiToast === 'function') uiToast('✓ Pitch editorial generado');
+  } catch (e) {
+    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}.`; }
+  }
+}
+function pitchCountColor(n) { return n > 500 ? 'var(--accent2)' : (n > 480 ? 'var(--beat)' : 'var(--text-dim)'); }
+function setPitchField(which, v) {
+  const a = activeLaunch(); if (!a) return;
+  a.pitchEditorial = a.pitchEditorial || {}; a.pitchEditorial[which] = s(v); saveLaunches();
+  if (which === 'spotify') { const el = document.getElementById('pitch-count'); if (el) { const n = s(v).length; el.textContent = `${n}/500`; el.style.color = pitchCountColor(n); } }
+}
+function copyPitch(which) {
+  const a = activeLaunch(); if (!a || !a.pitchEditorial) return;
+  const t = s(a.pitchEditorial[which]); if (!t) return;
+  if (navigator.clipboard) { navigator.clipboard.writeText(t).then(() => { if (typeof uiToast === 'function') uiToast('✓ Copiado'); }); }
+}
+
 function abrirAISettings() {
   if (authed() && !isAdmin()) return; // config de IA: solo super-admin en modo equipo
   const ai = aiSettings();
