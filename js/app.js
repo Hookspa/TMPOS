@@ -2261,6 +2261,7 @@ function updateLabelNav() {
 function renderLabel() {
   const statsHost = document.getElementById('label-stats');
   const listHost = document.getElementById('label-list');
+  if (typeof renderRosterHeatmap === 'function') renderRosterHeatmap(); // carga semanal del roster (siempre)
   if (!artists.length) { statsHost.innerHTML = ''; listHost.innerHTML = '<div class="empty-hint">No hay artistas en este equipo todavía.</div>'; return; }
   const perf = artists.map(a => ({ art: a, p: artistPerformance(a) }));
   perf.sort((x, y) => (x.p.rank - y.p.rank) || ((x.p.avg == null ? 999 : x.p.avg) - (y.p.avg == null ? 999 : y.p.avg)));
