@@ -2373,13 +2373,17 @@ function buildGoalsPrompt(a) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
   const hist = (artistLaunches() || []).filter(l => latestEntries(l.metricEntries).length)
     .map(l => `- ${l.name}: ${latestEntries(l.metricEntries).map(e => `${e.metric} ${fmtNum(e.value)}`).join(', ')}`).join('\n') || '(sin histórico de métricas)';
-  return `Eres analista de marketing musical. Propón objetivos SMART (metas medibles) para la campaña de una canción.
+  // Auditoría del release anterior → brief: qué replicar / qué evitar, desde los aprendizajes del artista.
+  const learn = (art.learnings || []).slice(0, 8).map(x => `- (${x.type === 'good' ? 'funcionó' : x.type === 'bad' ? 'no funcionó' : 'neutral'}) ${s(x.q)}`).join('\n') || '(sin aprendizajes registrados)';
+  return `Eres analista de marketing musical. Propón objetivos SMART (metas medibles) para la campaña de una canción. Aprovecha los APRENDIZAJES de lanzamientos anteriores: sé más ambicioso donde algo funcionó y más prudente donde no.
 
 ARTISTA: ${s(art.name)} · Géneros: ${s((adn.sound||{}).genres)} · Audiencia: ${s((adn.audience||{}).ideal)}
 CAMPAÑA (${s(a.name)}): ${s(d.about)} · Mensaje: ${s(d.message)}
 Plataforma principal: ${s((a.content||{}).platform)} · Pre/Post: ${a.preDays}/${a.postDays} días
 HISTÓRICO DE LANZAMIENTOS DEL ARTISTA:
 ${hist}
+APRENDIZAJES (qué replicar / qué evitar):
+${learn}
 
 Devuelve SOLO un array JSON (4-6 objetos), sin texto extra:
 {"platform":"Spotify|TikTok|Instagram|YouTube","metric":"nombre de la métrica","sub":"ventana de tiempo","target":"valor objetivo (ej. 150K, +5K, 2M)"}`;

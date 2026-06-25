@@ -1609,7 +1609,9 @@ function awResultHTML(g) {
   return `
     <div class="wiz-field"><label>Bio · 1 línea</label><input class="input" value="${s(g.bio_1line)}" oninput="awData.generated.bio_1line=this.value"></div>
     <div class="wiz-field"><label>Bio · ~100 palabras</label><textarea class="textarea" oninput="awData.generated.bio_100=this.value">${s(g.bio_100)}</textarea></div>
+    <div class="wiz-field"><label>Bio · ~250 palabras <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">prensa / medios</span></label><textarea class="textarea" style="min-height:110px" oninput="awData.generated.bio_250=this.value">${s(g.bio_250)}</textarea></div>
     <div class="wiz-field"><label>Bio · ~300 palabras</label><textarea class="textarea" style="min-height:120px" oninput="awData.generated.bio_300=this.value">${s(g.bio_300)}</textarea></div>
+    <div class="wiz-field"><label>Bio · ~500 palabras <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">booking / festivales</span></label><textarea class="textarea" style="min-height:150px" oninput="awData.generated.bio_500=this.value">${s(g.bio_500)}</textarea></div>
     <div class="stepper-row" style="grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
       <div class="wiz-field" style="margin:0"><label>Tono de comunicación</label><input class="input" value="${s(g.tono)}" oninput="awData.generated.tono=this.value"></div>
       <div class="wiz-field" style="margin:0"><label>Keywords</label><input class="input" value="${s((g.keywords||[]).join(', '))}" oninput="awData.generated.keywords=this.value.split(',').map(x=>x.trim()).filter(Boolean)"></div>
@@ -1630,7 +1632,9 @@ Devuelve SOLO un objeto JSON válido, en español, con esta forma:
 {
  "bio_1line": "bio en 1 línea potente",
  "bio_100": "bio de ~100 palabras",
+ "bio_250": "bio de ~250 palabras (para prensa/medios)",
  "bio_300": "bio de ~300 palabras",
+ "bio_500": "bio de ~500 palabras (para booking/festivales, con más contexto de trayectoria)",
  "tono": "tono de comunicación definido en 1 frase",
  "narrativa": "narrativa de campaña base en 2-3 frases",
  "keywords": ["8 a 12 keywords estratégicos de marca"]
@@ -1655,7 +1659,7 @@ function awFinish() {
     genre: awData.genre, country: awData.country,
     socials: { ig: awData.ig, tiktok: awData.tiktok, youtube:'', x:'' },
     dsps: { spotify: awData.spotify, apple:'', ytmusic:'', other:'' },
-    bio: g ? { oneLine: g.bio_1line || '', short: g.bio_100 || '', long: g.bio_300 || '' } : { oneLine:'', short:'', long:'' },
+    bio: g ? { oneLine: g.bio_1line || '', short: g.bio_100 || '', press: g.bio_250 || '', long: g.bio_300 || '', booking: g.bio_500 || '' } : { oneLine:'', short:'', press:'', long:'', booking:'' },
     keywords: g ? (Array.isArray(g.keywords) ? g.keywords.join(', ') : s(g.keywords)) : '',
     adn: Object.assign(emptyADN(), {
       identity: { history: awData.hist.from, mission: awData.hist.drive, vision:'', values:'' },
