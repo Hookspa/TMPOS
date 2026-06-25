@@ -10,11 +10,12 @@ const DEFAULT_TRACK_CHECKLIST = {
 };
 // Checklist a nivel RELEASE
 const RELEASE_CHECKLIST = {
+  intake:  [['masterWav','Máster final (WAV)'],['arteAlta','Arte alta-res (≥3000px)'],['letraEntregada','Letra entregada'],['creditosLegales','Créditos / nombres legales'],['splitsDefinidos','% de splits definidos'],['linksPlataformas','Links de plataformas (Spotify/Apple)']],
   visual:  [['coverCreado','Cover creado'],['coverAprobado','Cover aprobado'],['coverFormatoOK','Cover formato OK'],['assetsSubidos','Assets subidos']],
   distrib: [['distribuidoraSeleccionada','Distribuidora seleccionada'],['upcGenerado','UPC generado'],['fechaConfirmada','Fecha confirmada'],['subidoADistribucion','Subido a distribución'],['pitchEditorial','Pitch editorial']],
   mkt:     [['adnCampanaCompleto','ADN de campaña completo'],['planContenido','Plan de contenido'],['calendarioCreado','Calendario creado'],['presupuestoDefinido','Presupuesto definido'],['planMediosDefinido','Plan de medios definido']],
 };
-const CHECKLIST_GROUP_LABEL = { audio:'Audio', legal:'Legal', distrib:'Distribución', visual:'Visual', mkt:'Marketing', otros:'Otros' };
+const CHECKLIST_GROUP_LABEL = { intake:'Intake (del artista)', audio:'Audio', legal:'Legal', distrib:'Distribución', visual:'Visual', mkt:'Marketing', otros:'Otros' };
 
 function _countChecklist(obj, def) {
   let done = 0, total = 0;
@@ -139,4 +140,67 @@ function alertsHTML(l){
   const a = releaseAlerts(l);
   if(!a.length) return '';
   return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// ESPACIADO + CARGA DE ROSTER (Tier 2 #5) — guardarraíles de calendario
+// ══════════════════════════════════════════
+// Clave de semana ISO (lunes-domingo) para agrupar releases del roster.
+function _isoWeekKey(dateStr){
+  const d=new Date(s(dateStr)+'T00:00:00'); if(isNaN(d)) return '';
+  const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day);
+  const yearStart=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  const wk=Math.ceil((((dt-yearStart)/86400000)+1)/7);
+  return dt.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+// Otros releases del roster (todo el workspace) en la misma semana del drop.
+function rosterReleasesInWeek(dateStr, excludeId){
+  const key=_isoWeekKey(dateStr); if(!key) return [];
+  const all=(typeof launches!=='undefined')?launches:[];
+  return all.filter(l=>l.id!==excludeId && l.date && _isoWeekKey(l.date)===key);
+}
+// Avisos de lead-time (≥6 sem) y de carga de roster (máx 2–3/semana).
+function releaseSpacingWarnings(l){
+  const out=[]; if(!l||!l.date) return out;
+  const dleft=(typeof diasRestantes==='function')?diasRestantes(l.date):null;
+  const released=(l.status==='complete')||(dleft!=null&&dleft<0);
+  if(!released && dleft!=null && dleft>=0 && dleft<42){
+    out.push({level: dleft<21?'red':'yellow', text:`Lead-time corto: ${dleft}d al drop (ideal ≥42). Menos de 6 semanas arriesga la ventana de pitch editorial.`});
+  }
+  const wk=rosterReleasesInWeek(l.date, l.id);
+  if(wk.length>=2){
+    const names=wk.map(x=>s(x.name)).filter(Boolean).slice(0,3).join(', ');
+    out.push({level: wk.length>=3?'red':'yellow', text:`Semana cargada en el roster: ${wk.length+1} releases la misma semana${names?` (${names}${wk.length>3?'…':''})`:''}. Recomendado: máx 2–3/semana.`});
+  }
+  return out;
+}
+function spacingHTML(l){
+  const a=releaseSpacingWarnings(l);
+  if(!a.length) return '';
+  return `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span style="display:inline-flex;color:${x.level==='red'?'var(--accent2)':'var(--beat)'}">${icon('calendar',13)}</span><span style="flex:1">${x.text}</span></div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// "QUÉ FALTA PARA LANZAR" enriquecido (Tier 2 #7)
+// ══════════════════════════════════════════
+// Lista accionable de pendientes: checklist (release + tracks) + tareas abiertas.
+function releaseWhatsMissing(l){
+  const out=[]; if(!l) return out;
+  const rc=l.releaseChecklist||{};
+  Object.keys(RELEASE_CHECKLIST).forEach(g=>{ RELEASE_CHECKLIST[g].forEach(([k,label])=>{ if(!(rc[g]&&rc[g][k])) out.push({type:g, label, area:CHECKLIST_GROUP_LABEL[g]||g}); }); });
+  const ts=(typeof tracksOfLaunch==='function')?tracksOfLaunch(l):[];
+  ts.forEach(t=>{ const def=trackChecklistDef(t); const c=t.checklist||{};
+    Object.keys(def).forEach(g=>{ (def[g]||[]).forEach(([k,label])=>{ if(!(c[g]&&c[g][k])) out.push({type:g, label:`${label} — ${s(t.title)||'track'}`, area:CHECKLIST_GROUP_LABEL[g]||g}); }); }); });
+  const _t=(typeof tasks!=='undefined')?tasks.filter(x=>x.releaseId===l.id && x.estado!==TASK_DONE):[];
+  _t.forEach(tk=>{ const overdue=tk.dueDate&&(typeof diasRestantes==='function')&&diasRestantes(tk.dueDate)<0; out.push({type:'task', label:s(tk.titulo)||'Tarea', area:'Tareas', blocking: !!overdue || tk.estado==='bloqueado'}); });
+  return out;
+}
+function whatsMissingHTML(l){
+  const items=releaseWhatsMissing(l);
+  if(!items.length) return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span></div><div class="empty-hint" style="color:#4ade80;border-color:rgba(74,222,128,.3)">${icon('check',13)} Todo listo para lanzar</div></div>`;
+  const byArea={}; items.forEach(it=>{ (byArea[it.area]=byArea[it.area]||[]).push(it); });
+  const blocking=items.filter(it=>it.blocking).length;
+  const rows=Object.keys(byArea).map(area=>`<div style="margin-bottom:10px"><div class="brief-label" style="margin-bottom:4px">${esc(area)} <span style="color:var(--text-dim)">· ${byArea[area].length}</span></div>${byArea[area].slice(0,8).map(it=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span class="dot ${it.blocking?'dot--red':'dot--yellow'}"></span><span style="flex:1">${esc(it.label)}</span></div>`).join('')}${byArea[area].length>8?`<div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:4px">+${byArea[area].length-8} más</div>`:''}</div>`).join('');
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span><span class="ph-sub">${items.length} pendientes${blocking?` · ${blocking} bloqueantes`:''}</span></div>${rows}</div>`;
 }

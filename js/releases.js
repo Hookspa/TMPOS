@@ -332,10 +332,12 @@ function releaseResumenHTML(l) {
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
       ${alertsHTML(l)}
+      ${(typeof spacingHTML==='function') ? spacingHTML(l) : ''}
       ${tplBtn}
     </div>`;
   const aprPanel = (typeof approvalsPanelHTML==='function') ? approvalsPanelHTML(l) : '';
-  return statusPanel + aprPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
+  const missingPanel = (typeof whatsMissingHTML==='function') ? whatsMissingHTML(l) : '';
+  return statusPanel + aprPanel + missingPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
 }
 // Identidad del release (UPC / distribuidora / notas)
 function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }
