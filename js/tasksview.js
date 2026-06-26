@@ -185,7 +185,7 @@ function updateTaskBadge() {
 }
 
 // ── Render principal ──
-const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Gantt','trend'],['assignee','Por responsable','team'],['jerarquia','Jerarquía','releases'],['quefalta','Qué falta','warning']];
+const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Gantt','trend'],['assignee','Por responsable','team'],['carga','Carga','clock'],['jerarquia','Jerarquía','releases'],['quefalta','Qué falta','warning']];
 function renderTareas() {
   updateTaskBadge();
   const head = document.getElementById('tareas-head'); if (!head) return;
@@ -210,7 +210,7 @@ function renderTareas() {
     </div>
     <div class="tv-toolbar">
       <div class="tv-tabs">${TV_TABS.map(t => `<div class="tv-tab ${_tv.view === t[0] ? 'active' : ''}" onclick="tvSetView('${t[0]}')">${icon(t[2], 13)} ${t[1]}</div>`).join('')}</div>
-      ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia') ? '' : `<div class="tv-filters">
+      ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia' || _tv.view === 'carga') ? '' : `<div class="tv-filters">
         <input class="tv-search" placeholder="Buscar tarea…" value="${s(_tv.q)}" oninput="tvSearch(this.value)">
         <select onchange="tvFilter('estado',this.value)"><option value="">Estado: todos</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${_tv.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
         <select onchange="tvFilter('priority',this.value)"><option value="">Prioridad: todas</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${_tv.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
@@ -230,6 +230,7 @@ function renderTareas() {
 function tvRenderBody() {
   const body = document.getElementById('tareas-body'); if (!body) return;
   if (_tv.view === 'jerarquia') { body.innerHTML = tvTree(); return; }
+  if (_tv.view === 'carga') { body.innerHTML = tvWorkload(); return; }
   const list = tvFilteredTasks();
   if (_tv.view === 'quefalta') { body.innerHTML = tvQueFalta(); return; }
   if (!list.length) { body.innerHTML = `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Sin tareas que mostrar con estos filtros.</div></div>`; return; }
@@ -547,6 +548,41 @@ function tvTree() {
     </div>`;
   }).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Tu roster como árbol — Artista → Release → Track. El número es tareas abiertas. Click para navegar.</div>${html}`;
+}
+
+// ══════════════════════════════════════════
+// VISTA: CARGA / WORKLOAD (Sprint C) — tareas abiertas por responsable por semana
+// Reusa el patrón del heatmap de roster, aplicado a personas (¿quién está saturado?).
+// ══════════════════════════════════════════
+function tvWorkload() {
+  const open = tasks.filter(t => t.estado !== TASK_DONE && t.estado !== 'aprobado');
+  if (!open.length) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">No hay tareas abiertas.</div></div>`;
+  const today = new Date(); const day = (today.getDay() || 7);
+  const monday = new Date(today); monday.setDate(today.getDate() - (day - 1)); monday.setHours(0, 0, 0, 0);
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const N = 6, weeks = [];
+  for (let i = 0; i < N; i++) { const sdt = new Date(monday); sdt.setDate(monday.getDate() + i * 7); weeks.push({ key: (typeof _isoWeekKey === 'function') ? _isoWeekKey(sdt.toISOString().slice(0, 10)) : ('w' + i), label: `${sdt.getDate()} ${months[sdt.getMonth()]}` }); }
+  const people = {};
+  open.forEach(t => { const k = t.responsable || '(sin asignar)'; (people[k] = people[k] || []).push(t); });
+  const rows = Object.keys(people).map(k => {
+    const arr = people[k];
+    const perWeek = weeks.map(w => arr.filter(t => t.dueDate && (typeof _isoWeekKey === 'function') && _isoWeekKey(t.dueDate) === w.key).length);
+    return { k, total: arr.length, perWeek, noDate: arr.filter(t => !t.dueDate).length };
+  }).sort((a, b) => b.total - a.total);
+  const loadColor = n => n >= 4 ? 'var(--accent2)' : n >= 2 ? 'var(--beat)' : n >= 1 ? '#4ade80' : 'var(--surface2)';
+  const cols = `160px repeat(${N},1fr) 70px`;
+  const header = `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:6px;font-size:9px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:.5px"><div>RESPONSABLE</div>${weeks.map(w => `<div style="text-align:center">${w.label}</div>`).join('')}<div style="text-align:center">SIN FECHA</div></div>`;
+  const body = rows.map(r => {
+    const label = (r.k === '(sin asignar)') ? r.k : ((typeof _memberLabel === 'function') ? _memberLabel(r.k) : r.k);
+    return `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:4px;align-items:center">
+      <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)} <span style="color:var(--text-dim);font-weight:400;font-family:var(--font-mono);font-size:10px">${r.total}</span></div>
+      ${r.perWeek.map(n => `<div style="text-align:center;font-family:var(--font-display);font-size:15px;border-radius:6px;padding:5px 0;background:${loadColor(n)};${n >= 2 ? 'color:#1a1a1a' : 'color:var(--text-muted)'}">${n || ''}</div>`).join('')}
+      <div style="text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">${r.noDate || ''}</div>
+    </div>`;
+  }).join('');
+  const overloaded = rows.some(r => r.perWeek.some(n => n >= 4));
+  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:12px"><span class="dot dot--red"></span><span>Alguien tiene 4+ tareas en una semana — revisa la distribución de carga.</span></div>` : '';
+  return `<div class="empty-hint" style="margin-bottom:12px">Carga por responsable — tareas abiertas por semana (próximas ${N}). Color = saturación.</div>${banner}<div style="overflow-x:auto"><div style="min-width:640px">${header}${body}</div></div>`;
 }
 
 // ══════════════════════════════════════════
