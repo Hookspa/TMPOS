@@ -38,6 +38,7 @@ function normalizeTaskRow(t) {
   t.departamento = t.departamento || '';
   t.estado = t.estado || 'pendiente';
   t.priority = t.priority || 'media';
+  t.startDate = t.startDate || '';
   t.dueDate = t.dueDate || '';
   t.etiquetas = Array.isArray(t.etiquetas) ? t.etiquetas : [];
   t.checklistInterno = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];

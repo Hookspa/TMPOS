@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════
 
 let _tv = { view: 'list', mine: true, q: '', estado: '', priority: '', depto: '', artistId: '', tag: '', groupBy: 'none', sortBy: 'due', calMonth: null };
+let _tvSel = new Set(); // selección múltiple para acciones en lote (vista Lista)
 
 // ── Colores / etiquetas ──
 const TASK_ESTADO_COLOR = {
@@ -128,7 +129,34 @@ function tvDeleteView() {
 }
 
 // ── Setters ──
-function tvSetView(v) { _tv.view = v; if (v === 'calendar' && !_tv.calMonth) _tv.calMonth = new Date(); renderTareas(); }
+function tvSetView(v) { _tv.view = v; _tvSel.clear(); if (v === 'calendar' && !_tv.calMonth) _tv.calMonth = new Date(); renderTareas(); }
+// ── Acciones en lote (bulk) — selección múltiple en la vista Lista ──
+function tvToggleSel(id, e) { if (e) e.stopPropagation(); if (_tvSel.has(id)) _tvSel.delete(id); else _tvSel.add(id); tvRenderBody(); }
+function tvClearSel() { _tvSel.clear(); tvRenderBody(); }
+function tvBulkSet(field, val) {
+  if (!val) return;
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  _tvSel.forEach(id => updateTaskRow(id, { [field]: val }));
+  tvRenderBody(); updateTaskBadge();
+}
+async function tvBulkDelete() {
+  if (!_tvSel.size) return;
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  if (typeof uiConfirm === 'function' && !(await uiConfirm(`¿Eliminar ${_tvSel.size} tarea(s)? Esta acción no se puede deshacer.`))) return;
+  _tvSel.forEach(id => deleteTaskRow(id)); _tvSel.clear();
+  tvRenderBody(); updateTaskBadge();
+}
+function _tvBulkBar() {
+  if (!_tvSel.size) return '';
+  return `<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:12px">
+    <span style="font-size:12px;font-weight:600;color:var(--accent)">${_tvSel.size} seleccionada(s)</span>
+    <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('estado',this.value);this.value=''"><option value="">Estado…</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+    <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('priority',this.value);this.value=''"><option value="">Prioridad…</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+    ${(typeof assigneeSelectHTML === 'function') ? `<span onchange="tvBulkSet('responsable',event.target.value)">${assigneeSelectHTML('', '', 'width:auto;font-size:12px;padding:5px 8px')}</span>` : ''}
+    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;color:var(--accent2)" onclick="tvBulkDelete()">${icon('trash', 12)} Eliminar</button>
+    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;margin-left:auto" onclick="tvClearSel()">Limpiar</button>
+  </div>`;
+}
 function tvScope(mine) { _tv.mine = mine; renderTareas(); }
 function tvFilter(key, val) { _tv[key] = val; tvRenderBody(); updateTaskBadge(); }
 function tvSearch(val) { _tv.q = val; tvRenderBody(); }
@@ -277,11 +305,14 @@ function submitNewTask() {
 }
 
 // ── Vista: Lista ──
-function _taskCardHTML(t) {
+function _taskCardHTML(t, selectable) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
   const du = _dueInfo(t);
   const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
-  return `<div class="tk-card" onclick="openTaskDetail('${t.id}')">
+  const sel = selectable && _tvSel.has(t.id);
+  const selBox = selectable ? `<input type="checkbox" style="flex:0 0 auto;margin-right:2px" ${sel ? 'checked' : ''} onclick="tvToggleSel('${t.id}',event)">` : '';
+  return `<div class="tk-card" style="${sel ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''}" onclick="openTaskDetail('${t.id}')">
+    ${selBox}
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
       <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}${_subMeta(t)}</div>
@@ -298,12 +329,16 @@ function _priLabelDept(d) { const x = TASK_DEPTS.find(s2 => s2[0] === d); return
 function tvList(list) {
   const sorted = _sortTasks(list);
   const gb = _tv.groupBy || 'none';
-  if (gb === 'none') return sorted.map(_taskCardHTML).join('');
-  const groups = {};
-  sorted.forEach(t => { const k = _groupKey(t, gb); (groups[k] = groups[k] || []).push(t); });
-  return Object.keys(groups).sort(_groupSorter(gb)).map(k =>
-    `<div class="tk-group-h">${_groupLabel(gb, k)} <span style="color:var(--text-dim)">· ${groups[k].length}</span></div>${groups[k].map(_taskCardHTML).join('')}`
-  ).join('');
+  let body;
+  if (gb === 'none') body = sorted.map(t => _taskCardHTML(t, true)).join('');
+  else {
+    const groups = {};
+    sorted.forEach(t => { const k = _groupKey(t, gb); (groups[k] = groups[k] || []).push(t); });
+    body = Object.keys(groups).sort(_groupSorter(gb)).map(k =>
+      `<div class="tk-group-h">${_groupLabel(gb, k)} <span style="color:var(--text-dim)">· ${groups[k].length}</span></div>${groups[k].map(t => _taskCardHTML(t, true)).join('')}`
+    ).join('');
+  }
+  return _tvBulkBar() + body;
 }
 
 // ── Vista: Por responsable ──
@@ -537,6 +572,7 @@ function tdSide(t, editable) {
     ${row('Responsable', (typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="tdPatch({responsable:this.value})"`, 'width:100%;font-size:12px;padding:6px 8px') : '—')}
     ${row('Prioridad', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({priority:this.value})">${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${t.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
     ${row('Departamento', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({departamento:this.value})"><option value="">—</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${t.departamento === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
+    ${row('Fecha inicio', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.startDate)}" ${dis} onchange="tdPatch({startDate:this.value})">`)}
     ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
     ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <span style="cursor:pointer;opacity:.6" onclick="tdDelTag(${i})">×</span>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
     ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
