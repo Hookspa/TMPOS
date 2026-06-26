@@ -36,6 +36,13 @@ function _dueInfo(t) {
   return { label, cls };
 }
 function _meMatch(t) { const me = _meId(), email = _meEmail(); return t.responsable === me || (email && t.responsable === email); }
+// Progreso de subtareas (checklistInterno) para mostrar en las tarjetas — x/y, verde al 100%.
+function _subMeta(t) {
+  const a = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
+  if (!a.length) return '';
+  const d = a.filter(x => x && x.done).length;
+  return ` · <span style="font-family:var(--font-mono);color:${d === a.length ? '#4ade80' : 'var(--text-dim)'}">${icon('checklist', 10)} ${d}/${a.length}</span>`;
+}
 
 // ── Navegar al contexto de la tarea (release / track + pestaña Tareas) ──
 function openTaskContext(id) {
@@ -277,7 +284,7 @@ function _taskCardHTML(t) {
   return `<div class="tk-card" onclick="openTaskDetail('${t.id}')">
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
-      <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}</div>
+      <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}${_subMeta(t)}</div>
     </div>
     <div class="tk-right" onclick="event.stopPropagation()">
       ${priChip(t.priority)}
@@ -316,7 +323,7 @@ function tvKanban(list) {
     const c = TASK_ESTADO_COLOR[est];
     const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')">
         <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
-        <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span></div>
+        <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span>${_subMeta(t)}</div>
       </div>`).join('') || `<div style="font-size:11px;color:var(--text-dim);padding:6px 2px">—</div>`;
     return `<div class="tk-col" data-est="${est}" ondragover="tvDragOver(event,this)" ondragleave="this.classList.remove('drop')" ondrop="tvDrop(event,this,'${est}')">
       <div class="tk-col-head"><span class="dot" style="width:8px;height:8px;background:${c}"></span>${lbl}<span class="cnt">${arr.length}</span></div>${cards}</div>`;
