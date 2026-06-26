@@ -3,7 +3,7 @@
 // Lee de la tabla relacional `tasks` (js/collab.js). Mobile-first.
 // ══════════════════════════════════════════
 
-let _tv = { view: 'list', mine: true, q: '', estado: '', priority: '', depto: '', artistId: '', calMonth: null };
+let _tv = { view: 'list', mine: true, q: '', estado: '', priority: '', depto: '', artistId: '', tag: '', groupBy: 'none', sortBy: 'due', calMonth: null };
 
 // ── Colores / etiquetas ──
 const TASK_ESTADO_COLOR = {
@@ -59,16 +59,46 @@ function tvFilteredTasks() {
   if (_tv.priority) list = list.filter(t => t.priority === _tv.priority);
   if (_tv.depto) list = list.filter(t => t.departamento === _tv.depto);
   if (_tv.artistId) list = list.filter(t => t.artistId === _tv.artistId);
+  if (_tv.tag) list = list.filter(t => (Array.isArray(t.etiquetas) ? t.etiquetas : []).includes(_tv.tag));
   if (_tv.q) { const q = _tv.q.toLowerCase(); list = list.filter(t => (t.titulo || '').toLowerCase().includes(q) || (t.responsable || '').toLowerCase().includes(q) || _relNameOf(t).toLowerCase().includes(q)); }
   return list;
 }
 const _PRI_ORDER = { critica: 0, urgente: 1, alta: 2, media: 3, baja: 4 };
 function _sortTasks(list) {
+  const by = _tv.sortBy || 'due';
   return list.slice().sort((a, b) => {
+    if (by === 'priority') { const d = (_PRI_ORDER[a.priority] ?? 9) - (_PRI_ORDER[b.priority] ?? 9); if (d) return d; }
+    else if (by === 'created') { const ac = a.createdAt || '', bc = b.createdAt || ''; if (ac !== bc) return ac < bc ? 1 : -1; } // más nuevas primero
+    else if (by === 'titulo') { const at = (a.titulo || '').toLowerCase(), bt = (b.titulo || '').toLowerCase(); if (at !== bt) return at < bt ? -1 : 1; }
+    // default / desempate: fecha y luego prioridad
     const ad = a.dueDate || '9999', bd = b.dueDate || '9999';
     if (ad !== bd) return ad < bd ? -1 : 1;
     return (_PRI_ORDER[a.priority] ?? 9) - (_PRI_ORDER[b.priority] ?? 9);
   });
+}
+// ── Agrupación configurable (vista Lista) ──
+const _GROUP_LABELS = { none: 'Ninguno', estado: 'Estado', responsable: 'Responsable', priority: 'Prioridad', depto: 'Departamento', artistId: 'Artista' };
+const _SORT_LABELS = { due: 'Fecha', priority: 'Prioridad', created: 'Creación', titulo: 'Nombre' };
+function _groupKey(t, gb) {
+  if (gb === 'estado') return t.estado || 'pendiente';
+  if (gb === 'responsable') return t.responsable || '(sin asignar)';
+  if (gb === 'priority') return t.priority || 'media';
+  if (gb === 'depto') return t.departamento || '(sin área)';
+  if (gb === 'artistId') return t.artistId || '(sin artista)';
+  return '';
+}
+function _groupLabel(gb, k) {
+  if (gb === 'estado') return estadoChip(k);
+  if (gb === 'priority') return priChip(k);
+  if (gb === 'depto') { const x = TASK_DEPTS.find(d => d[0] === k); return `${icon('tag', 12)} ${x ? x[1] : (k || '(sin área)')}`; }
+  if (gb === 'artistId') { const a = (typeof artists !== 'undefined') ? artists.find(x => x.id === k) : null; return `${icon('person', 12)} ${a ? s(a.name) : (k || '(sin artista)')}`; }
+  if (gb === 'responsable') return `${icon('person', 12)} ${(k === '(sin asignar)') ? k : ((typeof _memberLabel === 'function') ? _memberLabel(k) : k)}`;
+  return s(k);
+}
+function _groupSorter(gb) {
+  if (gb === 'estado') { const ord = {}; TASK_ESTADOS.forEach((x, i) => ord[x[0]] = i); return (a, b) => (ord[a] ?? 99) - (ord[b] ?? 99); }
+  if (gb === 'priority') { return (a, b) => (_PRI_ORDER[a] ?? 9) - (_PRI_ORDER[b] ?? 9); }
+  return (a, b) => a < b ? -1 : 1;
 }
 
 // ── Vistas guardadas (localStorage por equipo) ──
@@ -78,7 +108,7 @@ function setSavedViews(a) { try { localStorage.setItem(_savedViewsKey(), JSON.st
 async function tvSaveView() {
   const name = (await uiPrompt('Nombre de la vista:', { title: 'Guardar vista' }) || '').trim(); if (!name) return;
   const v = getSavedViews().filter(x => x.name !== name);
-  v.push({ name, cfg: { view: _tv.view, mine: _tv.mine, estado: _tv.estado, priority: _tv.priority, depto: _tv.depto, artistId: _tv.artistId, q: _tv.q } });
+  v.push({ name, cfg: { view: _tv.view, mine: _tv.mine, estado: _tv.estado, priority: _tv.priority, depto: _tv.depto, artistId: _tv.artistId, tag: _tv.tag, groupBy: _tv.groupBy, sortBy: _tv.sortBy, q: _tv.q } });
   setSavedViews(v); renderTareas(); uiToast('Vista guardada');
 }
 function tvApplyView(name) {
@@ -128,6 +158,7 @@ function renderTareas() {
   const allOpen = tasks.filter(t => t.estado !== TASK_DONE).length;
   const arts = (typeof artists !== 'undefined') ? artists : [];
   const saved = getSavedViews();
+  const allTags = [...new Set(tasks.flatMap(t => Array.isArray(t.etiquetas) ? t.etiquetas : []))].filter(Boolean).sort();
   head.innerHTML = `
     <div class="dash-head">
       <div>
@@ -149,7 +180,10 @@ function renderTareas() {
         <select onchange="tvFilter('estado',this.value)"><option value="">Estado: todos</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${_tv.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
         <select onchange="tvFilter('priority',this.value)"><option value="">Prioridad: todas</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${_tv.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
         <select onchange="tvFilter('depto',this.value)"><option value="">Depto: todos</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${_tv.depto === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
+        ${allTags.length ? `<select onchange="tvFilter('tag',this.value)"><option value="">Tag: todos</option>${allTags.map(tg => `<option value="${esc(tg)}" ${_tv.tag === tg ? 'selected' : ''}>${esc(tg)}</option>`).join('')}</select>` : ''}
         ${arts.length > 1 ? `<select onchange="tvFilter('artistId',this.value)"><option value="">Artista: todos</option>${arts.map(a => `<option value="${a.id}" ${_tv.artistId === a.id ? 'selected' : ''}>${s(a.name)}</option>`).join('')}</select>` : ''}
+        ${_tv.view === 'list' ? `<select title="Agrupar por" onchange="tvFilter('groupBy',this.value)">${Object.keys(_GROUP_LABELS).map(k => `<option value="${k}" ${_tv.groupBy === k ? 'selected' : ''}>Agrupar: ${_GROUP_LABELS[k]}</option>`).join('')}</select>` : ''}
+        ${(_tv.view === 'list' || _tv.view === 'kanban' || _tv.view === 'assignee' || _tv.view === 'timeline') ? `<select title="Ordenar por" onchange="tvFilter('sortBy',this.value)">${Object.keys(_SORT_LABELS).map(k => `<option value="${k}" ${_tv.sortBy === k ? 'selected' : ''}>Ordenar: ${_SORT_LABELS[k]}</option>`).join('')}</select>` : ''}
         <select id="tv-saved" onchange="if(this.value)tvApplyView(this.value)"><option value="">Vistas guardadas…</option>${saved.map(v => `<option value="${s(v.name)}">${s(v.name)}</option>`).join('')}</select>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:11px" onclick="tvSaveView()">${icon('save', 13)} Guardar</button>
         ${saved.length ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:11px" onclick="tvDeleteView()">${icon('trash', 13)}</button>` : ''}
@@ -254,7 +288,16 @@ function _taskCardHTML(t) {
   </div>`;
 }
 function _priLabelDept(d) { const x = TASK_DEPTS.find(s2 => s2[0] === d); return x ? x[1] : d; }
-function tvList(list) { return _sortTasks(list).map(_taskCardHTML).join(''); }
+function tvList(list) {
+  const sorted = _sortTasks(list);
+  const gb = _tv.groupBy || 'none';
+  if (gb === 'none') return sorted.map(_taskCardHTML).join('');
+  const groups = {};
+  sorted.forEach(t => { const k = _groupKey(t, gb); (groups[k] = groups[k] || []).push(t); });
+  return Object.keys(groups).sort(_groupSorter(gb)).map(k =>
+    `<div class="tk-group-h">${_groupLabel(gb, k)} <span style="color:var(--text-dim)">· ${groups[k].length}</span></div>${groups[k].map(_taskCardHTML).join('')}`
+  ).join('');
+}
 
 // ── Vista: Por responsable ──
 function tvAssignee(list) {
