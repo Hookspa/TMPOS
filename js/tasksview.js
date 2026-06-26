@@ -240,7 +240,7 @@ function _taskCardHTML(t) {
   const done = t.estado === TASK_DONE || t.estado === 'aprobado';
   const du = _dueInfo(t);
   const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
-  return `<div class="tk-card" onclick="openTaskContext('${t.id}')">
+  return `<div class="tk-card" onclick="openTaskDetail('${t.id}')">
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
       <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}</div>
@@ -271,7 +271,7 @@ function tvKanban(list) {
   const cols = TASK_ESTADOS.map(([est, lbl]) => {
     const arr = _sortTasks(list.filter(t => t.estado === est));
     const c = TASK_ESTADO_COLOR[est];
-    const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskContext('${t.id}')">
+    const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')">
         <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
         <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span></div>
       </div>`).join('') || `<div style="font-size:11px;color:var(--text-dim);padding:6px 2px">—</div>`;
@@ -300,7 +300,7 @@ function tvCalendar(list) {
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const arr = byDay[d] || [];
-    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<div class="pill" style="background:${c}22;color:${c}" onclick="openTaskContext('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</div>`; }).join('') + (arr.length > 3 ? `<div style="font-size:9px;color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
+    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<div class="pill" style="background:${c}22;color:${c}" onclick="openTaskDetail('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</div>`; }).join('') + (arr.length > 3 ? `<div style="font-size:9px;color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
     cells += `<div class="cell ${iso === todayISO2 ? 'today' : ''}"><div class="dnum">${d}</div>${pills}</div>`;
   }
   return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -322,7 +322,7 @@ function tvTimeline(list) {
     const x = ((+new Date(t.dueDate + 'T00:00:00') - min) / span) * 100;
     const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)';
     const du = _dueInfo(t);
-    return `<div class="tk-tl-row" onclick="openTaskContext('${t.id}')">
+    return `<div class="tk-tl-row" onclick="openTaskDetail('${t.id}')">
       <div style="width:160px;min-width:120px;flex-shrink:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s(t.titulo)}</div>
       <div style="flex:1;position:relative;height:14px"><div class="tk-tl-bar" style="position:absolute;left:${Math.max(0, x - 1)}%;width:14px;background:${c}"></div></div>
       <div style="width:90px;text-align:right;font-size:11px;font-family:var(--font-mono);color:${du.cls === 'over' ? 'var(--accent2)' : 'var(--text-muted)'}">${fmtDateShort(t.dueDate)}</div>
@@ -358,3 +358,157 @@ function tvQueFalta() {
   if (!blocks) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Nada pendiente accionable. Todos los releases en orden.</div></div>`;
   return `<div class="empty-hint" style="margin-bottom:14px">Lo que bloquea o falta para cada lanzamiento — accionable, cruzando todos los releases${_tv.artistId ? ' del artista filtrado' : ''}.</div>${blocks}`;
 }
+
+// ══════════════════════════════════════════
+// DETALLE DE TAREA (Sprint A #1, estilo ClickUp) — panel rico reusando .boxdrop
+// Expone descripción, subtareas, tags, adjuntos, deps, comentarios y actividad
+// (todo ya vive en el modelo de collab.js). Edición inline con autosave.
+// 2 columnas: principal (descripción + subtareas + tabs Comentarios/Actividad) + riel de propiedades.
+// ══════════════════════════════════════════
+let _tdId = null, _tdTab = 'coment';
+function _tdInjectStyles() {
+  if (document.getElementById('td-styles')) return;
+  const st = document.createElement('style'); st.id = 'td-styles';
+  st.textContent = `
+  .td-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:0}
+  .td-main{padding:20px 22px;border-right:1px solid var(--border)}
+  .td-side{padding:16px 20px}
+  .td-block{margin-bottom:20px}
+  .td-label{font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .td-title-input{flex:1;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-family:var(--font-display);font-size:18px;letter-spacing:.5px;padding:6px 8px}
+  .td-title-input:hover{border-color:var(--border)} .td-title-input:focus{border-color:var(--accent);outline:none;background:var(--surface2)}
+  .td-desc{min-height:78px;width:100%;font-size:13px;line-height:1.55}
+  .td-sub{display:flex;align-items:center;gap:9px;padding:4px 0}
+  .td-sub-text{flex:1;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--text);font-size:13px;padding:4px 6px}
+  .td-sub-text:hover{border-color:var(--border)} .td-sub-text:focus{border-color:var(--accent);outline:none}
+  .td-sub-text.done{text-decoration:line-through;color:var(--text-muted)}
+  .td-prog{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:8px}
+  .td-prog-fill{height:100%;background:#4ade80;transition:width .2s}
+  .td-prog-n{margin-left:auto;color:var(--text-dim);font-weight:400}
+  .td-cmt{padding:8px 0;border-bottom:1px solid var(--border)}
+  .td-cmt-h{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+  .td-cmt-author{font-size:12px;font-weight:600}
+  .td-cmt-ago{font-size:10px;font-family:var(--font-mono);color:var(--text-dim)}
+  .td-cmt-body{font-size:13px;line-height:1.5;color:var(--text-muted);white-space:pre-wrap}
+  .td-act-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;color:var(--text-muted)}
+  .td-prop{padding:9px 0;border-bottom:1px solid var(--border)}
+  .td-prop-l{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
+  .td-tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .td-tag-add{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:1px dashed var(--border);border-radius:10px;padding:2px 8px}
+  .td-att{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0}
+  .td-att a{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media(max-width:720px){.td-grid{grid-template-columns:1fr}.td-main{border-right:0;border-bottom:1px solid var(--border)}}`;
+  document.head.appendChild(st);
+}
+function openTaskDetail(id) {
+  const t = taskById(id); if (!t) return;
+  _tdInjectStyles();
+  _tdId = id; _tdTab = 'coment';
+  let ov = document.getElementById('td-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'td-overlay'; ov.className = 'boxdrop-overlay';
+    ov.onclick = e => { if (e.target === ov) closeTaskDetail(); };
+    document.body.appendChild(ov);
+  }
+  document.addEventListener('keydown', _tdEsc);
+  ov.classList.add('open');
+  tdRender();
+}
+function _tdEsc(e) { if (e.key === 'Escape') closeTaskDetail(); }
+function closeTaskDetail() {
+  const ov = document.getElementById('td-overlay'); if (ov) ov.classList.remove('open');
+  _tdId = null; document.removeEventListener('keydown', _tdEsc);
+  if (typeof tvRenderBody === 'function') tvRenderBody();
+  if (typeof updateTaskBadge === 'function') updateTaskBadge();
+}
+function _tdTask() { return _tdId ? taskById(_tdId) : null; }
+function tdPatch(patch) {
+  const t = _tdTask(); if (!t) return;
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  updateTaskRow(t.id, patch); tdRender();
+}
+function tdRender() {
+  const ov = document.getElementById('td-overlay'); const t = _tdTask(); if (!ov || !t) return;
+  const editable = (typeof canDo === 'function') ? canDo('gestionar_tareas') : true;
+  ov.innerHTML = `<div class="boxdrop" style="width:880px" onclick="event.stopPropagation()">
+    <div class="boxdrop-header">
+      <input class="td-title-input" value="${esc(t.titulo)}" placeholder="Título de la tarea" ${editable ? '' : 'disabled'} onchange="tdPatch({titulo:this.value})">
+      <select class="input" style="width:auto;padding:6px 9px;font-size:12px" ${editable ? '' : 'disabled'} onchange="tdPatch({estado:this.value})">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
+      <button class="boxdrop-close" onclick="closeTaskDetail()">${icon('close', 16)}</button>
+    </div>
+    <div class="boxdrop-body" style="padding:0">
+      <div class="td-grid"><div class="td-main">${tdMain(t, editable)}</div><div class="td-side">${tdSide(t, editable)}</div></div>
+    </div>
+  </div>`;
+  if (typeof hydrateIcons === 'function') hydrateIcons(ov);
+  const ti = ov.querySelector('.td-title-input'); if (ti && !s(t.titulo)) setTimeout(() => ti.focus(), 40);
+}
+function tdMain(t, editable) {
+  const subs = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
+  const done = subs.filter(x => x && x.done).length, pct = subs.length ? Math.round(done / subs.length * 100) : 0;
+  const subsHTML = subs.map((x, i) => `<div class="td-sub"><input type="checkbox" ${x && x.done ? 'checked' : ''} ${editable ? '' : 'disabled'} onchange="tdToggleSub(${i})"><input class="td-sub-text ${x && x.done ? 'done' : ''}" value="${esc((x && x.text) || '')}" ${editable ? '' : 'disabled'} onchange="tdSetSub(${i},this.value)">${editable ? `<button class="goal-btn reject" title="Quitar" onclick="tdDelSub(${i})">${icon('close', 11)}</button>` : ''}</div>`).join('');
+  return `
+    <div class="td-block">
+      <div class="td-label">${icon('file', 13)} Descripción</div>
+      <textarea class="textarea td-desc" placeholder="Agrega detalles, contexto, links…" ${editable ? '' : 'disabled'} onchange="tdPatch({descripcion:this.value})">${s(t.descripcion)}</textarea>
+    </div>
+    <div class="td-block">
+      <div class="td-label">${icon('checklist', 13)} Subtareas ${subs.length ? `<span class="td-prog-n">${done}/${subs.length}</span>` : ''}</div>
+      ${subs.length ? `<div class="td-prog"><div class="td-prog-fill" style="width:${pct}%"></div></div>` : ''}
+      ${subsHTML}
+      ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;margin-top:6px" onclick="tdAddSub()">+ Subtarea</button>` : ''}
+    </div>
+    <div class="td-block">
+      <div class="boxdrop-tabs" style="padding:0;margin-bottom:12px">
+        <div class="boxdrop-tab ${_tdTab === 'coment' ? 'active' : ''}" onclick="tdTab('coment')">Comentarios</div>
+        <div class="boxdrop-tab ${_tdTab === 'activ' ? 'active' : ''}" onclick="tdTab('activ')">Actividad</div>
+      </div>
+      ${_tdTab === 'coment' ? tdComments(t, editable) : tdActivity(t)}
+    </div>`;
+}
+function tdComments(t, editable) {
+  const cs = (typeof commentsOf === 'function') ? commentsOf({ taskId: t.id }) : [];
+  const list = cs.length ? cs.map(c => `<div class="td-cmt"><div class="td-cmt-h"><span class="td-cmt-author">${esc((typeof _memberLabel === 'function') ? _memberLabel(c.author) : c.author)}</span><span class="td-cmt-ago">${(typeof _ago === 'function') ? _ago(c.createdAt) : ''}</span></div><div class="td-cmt-body">${esc(c.body)}</div></div>`).join('') : `<div class="empty-hint" style="margin:0 0 10px">Sin comentarios todavía.</div>`;
+  return `${list}${editable ? `<div style="margin-top:12px"><textarea class="textarea" id="td-cmt-input" placeholder="Escribe un comentario…" style="min-height:54px;font-size:13px"></textarea><button class="btn btn-primary" style="margin-top:6px;font-size:12px;padding:6px 12px" onclick="tdAddComment()">Comentar</button></div>` : ''}`;
+}
+function tdActivity(t) {
+  const a = (typeof activityOf === 'function') ? activityOf({ taskId: t.id }) : [];
+  if (!a.length) return `<div class="empty-hint" style="margin:0">Sin actividad registrada.</div>`;
+  return a.map(x => `<div class="td-act-row"><span class="dot" style="width:6px;height:6px;background:var(--text-dim)"></span><span style="flex:1">${esc(x.summary)}</span><span class="td-cmt-ago">${(typeof _ago === 'function') ? _ago(x.createdAt) : ''}</span></div>`).join('');
+}
+function tdSide(t, editable) {
+  const dis = editable ? '' : 'disabled';
+  const tags = Array.isArray(t.etiquetas) ? t.etiquetas : [];
+  const atts = Array.isArray(t.adjuntos) ? t.adjuntos : [];
+  const deps = Array.isArray(t.deps) ? t.deps : [];
+  const _url = u => (typeof safeUrl === 'function') ? safeUrl(u) : esc(u);
+  const row = (label, ctrl) => `<div class="td-prop"><div class="td-prop-l">${label}</div><div>${ctrl}</div></div>`;
+  return `
+    ${row('Responsable', (typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="tdPatch({responsable:this.value})"`, 'width:100%;font-size:12px;padding:6px 8px') : '—')}
+    ${row('Prioridad', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({priority:this.value})">${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${t.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
+    ${row('Departamento', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({departamento:this.value})"><option value="">—</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${t.departamento === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
+    ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
+    ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <span style="cursor:pointer;opacity:.6" onclick="tdDelTag(${i})">×</span>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
+    ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
+    ${row('Adjuntos', `<div>${atts.map((a, i) => `<div class="td-att"><a href="${_url((a && a.url) || '#')}" target="_blank" rel="noopener">${esc((a && a.name) || 'archivo')}</a>${editable ? `<span style="cursor:pointer;opacity:.6" onclick="tdDelAtt(${i})">×</span>` : ''}</div>`).join('')}${editable ? `<button class="td-tag-add" style="margin-top:4px" onclick="tdAddAtt()">+ adjunto</button>` : ''}</div>`)}
+    <div class="td-prop" style="border:0;margin-top:4px">
+      <div class="td-prop-l">Contexto</div>
+      <div style="font-size:12px;line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en release ${icon('link', 11)}</button>` : ''}</div>
+    </div>`;
+}
+function tdTab(w) { _tdTab = w; tdRender(); }
+function tdToggleSub(i) { const t = _tdTask(); if (!t) return; const a = (t.checklistInterno || []).slice(); if (!a[i]) return; a[i] = Object.assign({}, a[i], { done: !a[i].done }); tdPatch({ checklistInterno: a }); }
+function tdSetSub(i, v) { const t = _tdTask(); if (!t) return; const a = (t.checklistInterno || []).slice(); if (!a[i]) return; a[i] = Object.assign({}, a[i], { text: s(v) }); tdPatch({ checklistInterno: a }); }
+async function tdAddSub() { const t = _tdTask(); if (!t) return; const txt = ((await uiPrompt('Subtarea:', { title: 'Nueva subtarea' })) || '').trim(); if (!txt) return; const a = (t.checklistInterno || []).slice(); a.push({ text: txt, done: false }); tdPatch({ checklistInterno: a }); }
+function tdDelSub(i) { const t = _tdTask(); if (!t) return; const a = (t.checklistInterno || []).slice(); a.splice(i, 1); tdPatch({ checklistInterno: a }); }
+async function tdAddTag() { const t = _tdTask(); if (!t) return; const tg = ((await uiPrompt('Tag:', { title: 'Nuevo tag' })) || '').trim(); if (!tg) return; const a = (t.etiquetas || []).slice(); if (!a.includes(tg)) a.push(tg); tdPatch({ etiquetas: a }); }
+function tdDelTag(i) { const t = _tdTask(); if (!t) return; const a = (t.etiquetas || []).slice(); a.splice(i, 1); tdPatch({ etiquetas: a }); }
+async function tdAddAtt() { const t = _tdTask(); if (!t) return; const url = ((await uiPrompt('URL del adjunto:', { title: 'Adjunto' })) || '').trim(); if (!url) return; const name = ((await uiPrompt('Nombre (opcional):')) || url).trim(); const a = (t.adjuntos || []).slice(); a.push({ name, url }); tdPatch({ adjuntos: a }); }
+function tdDelAtt(i) { const t = _tdTask(); if (!t) return; const a = (t.adjuntos || []).slice(); a.splice(i, 1); tdPatch({ adjuntos: a }); }
+function tdAddComment() {
+  const t = _tdTask(); if (!t) return;
+  const inp = document.getElementById('td-cmt-input'); const body = ((inp && inp.value) || '').trim(); if (!body) return;
+  if (typeof addComment === 'function') addComment({ taskId: t.id, releaseId: t.releaseId, artistId: t.artistId, trackId: t.trackId }, 'general', body, []);
+  tdRender();
+}
+function tdOpenInRelease() { const t = _tdTask(); if (!t) return; closeTaskDetail(); if (typeof openTaskContext === 'function') openTaskContext(t.id); }
