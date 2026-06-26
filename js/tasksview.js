@@ -185,7 +185,7 @@ function updateTaskBadge() {
 }
 
 // ── Render principal ──
-const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Timeline','trend'],['assignee','Por responsable','team'],['jerarquia','Jerarquía','releases'],['quefalta','Qué falta','warning']];
+const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Gantt','trend'],['assignee','Por responsable','team'],['jerarquia','Jerarquía','releases'],['quefalta','Qué falta','warning']];
 function renderTareas() {
   updateTaskBadge();
   const head = document.getElementById('tareas-head'); if (!head) return;
@@ -412,24 +412,50 @@ function tvCalendar(list) {
     </div><div class="tk-cal">${cells}</div>`;
 }
 
-// ── Vista: Timeline (barras por fecha) ──
+// ── Vista: Gantt (barras inicio→fin + flechas de dependencia) ──
+const _MS_DAY = 86400000;
+function _taskMs(t, which) { const v = which === 'start' ? (t.startDate || t.dueDate) : (t.dueDate || t.startDate); return v ? +new Date(v + 'T00:00:00') : null; }
 function tvTimeline(list) {
-  const withDue = _sortTasks(list.filter(t => t.dueDate));
-  const noDue = list.filter(t => !t.dueDate);
-  if (!withDue.length) return `<div class="tk-empty">Ninguna tarea con fecha. Asigna fechas para ver la línea de tiempo.</div>`;
-  const ds = withDue.map(t => +new Date(t.dueDate + 'T00:00:00'));
-  const min = Math.min.apply(null, ds), max = Math.max.apply(null, ds), span = (max - min) || 1;
-  const rows = withDue.map(t => {
-    const x = ((+new Date(t.dueDate + 'T00:00:00') - min) / span) * 100;
+  const withDate = _sortTasks(list.filter(t => t.dueDate || t.startDate));
+  const noDate = list.length - withDate.length;
+  if (!withDate.length) return `<div class="tk-empty">Ninguna tarea con fecha. Asigna inicio/fin para ver el Gantt.</div>`;
+  const dts = [];
+  withDate.forEach(t => { const a = _taskMs(t, 'start'), b = _taskMs(t, 'due'); if (a) dts.push(a); if (b) dts.push(b); });
+  let min = Math.min.apply(null, dts), max = Math.max.apply(null, dts);
+  if (max <= min) max = min + 7 * _MS_DAY;
+  const span = max - min;
+  const LBL = 200, W = 1000, rowH = 30, barH = 14, top = 24;
+  const H = top + withDate.length * rowH + 12;
+  const scaleX = ms => LBL + ((ms - min) / span) * (W - LBL - 16);
+  const idx = {}; withDate.forEach((t, i) => idx[t.id] = i);
+  const yMid = i => top + i * rowH + rowH / 2;
+  const today = +new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00');
+  const todayX = (today >= min && today <= max) ? scaleX(today) : null;
+  const bars = withDate.map((t, i) => {
+    const a = _taskMs(t, 'start'), b = _taskMs(t, 'due');
+    let x1 = scaleX(Math.min(a, b)), x2 = scaleX(Math.max(a, b));
+    if (x2 - x1 < 6) x2 = x1 + 6;
     const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)';
-    const du = _dueInfo(t);
-    return `<div class="tk-tl-row" onclick="openTaskDetail('${t.id}')">
-      <div style="width:160px;min-width:120px;flex-shrink:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s(t.titulo)}</div>
-      <div style="flex:1;position:relative;height:14px"><div class="tk-tl-bar" style="position:absolute;left:${Math.max(0, x - 1)}%;width:14px;background:${c}"></div></div>
-      <div style="width:90px;text-align:right;font-size:11px;font-family:var(--font-mono);color:${du.cls === 'over' ? 'var(--accent2)' : 'var(--text-muted)'}">${fmtDateShort(t.dueDate)}</div>
-    </div>`;
+    const doneT = t.estado === TASK_DONE || t.estado === 'aprobado';
+    const y = top + i * rowH + (rowH - barH) / 2;
+    return `<text x="6" y="${top + i * rowH + rowH / 2 + 4}" font-size="12" fill="var(--text-muted)" style="cursor:pointer" onclick="openTaskDetail('${t.id}')">${esc((t.titulo || '(sin título)').slice(0, 24))}</text>
+      <rect x="${x1.toFixed(1)}" y="${y}" width="${(x2 - x1).toFixed(1)}" height="${barH}" rx="4" fill="${c}" opacity="${doneT ? 0.4 : 0.9}" style="cursor:pointer" onclick="openTaskDetail('${t.id}')"><title>${esc(t.titulo)} · ${t.startDate || '—'} → ${t.dueDate || '—'}</title></rect>`;
   }).join('');
-  return `<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:10px">${fmtDateShort(withDue[0].dueDate)} → ${fmtDateShort(withDue[withDue.length - 1].dueDate)}${noDue.length ? ` · ${noDue.length} sin fecha` : ''}</div>${rows}`;
+  let arrows = '';
+  withDate.forEach((t, i) => { (Array.isArray(t.deps) ? t.deps : []).forEach(depId => {
+    if (idx[depId] == null) return;
+    const j = idx[depId], pred = withDate[j];
+    const x1 = scaleX(_taskMs(pred, 'due')), y1 = yMid(j);
+    const x2 = scaleX(_taskMs(t, 'start')), y2 = yMid(i);
+    arrows += `<path d="M${x1.toFixed(1)} ${y1} C ${(x1 + 16).toFixed(1)} ${y1}, ${(x2 - 16).toFixed(1)} ${y2}, ${x2.toFixed(1)} ${y2}" fill="none" stroke="var(--text-dim)" stroke-width="1.2" marker-end="url(#gantt-arrow)" opacity="0.7"/>`;
+  }); });
+  const todayLine = todayX != null ? `<line x1="${todayX.toFixed(1)}" y1="${top - 6}" x2="${todayX.toFixed(1)}" y2="${H - 6}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/><text x="${(todayX + 3).toFixed(1)}" y="${top - 9}" font-size="9" fill="var(--accent)">hoy</text>` : '';
+  return `<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:10px">Gantt · barra = inicio→fin · flechas = dependencias${noDate ? ` · ${noDate} sin fecha` : ''}</div>
+    <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:680px" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="gantt-arrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/></marker></defs>
+      <line x1="${LBL}" y1="${top - 6}" x2="${LBL}" y2="${H - 6}" stroke="var(--border)" stroke-width="1"/>
+      ${todayLine}${arrows}${bars}
+    </svg></div>`;
 }
 
 // ── Vista: "Qué falta" (accionable, cross-release) ──
