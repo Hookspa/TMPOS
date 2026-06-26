@@ -185,7 +185,7 @@ function updateTaskBadge() {
 }
 
 // ── Render principal ──
-const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Timeline','trend'],['assignee','Por responsable','team'],['quefalta','Qué falta','warning']];
+const TV_TABS = [['list','Lista','checklist'],['kanban','Kanban','dashboard'],['calendar','Calendario','calendar'],['timeline','Timeline','trend'],['assignee','Por responsable','team'],['jerarquia','Jerarquía','releases'],['quefalta','Qué falta','warning']];
 function renderTareas() {
   updateTaskBadge();
   const head = document.getElementById('tareas-head'); if (!head) return;
@@ -210,7 +210,7 @@ function renderTareas() {
     </div>
     <div class="tv-toolbar">
       <div class="tv-tabs">${TV_TABS.map(t => `<div class="tv-tab ${_tv.view === t[0] ? 'active' : ''}" onclick="tvSetView('${t[0]}')">${icon(t[2], 13)} ${t[1]}</div>`).join('')}</div>
-      ${_tv.view === 'quefalta' ? '' : `<div class="tv-filters">
+      ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia') ? '' : `<div class="tv-filters">
         <input class="tv-search" placeholder="Buscar tarea…" value="${s(_tv.q)}" oninput="tvSearch(this.value)">
         <select onchange="tvFilter('estado',this.value)"><option value="">Estado: todos</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${_tv.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
         <select onchange="tvFilter('priority',this.value)"><option value="">Prioridad: todas</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${_tv.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
@@ -229,6 +229,7 @@ function renderTareas() {
 
 function tvRenderBody() {
   const body = document.getElementById('tareas-body'); if (!body) return;
+  if (_tv.view === 'jerarquia') { body.innerHTML = tvTree(); return; }
   const list = tvFilteredTasks();
   if (_tv.view === 'quefalta') { body.innerHTML = tvQueFalta(); return; }
   if (!list.length) { body.innerHTML = `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Sin tareas que mostrar con estos filtros.</div></div>`; return; }
@@ -457,6 +458,69 @@ function tvQueFalta() {
   }).filter(Boolean).join('');
   if (!blocks) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Nada pendiente accionable. Todos los releases en orden.</div></div>`;
   return `<div class="empty-hint" style="margin-bottom:14px">Lo que bloquea o falta para cada lanzamiento — accionable, cruzando todos los releases${_tv.artistId ? ' del artista filtrado' : ''}.</div>${blocks}`;
+}
+
+// ══════════════════════════════════════════
+// VISTA: JERARQUÍA (Sprint B) — árbol navegable Artista → Release → Track → Tarea
+// Reencuadre sobre los datos existentes (estilo Workspace→Space→Folder→List de ClickUp).
+// ══════════════════════════════════════════
+let _treeOpen = new Set();
+function tvTreeToggle(id) { if (_treeOpen.has(id)) _treeOpen.delete(id); else _treeOpen.add(id); tvRenderBody(); }
+function _treeInjectStyles() {
+  if (document.getElementById('tree-styles')) return;
+  const st = document.createElement('style'); st.id = 'tree-styles';
+  st.textContent = `
+  .tree-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+  .tree-row:hover{background:var(--surface2)}
+  .tree-caret{width:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:11px;flex:0 0 auto}
+  .tree-name{flex:1;cursor:pointer;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tree-name:hover{color:var(--accent)}
+  .tree-badge{font-size:10px;font-family:var(--font-mono);background:var(--surface2);color:var(--text-muted);border-radius:10px;padding:1px 7px;flex:0 0 auto}`;
+  document.head.appendChild(st);
+}
+function _treeOpenCount(arr) { return (arr || []).filter(t => t.estado !== TASK_DONE).length; }
+function tvTree() {
+  _treeInjectStyles();
+  const arts = (typeof artists !== 'undefined') ? artists : [];
+  if (!arts.length) return `<div class="tk-empty">${icon('person', 28)}<div style="margin-top:10px">Sin artistas todavía.</div></div>`;
+  const html = arts.map(a => {
+    const aTasks = (typeof tasksOfArtist === 'function') ? _treeOpenCount(tasksOfArtist(a.id)) : 0;
+    const rels = (typeof launches !== 'undefined') ? launches.filter(l => l.artistId === a.id && l.type !== 'evergreen') : [];
+    const aOpen = _treeOpen.has('a:' + a.id);
+    return `<div>
+      <div class="tree-row" style="font-weight:600">
+        <span class="tree-caret" onclick="tvTreeToggle('a:${a.id}')">${rels.length ? (aOpen ? '▾' : '▸') : '·'}</span>
+        <span class="artist-avatar" style="width:22px;height:22px;font-size:10px;flex:0 0 auto">${up(a.name).slice(0, 1)}</span>
+        <span class="tree-name" onclick="setActiveArtist('${a.id}');showPage('lanzamientos')">${esc(a.name)}</span>
+        ${aTasks ? `<span class="tree-badge">${aTasks}</span>` : ''}
+      </div>
+      ${aOpen ? rels.map(l => {
+        const rTasks = (typeof tasksOfRelease === 'function') ? _treeOpenCount(tasksOfRelease(l.id)) : 0;
+        const trks = (typeof tracksOfLaunch === 'function') ? tracksOfLaunch(l) : [];
+        const rOpen = _treeOpen.has('r:' + l.id);
+        const ph = (typeof releasePhase === 'function') ? releasePhase(l) : '';
+        return `<div style="margin-left:22px">
+          <div class="tree-row">
+            <span class="tree-caret" onclick="tvTreeToggle('r:${l.id}')">${trks.length ? (rOpen ? '▾' : '▸') : '·'}</span>
+            <span class="dot" style="width:8px;height:8px;flex:0 0 auto;background:${(typeof phaseColor === 'function') ? phaseColor(ph) : 'var(--accent)'}"></span>
+            <span class="tree-name" onclick="openLaunch('${l.id}')">${esc(l.name)}</span>
+            <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);flex:0 0 auto">${ph}</span>
+            ${rTasks ? `<span class="tree-badge">${rTasks}</span>` : ''}
+          </div>
+          ${rOpen ? trks.map(tr => {
+            const tTasks = (typeof tasksOfTrack === 'function') ? _treeOpenCount(tasksOfTrack(tr.id)) : 0;
+            return `<div style="margin-left:22px"><div class="tree-row">
+              <span class="tree-caret">·</span>
+              <span class="dot" style="width:6px;height:6px;flex:0 0 auto;background:var(--text-dim)"></span>
+              <span class="tree-name" onclick="openLaunch('${l.id}');setTimeout(()=>{if(typeof openTrack==='function')openTrack('${tr.id}')},60)">${esc(tr.title || '(track)')}</span>
+              ${tTasks ? `<span class="tree-badge">${tTasks}</span>` : ''}
+            </div></div>`;
+          }).join('') : ''}
+        </div>`;
+      }).join('') : ''}
+    </div>`;
+  }).join('');
+  return `<div class="empty-hint" style="margin-bottom:12px">Tu roster como árbol — Artista → Release → Track. El número es tareas abiertas. Click para navegar.</div>${html}`;
 }
 
 // ══════════════════════════════════════════
