@@ -243,12 +243,22 @@ function tvRenderBody() {
 // NUEVA TAREA (global) — se puede linkear a un módulo (departamento) y, opcionalmente, a un artista/release.
 // No requiere abrir ninguna sección: la tarea aparece en esta lista y, si tiene release, en su pestaña Tareas.
 // ══════════════════════════════════════════
+let _ntTpl = null; // plantilla aplicada en el modal de nueva tarea
+function ntApplyTemplate(id) {
+  const tpl = getTaskTemplates().find(x => x.id === id); _ntTpl = tpl || null;
+  if (!tpl) return;
+  const set = (elId, val) => { const e = document.getElementById(elId); if (e && val != null) e.value = val; };
+  set('nt-titulo', tpl.titulo || ''); set('nt-depto', tpl.departamento || ''); set('nt-pri', tpl.priority || 'media');
+}
 function openNewTask() {
   if (!requireCan('gestionar_tareas')) return;
   const arts = (typeof artists !== 'undefined') ? artists : [];
+  const tpls = getTaskTemplates(); _ntTpl = null;
   const m = document.getElementById('modal-newtask'); if (!m) return;
   const body = document.getElementById('newtask-body');
   body.innerHTML = `
+    ${tpls.length ? `<div class="field" style="margin-bottom:12px"><label>Desde plantilla <span style="color:var(--text-dim)">(opcional)</span></label>
+      <select class="input" id="nt-tpl" onchange="ntApplyTemplate(this.value)"><option value="">— Ninguna —</option>${tpls.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></div>` : ''}
     <div class="field" style="margin-bottom:12px"><label>Tarea</label>
       <input class="input" id="nt-titulo" placeholder="¿Qué hay que hacer?" onkeydown="if(event.key==='Enter')submitNewTask()"></div>
     <div class="field-grid" style="margin-bottom:12px">
@@ -298,7 +308,12 @@ function submitNewTask() {
     priority: (document.getElementById('nt-pri') || {}).value || 'media',
     dueDate: (document.getElementById('nt-due') || {}).value || '',
   };
+  if (_ntTpl) { // plantilla: arrastra descripción + subtareas
+    fields.descripcion = _ntTpl.descripcion || '';
+    fields.checklistInterno = (_ntTpl.subtasks || []).map(x => ({ text: (x && x.text) || '', done: false }));
+  }
   createTask({ artistId: artistId || null, releaseId: releaseId || null, trackId: null }, fields);
+  _ntTpl = null;
   document.getElementById('modal-newtask').classList.remove('open');
   if (typeof uiToast === 'function') uiToast('✓ Tarea creada');
   renderTareas();
@@ -574,13 +589,26 @@ function tdSide(t, editable) {
     ${row('Departamento', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({departamento:this.value})"><option value="">—</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${t.departamento === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
     ${row('Fecha inicio', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.startDate)}" ${dis} onchange="tdPatch({startDate:this.value})">`)}
     ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
+    ${row('Recurrencia', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({recurrence:this.value})"><option value="" ${!t.recurrence ? 'selected' : ''}>Ninguna</option><option value="weekly" ${t.recurrence === 'weekly' ? 'selected' : ''}>Semanal</option><option value="monthly" ${t.recurrence === 'monthly' ? 'selected' : ''}>Mensual</option></select>${t.recurrence ? `<div style="font-size:10px;color:var(--text-dim);margin-top:3px">Al completarla se crea la siguiente.</div>` : ''}`)}
     ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <span style="cursor:pointer;opacity:.6" onclick="tdDelTag(${i})">×</span>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
     ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
     ${row('Adjuntos', `<div>${atts.map((a, i) => `<div class="td-att"><a href="${_url((a && a.url) || '#')}" target="_blank" rel="noopener">${esc((a && a.name) || 'archivo')}</a>${editable ? `<span style="cursor:pointer;opacity:.6" onclick="tdDelAtt(${i})">×</span>` : ''}</div>`).join('')}${editable ? `<button class="td-tag-add" style="margin-top:4px" onclick="tdAddAtt()">+ adjunto</button>` : ''}</div>`)}
     <div class="td-prop" style="border:0;margin-top:4px">
       <div class="td-prop-l">Contexto</div>
       <div style="font-size:12px;line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en release ${icon('link', 11)}</button>` : ''}</div>
-    </div>`;
+    </div>
+    ${editable ? `<button class="btn btn-ghost" style="width:100%;font-size:11px;padding:6px 8px;margin-top:10px" onclick="tdSaveAsTemplate()">${icon('checklist', 12)} Guardar como plantilla</button>` : ''}`;
+}
+// ── Plantillas de tarea (reusables por equipo) ──
+function _taskTplKey() { return 'ao_task_templates_' + ((typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'local'); }
+function getTaskTemplates() { try { return JSON.parse(localStorage.getItem(_taskTplKey())) || []; } catch (e) { return []; } }
+function setTaskTemplates(a) { try { localStorage.setItem(_taskTplKey(), JSON.stringify(a)); } catch (e) {} }
+async function tdSaveAsTemplate() {
+  const t = _tdTask(); if (!t) return;
+  const name = ((await uiPrompt('Nombre de la plantilla:', { title: 'Guardar como plantilla' })) || '').trim(); if (!name) return;
+  const tpl = { id: 'TPL-' + Date.now(), name, titulo: t.titulo, descripcion: t.descripcion, departamento: t.departamento, priority: t.priority, subtasks: (Array.isArray(t.checklistInterno) ? t.checklistInterno : []).map(x => ({ text: (x && x.text) || '' })) };
+  const arr = getTaskTemplates().filter(x => x.name !== name); arr.push(tpl); setTaskTemplates(arr);
+  if (typeof uiToast === 'function') uiToast('✓ Plantilla guardada');
 }
 function tdTab(w) { _tdTab = w; tdRender(); }
 function tdToggleSub(i) { const t = _tdTask(); if (!t) return; const a = (t.checklistInterno || []).slice(); if (!a[i]) return; a[i] = Object.assign({}, a[i], { done: !a[i].done }); tdPatch({ checklistInterno: a }); }

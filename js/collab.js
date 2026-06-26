@@ -40,6 +40,7 @@ function normalizeTaskRow(t) {
   t.priority = t.priority || 'media';
   t.startDate = t.startDate || '';
   t.dueDate = t.dueDate || '';
+  t.recurrence = t.recurrence || ''; // '' | 'weekly' | 'monthly'
   t.etiquetas = Array.isArray(t.etiquetas) ? t.etiquetas : [];
   t.checklistInterno = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
   t.deps = Array.isArray(t.deps) ? t.deps : [];
@@ -160,8 +161,30 @@ function updateTaskRow(id, patch) {
     logActivity('assigned', `Asignada a ${patch.responsable}: ${t.titulo}`, { artistId: t.artistId, releaseId: t.releaseId, trackId: t.trackId, taskId: t.id });
     if (patch.responsable !== _meId()) notify(patch.responsable, 'assigned', 'Tarea asignada', t.titulo, { taskId: t.id, releaseId: t.releaseId });
   }
+  // Recurrencia ligera: al completar una tarea recurrente, genera la siguiente ocurrencia.
+  if (patch.estado === TASK_DONE && before.estado !== TASK_DONE && t.recurrence) _spawnRecurrence(t);
   if (patch.estado && patch.estado !== before.estado && typeof runAutomations === 'function') runAutomations(); // desbloqueo de dependientes, etc.
   return t;
+}
+// Avanza una fecha ISO según la recurrencia (semanal +7d, mensual +1 mes).
+function _advanceDate(iso, rec) {
+  if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); if (isNaN(d)) return '';
+  if (rec === 'weekly') d.setDate(d.getDate() + 7);
+  else if (rec === 'monthly') d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+// Clona la tarea recurrente con fechas avanzadas y subtareas reiniciadas.
+function _spawnRecurrence(t) {
+  const rec = t.recurrence; if (rec !== 'weekly' && rec !== 'monthly') return;
+  const baseDue = t.dueDate || new Date().toISOString().slice(0, 10);
+  const nextDue = _advanceDate(baseDue, rec); if (!nextDue) return;
+  const nextStart = t.startDate ? _advanceDate(t.startDate, rec) : '';
+  const subs = (Array.isArray(t.checklistInterno) ? t.checklistInterno : []).map(x => ({ text: (x && x.text) || '', done: false }));
+  createTask({ artistId: t.artistId, releaseId: t.releaseId, trackId: t.trackId }, {
+    titulo: t.titulo, descripcion: t.descripcion, departamento: t.departamento, responsable: t.responsable,
+    priority: t.priority, dueDate: nextDue, startDate: nextStart, etiquetas: (t.etiquetas || []).slice(),
+    checklistInterno: subs, recurrence: rec, estado: 'pendiente',
+  });
 }
 function deleteTaskRow(id) {
   const t = taskById(id); if (!t) return;
