@@ -3161,9 +3161,10 @@ function goToCampaign(id) {
   const l = launches.find(x => x.id === id); if (!l) return;
   if (typeof setActiveArtist === 'function' && l.artistId) setActiveArtist(l.artistId);
   if (l.type === 'evergreen') {
-    const rel = launches.find(x => x.artistId === l.artistId && x.type !== 'evergreen');
-    if (rel && typeof openLaunch === 'function') { openLaunch(rel.id); setTimeout(() => { if (typeof _releaseSubTab !== 'undefined') _releaseSubTab['campana'] = 'calendario'; if (typeof setReleaseTab === 'function') setReleaseTab('campana'); }, 90); }
-    else uiAlert('Esta campaña always-on aún no tiene un lanzamiento del artista donde mostrar el calendario. Crea uno para verla en contexto.');
+    // Las campañas always-on NO cuelgan de un lanzamiento: viven en el calendario de contenido
+    // del artista (release activo + todas las evergreen). No se fuerza ningún release.
+    if (typeof _calHidden !== 'undefined' && _calHidden[l.id]) delete _calHidden[l.id]; // asegura que la campaña clicada se vea
+    if (typeof showPage === 'function') showPage('calendario');
   } else if (typeof openLaunch === 'function') {
     openLaunch(id); setTimeout(() => { if (typeof setReleaseTab === 'function') setReleaseTab('campana'); }, 90);
   }
