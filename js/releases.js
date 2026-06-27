@@ -102,6 +102,22 @@ function renderLaunchDetail() {
 let _releaseTab = 'resumen';
 // 10 → 7 pestañas con sentido. Las agrupadas (campana/resultados/trabajo) usan sub-pestañas.
 const RELEASE_TABS = [['resumen','Resumen'],['musica','Música'],['campana','Campaña'],['resultados','Resultados'],['negocio','Negocio'],['archivos','Archivos'],['trabajo','Trabajo']];
+
+// ── Info-tip reusable: ícono ⓘ con tooltip al hover (reemplaza los blurbs grises) ──
+function _infoTipStyles(){
+  if (document.getElementById('info-tip-styles')) return;
+  const st = document.createElement('style'); st.id = 'info-tip-styles';
+  st.textContent = `
+  .info-tip{position:relative;display:inline-flex;align-items:center;color:var(--text-dim);cursor:help;vertical-align:middle}
+  .info-tip:hover,.info-tip:focus{color:var(--accent);outline:none}
+  .info-tip-bubble{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;width:max-content;max-width:280px;font-size:11px;line-height:1.5;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;box-shadow:0 10px 30px var(--shadow);opacity:0;visibility:hidden;transition:opacity .15s;z-index:60;pointer-events:none}
+  .info-tip:hover .info-tip-bubble,.info-tip:focus .info-tip-bubble{opacity:1;visibility:visible}
+  .info-tip-bubble::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:var(--border)}
+  .sec-label{display:flex;align-items:center;gap:7px;margin-bottom:12px;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase}`;
+  document.head.appendChild(st);
+}
+function infoTip(text){ _infoTipStyles(); return `<span class="info-tip" tabindex="0">${icon('info',13)}<span class="info-tip-bubble">${esc(text)}</span></span>`; }
+function secInfo(label, text){ return `<div class="sec-label">${esc(label)}${text ? infoTip(text) : ''}</div>`; }
 // Sub-pestañas: [id, etiqueta, ícono]. id 'reportes'/'actividad' = panel HTML; el resto = página global embebida.
 const TAB_GROUPS = {
   campana:    [['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar']],
@@ -203,7 +219,7 @@ function releaseAssetsHTML(l){
       <div class="field" style="margin-top:8px"><label>Link (Drive / Dropbox / WeTransfer / URL)</label><input class="input" id="asset-url" placeholder="https://…" onkeydown="if(event.key==='Enter')agregarAsset()"></div>
       <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);cursor:pointer"><input type="checkbox" id="asset-private"> ${icon('lock',12)} Privado (solo gestión; se audita quién lo abre)</label>
     </div>` : '';
-  return `<div class="empty-hint" style="margin-bottom:12px">Links de archivos del release clasificados. No subimos archivos — guardamos los enlaces. Los marcados como <strong>privados</strong> solo los ven roles de gestión y se registra quién los abre/copia.</div>${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
+  return `${secInfo('Archivos del release', 'No subimos archivos: guardamos los enlaces (Drive, Dropbox, WeTransfer, URL). Los marcados como privados solo los ven roles de gestión, y se audita quién los abre o copia.')}${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
 }
 function agregarAsset(){
   if(!requireCan('editar_assets')) return;
@@ -241,13 +257,11 @@ function quitarAsset(id){
   l.assets=(l.assets||[]).filter(a=>a.id!==id); saveLaunches(); renderReleaseTab('assets');
 }
 function releaseLinkTabHTML(title, desc, links){
-  return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span><span class="ph-sub">de este release</span></div>
-    <div class="empty-hint" style="margin-bottom:14px">${desc}<br><span style="color:var(--text-dim);font-size:11px">En un próximo paso de Sprint 1 esto vivirá embebido en la pestaña; por ahora abre la sección (ya está scopeada a este lanzamiento).</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span>${infoTip(s(desc) + ' Estas secciones ya están filtradas a este lanzamiento; ábrelas con los botones de abajo.')}<span class="ph-sub" style="margin-left:auto">de este release</span></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">${links.map(x=>`<button class="btn btn-ghost" onclick="showPage('${x[1]}')">${x[0]}</button>`).join('')}</div></div>`;
 }
 function releaseReportesHTML(l){
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('report',18)}</span><span class="ph-title">Reporte de Lanzamiento</span></div>
-    <div class="empty-hint" style="margin-bottom:14px">Genera un reporte (PPTX/HTML con IA) cruzando pauta y orgánico. La identidad y las métricas se precargan desde este lanzamiento.</div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('report',18)}</span><span class="ph-title">Reporte de Lanzamiento</span>${infoTip('Genera un reporte (PPTX/HTML con IA) cruzando pauta y orgánico. La identidad y las métricas se precargan desde este lanzamiento.')}</div>
     <button class="btn btn-primary" onclick="abrirReporteLanzamiento('${l.id}')">${icon('report',14)} Generar reporte</button></div>`;
 }
 function releaseTracklistHTML(l){
@@ -267,9 +281,8 @@ function releaseTracklistHTML(l){
   const addBtns = (!single && editable) ? `<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="abrirTrackPicker()">+ Agregar single existente</button>
       <button class="btn btn-ghost" onclick="nuevaCancionEnRelease()">+ Nueva canción</button></div>` : '';
-  const intro = single ? 'Este release es un <b>single</b> (1 canción).'
-    : 'Tracklist del <b>' + s(l.type) + '</b>. Agrega canciones nuevas o <b>reusa singles ya lanzados</b> (se referencian por su ISRC; no se duplican, su historia queda en su release original).';
-  return `<div class="empty-hint" style="margin-bottom:12px">${intro}</div>${rows||'<div class="empty-hint">Sin tracks.</div>'}${addBtns}`;
+  const header = single ? '' : secInfo('Tracklist · ' + s(l.type), 'Agrega canciones nuevas o reusa singles ya lanzados: se referencian por su ISRC, no se duplican, y su historia queda en su release original.');
+  return `${header}${rows||'<div class="empty-hint">Sin tracks.</div>'}${addBtns}`;
 }
 // Releases que referencian un track (para mostrar "también en…" y para el picker)
 function releasesOfTrack(trackId){ return launches.filter(l => (l.tracklist||[]).some(r => r.trackId === trackId)); }
@@ -535,11 +548,6 @@ function renderIdeas() {
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span></div>
-      <div id="letra-drop" ondragover="onLetraDragOver(event)" ondragleave="onLetraDragLeave(event)" ondrop="onLetraDrop(event)" style="border:1px dashed var(--border);border-radius:10px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;transition:border-color .15s">
-        <span style="font-size:12px;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px">${icon('upload',14)} Suelta un audio o</span>
-        <label class="btn btn-ghost" style="font-size:12px;padding:5px 10px;cursor:pointer;margin:0">Seleccionar archivo<input type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg" style="display:none" onchange="onLetraFilePick(this)"></label>
-        <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">se transcribe a la letra · máx 25 MB</span>
-      </div>
       <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
         <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA</button>
@@ -974,42 +982,6 @@ function songContextBlock(a) {
   return b;
 }
 function setLaunchLetraTraducida(v) { const a = activeLaunch(); if (!a) return; a.letraTraducida = s(v); saveLaunches(); }
-
-// ── Transcripción de audio → letra (Tier 0 v2, vía edge function "transcribe") ──
-async function transcribirAudioFile(file) {
-  const a = activeLaunch(); if (!a) return;
-  if (!requireCan('use_generador_ia')) return;
-  if (!file) return;
-  if (file.size > 25 * 1024 * 1024) { uiAlert('El archivo supera 25 MB (límite de transcripción). Sube un MP3/M4A más liviano.'); return; }
-  // La transcripción corre en el servidor (key segura) → requiere sesión / modo equipo.
-  if (!(typeof cloudEnabled === 'function' && cloudEnabled() && authed())) {
-    uiAlert('La transcripción de audio requiere sesión (modo equipo). Mientras tanto, pega o escribe la letra manualmente.');
-    return;
-  }
-  const st = document.getElementById('letra-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Transcribiendo el audio… (puede tardar según la duración)`; }
-  try {
-    const sb = await getSb();
-    const form = new FormData();
-    form.append('file', file, file.name || 'audio.mp3');
-    if (typeof _teamId !== 'undefined' && _teamId) form.append('team_id', _teamId);
-    const { data, error } = await sb.functions.invoke('transcribe', { body: form });
-    if (error) throw new Error(error.message || 'Error de la función transcribe (¿está desplegada?)');
-    if (data && data.error) throw new Error(data.error);
-    const text = (data && data.text) || '';
-    if (!s(text).trim()) throw new Error('No se obtuvo transcripción del audio.');
-    a.letra = s(text).trim(); saveLaunches();
-    renderIdeas();
-    if (typeof uiToast === 'function') uiToast('✓ Audio transcrito a la letra');
-  } catch (e) {
-    if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error al transcribir: ${s(friendlyError(e))}.`; }
-  }
-}
-function onLetraFilePick(input) { const f = input && input.files && input.files[0]; if (f) transcribirAudioFile(f); if (input) input.value = ''; }
-function _letraDropZone() { return document.getElementById('letra-drop'); }
-function onLetraDragOver(ev) { ev.preventDefault(); const z = _letraDropZone(); if (z) z.style.borderColor = 'var(--accent)'; }
-function onLetraDragLeave(ev) { ev.preventDefault(); const z = _letraDropZone(); if (z) z.style.borderColor = ''; }
-function onLetraDrop(ev) { ev.preventDefault(); const z = _letraDropZone(); if (z) z.style.borderColor = ''; const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]; if (f) transcribirAudioFile(f); }
 
 // ── Traducir la letra (IA, robusto para texto largo — no el endpoint gtx) ──
 async function traducirLetra() {

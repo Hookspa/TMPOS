@@ -109,7 +109,7 @@ function tareasPanelHTML(kind){
       ${editable?`<button class="goal-btn" title="Dependencias${depsCount?' ('+depsCount+')':''}" style="${depsCount?'color:var(--accent)':''}" onclick="openDepsPicker('${tk.id}')">${icon('link',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}','${tk.id}')">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
-  return `<div class="empty-hint" style="margin-bottom:12px">Tareas ${kind==='track'?'técnicas de la canción':'de campaña/operación del release'} — responsable, prioridad, fecha y estado. (También alimentan el inbox global "Mis tareas" — Sprint 7.)</div>${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
+  return `${(typeof secInfo==='function')?secInfo('Tareas ' + (kind==='track'?'de la canción':'del release'), 'Responsable, prioridad, fecha y estado. También aparecen en tu inbox global "Mis tareas".'):''}${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
 }
 async function addTask(kind){ if(!requireCan('gestionar_tareas')) return; const scope=_taskScope(kind); if(!scope) return; const tit=(await uiPrompt('Tarea:',{title:'Nueva tarea'})||'').trim(); if(!tit) return; createTask(scope,{titulo:tit}); _taskRerender(kind); }
 function setTaskField(kind,id,f,val){ if(!requireCan('gestionar_tareas')) return; const patch={}; patch[f]=val; updateTaskRow(id,patch); if(f==='estado'||f==='dueDate'||f==='priority') _taskRerender(kind); }
