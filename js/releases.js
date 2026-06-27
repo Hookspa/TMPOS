@@ -547,13 +547,12 @@ function renderIdeas() {
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span>${infoTip('La letra es la semilla: alimenta el Campaign DNA (Concepto, Emoción, Mensaje, Keywords), las ideas de contenido y el pitch editorial.')}</div>
       <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
         <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA</button>
         <button class="btn btn-ghost" onclick="traducirLetra()">${icon('ai',13)} Traducir</button>
         <button class="btn btn-ghost" onclick="extraerHooks()">${icon('ai',13)} Extraer ganchos</button>
-        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">La letra → Concepto/Emoción/Mensaje/Keywords y semilla de ideas</span>
       </div>
       ${s(a.letraTraducida) ? `<div style="margin-top:12px"><div class="brief-label" style="margin-bottom:4px">Traducción (editable)</div>
         <textarea class="textarea" placeholder="Traducción de la letra…" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetraTraducida(this.value)">${s(a.letraTraducida)}</textarea></div>` : ''}
@@ -563,10 +562,9 @@ function renderIdeas() {
     </div>
 
     ${(() => { const pe = a.pitchEditorial || {}; const sLen = s(pe.spotify).length; return `<div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Pitch editorial</span><span class="ph-sub">Spotify for Artists · máx 500 car.</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Pitch editorial</span><span class="ph-sub">Spotify for Artists · máx 500 car.</span>${infoTip('Genera el pitch para el editor de Spotify (máx 500 car.) y una versión más corta para Apple Music, usando el ADN del artista, el Campaign DNA y la letra.')}</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
         <button class="btn btn-primary" onclick="generarPitchEditorial()">${icon('ai',13)} ${pe.spotify ? 'Regenerar' : 'Generar'} pitch</button>
-        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Usa ADN + Campaign DNA + la letra</span>
       </div>
       ${pe.spotify ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span class="brief-label">Spotify</span><span id="pitch-count" style="font-size:10px;font-family:var(--font-mono);color:${pitchCountColor(sLen)}">${sLen}/500</span></div>
         <textarea class="textarea" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" oninput="setPitchField('spotify',this.value)" onchange="setPitchField('spotify',this.value)">${s(pe.spotify)}</textarea>
@@ -589,10 +587,9 @@ function renderIdeas() {
           <button class="goal-btn reject" title="Quitar pieza" onclick="quitarPlanItem(${i})">${icon('close',12)}</button></div>`).join('')}</div>`).join('');
       }
       return `<div class="panel">
-        <div class="panel-head"><span class="ph-icon">${icon('video',18)}</span><span class="ph-title">Contenido por ADN</span><span class="ph-sub">Prensa, performance, social… desde el ADN</span></div>
+        <div class="panel-head"><span class="ph-icon">${icon('video',18)}</span><span class="ph-title">Contenido por ADN</span><span class="ph-sub">Prensa, performance, social… desde el ADN</span>${infoTip('Propone piezas de video (prensa/EPK, performance, detrás de cámaras…) según el ADN del artista y el de la campaña. Requiere el ADN del artista completo.')}</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
           <button class="btn btn-primary" onclick="generarPlanContenido()"${ready ? '' : ' disabled style="opacity:.5;cursor:not-allowed"'}>${icon('ai',13)} ${plan.length ? 'Regenerar' : 'Generar'} plan</button>
-          <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Usa el ADN del artista + el ADN de la campaña</span>
         </div>
         ${inner}
         <div id="plan-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
