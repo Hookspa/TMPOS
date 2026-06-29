@@ -350,7 +350,8 @@ function releaseResumenHTML(l) {
     </div>`;
   const aprPanel = (typeof approvalsPanelHTML==='function') ? approvalsPanelHTML(l) : '';
   const missingPanel = (typeof whatsMissingHTML==='function') ? whatsMissingHTML(l) : '';
-  return statusPanel + aprPanel + missingPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
+  const snapPanel = (typeof snapshotPanelHTML==='function') ? snapshotPanelHTML(l) : '';
+  return statusPanel + aprPanel + missingPanel + snapPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
 }
 // Identidad del release (UPC / distribuidora / notas)
 function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }

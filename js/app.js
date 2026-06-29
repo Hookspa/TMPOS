@@ -3312,6 +3312,8 @@ function setLaunchStatus(id, st) {
   const prev = l.status; if (prev === st) return;
   l.status = st; saveLaunches();
   if (typeof logActivity === 'function') logActivity('status_changed', `Release → ${STATUS_MAP[st].word}: ${s(l.name)}`, { artistId: l.artistId, releaseId: l.id });
+  // B3 (captura "ahora"): al CERRAR un release, captura el snapshot del rollup operativo (idempotente).
+  if ((st === 'complete' || st === 'cerrado') && typeof captureReleaseSnapshot === 'function') captureReleaseSnapshot(id, { silent: true });
   if (typeof runAutomations === 'function') runAutomations();
   if (typeof renderReleaseTab === 'function' && currentLaunchId === id) renderReleaseTab('resumen');
   renderAllLaunches();
