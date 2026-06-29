@@ -79,3 +79,102 @@ function renderRosterHeatmap(){
   const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:14px"><span class="dot dot--red"></span><span>${overloaded} semana${overloaded>1?'s':''} con 3+ releases — riesgo de auto-canibalización y carga del equipo.</span></div>` : '';
   host.innerHTML = banner + `<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">${cells}</div>` + detail;
 }
+
+// ══════════════════════════════════════════
+// COCKPIT DE LANZAMIENTOS (vista de portafolio · sonda de discovery, pivote post-Council)
+// Reusa releaseReady/releasePhase/releaseAlerts/diasRestantes + tasks. NO es el foso completo (gated A3).
+// Forma: cola de acción (lo que se cae esta semana) + tabla de N lanzamientos ordenada por riesgo.
+// ══════════════════════════════════════════
+function cockpitLaunches() {
+  const all = (typeof launches !== 'undefined') ? launches : [];
+  return all.filter(l => l.type !== 'evergreen' && l.status !== 'complete' && l.status !== 'cerrado');
+}
+function _cockpitTasks(l) { return (typeof tasks !== 'undefined') ? tasks.filter(t => t.releaseId === l.id) : []; }
+function _cockpitRisk(l) {
+  const d = (l.date && typeof diasRestantes === 'function') ? diasRestantes(l.date) : null;
+  const ts = _cockpitTasks(l);
+  const overdue = ts.filter(t => t.estado !== TASK_DONE && t.dueDate && diasRestantes(t.dueDate) < 0).length;
+  const blocked = ts.filter(t => t.estado === 'bloqueado').length;
+  const alerts = (typeof releaseAlerts === 'function') ? releaseAlerts(l) : [];
+  const reds = alerts.filter(a => a.level === 'red').length, yellows = alerts.filter(a => a.level === 'yellow').length;
+  const pct = (typeof releaseReady === 'function') ? releaseReady(l).pct : 0;
+  let score = overdue * 8 + blocked * 5 + reds * 10 + yellows * 3;
+  if (d != null) { if (d < 0) score += 15; else if (d <= 7) score += 20; else if (d <= 14) score += 10; else if (d <= 30) score += 4; }
+  if (d != null && d >= 0 && d <= 21 && pct < 60) score += Math.round((60 - pct) / 3);
+  return { score, d, overdue, blocked, reds, yellows, pct, alerts };
+}
+// Cola de acción cross-lanzamiento: lo que se cae esta semana en todo el roster.
+function cockpitActionItems() {
+  const out = [];
+  cockpitLaunches().forEach(l => {
+    const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === l.artistId) : null;
+    const an = art ? art.name : '—';
+    const ts = _cockpitTasks(l);
+    ts.filter(t => t.estado !== TASK_DONE && t.dueDate && diasRestantes(t.dueDate) < 0).forEach(t =>
+      out.push({ sev: 3, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Tarea vencida: ${s(t.titulo) || 'sin título'} · ${-diasRestantes(t.dueDate)}d`, ord: diasRestantes(t.dueDate) }));
+    ts.filter(t => t.estado === 'bloqueado').forEach(t =>
+      out.push({ sev: 2, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Bloqueada: ${s(t.titulo) || 'sin título'}`, ord: 5000 }));
+    ((typeof releaseAlerts === 'function') ? releaseAlerts(l) : []).filter(a => a.level === 'red').forEach(a =>
+      out.push({ sev: 3, lid: l.id, tab: 'resumen', art: an, rel: l.name, text: s(a.text), ord: 4000 }));
+    const d = (l.date && typeof diasRestantes === 'function') ? diasRestantes(l.date) : null;
+    const pct = (typeof releaseReady === 'function') ? releaseReady(l).pct : 0;
+    if (d != null && d >= 0 && d <= 7 && pct < 70) out.push({ sev: 3, lid: l.id, tab: 'resumen', art: an, rel: l.name, text: `Drop en ${d}d con readiness ${pct}%`, ord: d });
+  });
+  out.sort((a, b) => b.sev - a.sev || a.ord - b.ord);
+  return out;
+}
+// Abre el lanzamiento del cockpit (cambia de artista si hace falta + pestaña).
+function cockpitOpen(id, tab) {
+  const l = (typeof launches !== 'undefined') ? launches.find(x => x.id === id) : null; if (!l) return;
+  if (typeof setActiveArtist === 'function' && l.artistId) setActiveArtist(l.artistId);
+  if (typeof openLaunch === 'function') { openLaunch(id); if (tab) setTimeout(() => { if (typeof setReleaseTab === 'function') setReleaseTab(tab); }, 90); }
+}
+function renderCockpit() {
+  const host = document.getElementById('cockpit-body'); if (!host) return;
+  const rows = cockpitLaunches().map(l => ({ l, r: _cockpitRisk(l) }))
+    .sort((a, b) => b.r.score - a.r.score || ((a.r.d == null ? 9999 : a.r.d) - (b.r.d == null ? 9999 : b.r.d)));
+  const sub = document.getElementById('cockpit-sub');
+  if (sub) sub.textContent = rows.length + ' lanzamiento' + (rows.length === 1 ? '' : 's') + ' activo' + (rows.length === 1 ? '' : 's') + ' · ordenados por riesgo';
+  if (!rows.length) { host.innerHTML = '<div class="empty-hint">No hay lanzamientos activos. Crea uno para verlo aquí.</div>'; return; }
+  // ── Cola de acción ──
+  const items = cockpitActionItems().slice(0, 6);
+  const queue = items.length ? `
+    <div class="panel" style="margin:0 0 18px;border-color:rgba(255,77,77,.25)">
+      <div class="panel-head"><span class="ph-icon">${icon('warning', 18)}</span><span class="ph-title">Se cae esta semana</span><span class="ph-sub">${items.length} cosa${items.length === 1 ? '' : 's'} que necesitan acción</span></div>
+      ${items.map(it => `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer" onclick="cockpitOpen('${it.lid}','${it.tab}')">
+        <span class="dot ${it.sev >= 3 ? 'dot--red' : 'dot--yellow'}"></span>
+        <div style="flex:1;min-width:0"><div style="font-size:13px">${esc(it.text)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
+        <span class="chip" style="cursor:pointer">Abrir →</span>
+      </div>`).join('')}
+    </div>` : `<div class="panel" style="margin:0 0 18px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="dot dot--green"></span> Nada urgente esta semana. Todo bajo control.</div></div>`;
+  // ── Tabla de lanzamientos (una fila c/u, ordenada por riesgo) ──
+  const rowsHTML = rows.map(({ l, r }) => {
+    const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === l.artistId) : null;
+    const phase = (typeof releasePhase === 'function') ? releasePhase(l) : '—';
+    const pcol = (typeof phaseColor === 'function') ? phaseColor(phase) : 'var(--text-dim)';
+    const rcol = (typeof readyColor === 'function') ? readyColor(r.pct) : 'var(--accent)';
+    const topAlert = (r.alerts.find(a => a.level === 'red') || r.alerts.find(a => a.level === 'yellow'));
+    const dLabel = r.d == null ? 's/fecha' : (r.d < 0 ? `salió hace ${-r.d}d` : `${r.d}d`);
+    const dColor = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? '#4ade80' : (r.d <= 7 ? 'var(--accent2)' : (r.d <= 21 ? 'var(--beat)' : 'var(--text-muted)')));
+    const badges = [
+      r.overdue ? `<span class="chip" style="cursor:default;color:var(--accent2);border-color:rgba(255,77,77,.3)">${r.overdue} vencida${r.overdue === 1 ? '' : 's'}</span>` : '',
+      r.blocked ? `<span class="chip" style="cursor:default;color:var(--beat)">${r.blocked} bloqueada${r.blocked === 1 ? '' : 's'}</span>` : '',
+    ].filter(Boolean).join('');
+    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1.4;min-width:190px">
+        <div style="font-size:15px;font-weight:600">${esc(l.name)}</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
+      </div>
+      <div style="flex:0 0 auto"><span class="chip" style="cursor:default;color:${pcol};border-color:${pcol}55">${esc(phase)}</span></div>
+      <div style="flex:1;min-width:130px">
+        <div style="display:flex;justify-content:space-between;font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:3px"><span>LISTO</span><span style="color:${rcol}">${r.pct}%</span></div>
+        <div class="progress-track" style="height:5px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
+        ${topAlert ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(topAlert.text)}"><span class="dot ${topAlert.level === 'red' ? 'dot--red' : 'dot--yellow'}" style="margin-right:4px"></span>${esc(topAlert.text)}</div>` : ''}
+      </div>
+      <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
+      <div style="flex:0 0 auto;text-align:right;min-width:62px"><div style="font-family:var(--font-display);font-size:22px;color:${dColor};line-height:1">${esc(dLabel)}</div><div style="font-size:8px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px">AL DROP</div></div>
+    </div>`;
+  }).join('');
+  host.innerHTML = queue + rowsHTML;
+  if (typeof hydrateIcons === 'function') hydrateIcons(host);
+}
