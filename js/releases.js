@@ -642,15 +642,18 @@ function objetivoFor(cat) {
   const m = { 'storytelling':'Conexión emocional','awareness':'Descubrimiento','behind the scenes':'Humanizar al artista','engagement':'Interacción','trend':'Alcance / viralidad','pov':'Relatabilidad','reaction':'Prueba social','performance':'Mostrar talento','relatable':'Identificación','song promotion':'Conversión a streams','comedy/sketch':'Entretener','motivational / emotional':'Inspirar','vibes':'Estética / mood','about me':'Construir marca' };
   return m[s(cat).toLowerCase()] || 'Awareness';
 }
-function hookFor(d, kw) {
+function hookFor(d, kw, hooks) {
   const k0 = kw[0] || (s(d.keywords).split(',')[0] || '').trim() || 'esto';
-  return _pick([
+  const generic = [
     `Lo que nadie vio sobre ${k0}…`,
     d.emotion ? `${d.emotion}, en 15 segundos` : `No estabas listo para esto`,
     d.message ? `"${d.message}"` : `POV: ${k0}`,
     `Si sientes ${k0}, quédate`,
     d.about ? `Esto nació de: ${s(d.about).split(' ').slice(0,5).join(' ')}…` : `Esto nació de algo roto…`,
-  ]);
+  ];
+  // Si hay ganchos reales extraídos de la letra, priorízalos (dominan la rotación).
+  const real = (Array.isArray(hooks) ? hooks : []).map(h => `"${s(h)}"`).filter(Boolean);
+  return _pick(real.length ? real.concat(generic.slice(0, 2)) : generic);
 }
 function tituloFor(cat, a) {
   const n = a.name;
@@ -661,12 +664,13 @@ function plantillaIdeas(a, count) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
   const tone = (adn.personality && adn.personality.tone) || 'auténtico';
   const kw = s(d.keywords).split(',').map(x => x.trim()).filter(Boolean);
+  const lyricHooks = Array.isArray(a.hooks) ? a.hooks : [];   // ganchos reales extraídos de la letra (Tier 0)
   const platform = (a.content && a.content.platform) || 'TikTok';
   const out = [];
   (a.ideas || []).forEach(it => {
     const cat = (it.cat || [])[0] || 'storytelling';
     out.push({
-      cat, format: `${platform} · 15-30s`, title: it.title, hook: hookFor(d, kw),
+      cat, format: `${platform} · 15-30s`, title: it.title, hook: hookFor(d, kw, lyricHooks),
       objetivo: objetivoFor(cat),
       descripcion: `Adapta "${s(it.hook || it.title)}" al mundo de ${art.name}: ${s(d.about || d.message)}. Tono ${tone}.${kw.length ? ` Menciona: ${kw.slice(0,3).join(', ')}.` : ''}`,
       refLink: it.link || '', source: 'plantilla'
@@ -677,7 +681,7 @@ function plantillaIdeas(a, count) {
   while (out.length < count) {
     const cat = cats[i % cats.length]; i++;
     out.push({
-      cat, format: `${platform} · 15-30s`, title: tituloFor(cat, a), hook: hookFor(d, kw),
+      cat, format: `${platform} · 15-30s`, title: tituloFor(cat, a), hook: hookFor(d, kw, lyricHooks),
       objetivo: objetivoFor(cat),
       descripcion: `${objetivoFor(cat)} para ${art.name}. ${s(d.about || d.message)} Tono ${tone}.${kw.length ? ` Keywords: ${kw.slice(0,3).join(', ')}.` : ''}`,
       refLink: '', source: 'plantilla'

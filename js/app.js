@@ -1782,6 +1782,7 @@ function buildContentPrompt(ci) {
     tone: (adn.personality || {}).tone, audience: (adn.audience || {}).ideal,
     launch: l.name, about: d.about, emotion: d.emotion, message: d.message, keywords: d.keywords,
     title: ci.title, cat: ci.cat, hook: p.hook || ci.hook, brief: p.descripcion || ci.comentarios,
+    songBlock: (typeof songContextBlock === 'function') ? songContextBlock(l) : '',
   });
 }
 function buildContentPromptFromRef(r, l, art) {
@@ -1791,6 +1792,7 @@ function buildContentPromptFromRef(r, l, art) {
     tone: (adn.personality || {}).tone, audience: (adn.audience || {}).ideal,
     launch: l && l.name, about: d.about, emotion: d.emotion, message: d.message, keywords: d.keywords,
     title: r.title, cat: (r.cat || [])[0], hook: r.hook, brief: r.comentarios,
+    songBlock: (typeof songContextBlock === 'function') ? songContextBlock(l) : '',
   });
 }
 function contentPromptText(x) {
@@ -1799,7 +1801,7 @@ function contentPromptText(x) {
 ARTISTA: ${s(x.name)} · Género: ${s(x.genre)} · País: ${s(x.country)}
 Tono de comunicación: ${s(x.tone)} · Audiencia ideal: ${s(x.audience)}
 CAMPAÑA (${s(x.launch)}): Concepto: ${s(x.about)} · Emoción: ${s(x.emotion)} · Mensaje: ${s(x.message)} · Keywords: ${s(x.keywords)}
-PIEZA: ${s(x.title)} · Categoría: ${s(x.cat)} · Hook de referencia: ${s(x.hook)} · Brief: ${s(x.brief)}
+PIEZA: ${s(x.title)} · Categoría: ${s(x.cat)} · Hook de referencia: ${s(x.hook)} · Brief: ${s(x.brief)}${x.songBlock || ''}
 
 Devuelve SOLO un objeto JSON válido (sin texto extra), en español, con esta forma exacta:
 {
@@ -2381,7 +2383,7 @@ function buildGoalsPrompt(a) {
 
 ARTISTA: ${s(art.name)} · Géneros: ${s((adn.sound||{}).genres)} · Audiencia: ${s((adn.audience||{}).ideal)}
 CAMPAÑA (${s(a.name)}): ${s(d.about)} · Mensaje: ${s(d.message)}
-Plataforma principal: ${s((a.content||{}).platform)} · Pre/Post: ${a.preDays}/${a.postDays} días
+Plataforma principal: ${s((a.content||{}).platform)} · Pre/Post: ${a.preDays}/${a.postDays} días${(typeof songContextBlock==='function') ? songContextBlock(a) : ''}
 HISTÓRICO DE LANZAMIENTOS DEL ARTISTA:
 ${hist}
 APRENDIZAJES (qué replicar / qué evitar):
@@ -2501,7 +2503,7 @@ function buildStrategyPrompt(art) {
   const learn = (art.learnings || []).map(x => `- (${x.type}) ${x.q}`).join('\n') || '(sin aprendizajes)';
   return `Eres director de estrategia musical. Con base en los datos del artista, da recomendaciones accionables: mejor día/hora para publicar, formato más efectivo, duración ideal de campaña, cantidad ideal de contenido por semana y tipo de contenido más exitoso.
 
-ARTISTA: ${s(art.name)} · Géneros: ${s((adn.sound || {}).genres)} · Audiencia: ${s((adn.audience || {}).ideal)} · Tono: ${s((adn.personality || {}).tone)}
+ARTISTA: ${s(art.name)} · Géneros: ${s((adn.sound || {}).genres)} · Audiencia: ${s((adn.audience || {}).ideal)} · Tono: ${s((adn.personality || {}).tone)}${(typeof songContextBlock==='function' && typeof activeLaunch==='function' && activeLaunch()) ? '\nCANCIÓN EN FOCO:' + songContextBlock(activeLaunch()) : ''}
 LANZAMIENTOS:
 ${ls}
 OBJETIVOS SMART (meta vs. logrado real):
