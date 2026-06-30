@@ -1085,6 +1085,25 @@
   .tk-btn--primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
   .tk-btn--primary:hover { background: var(--accent-dark); color: var(--accent-fg); }
 
+  /* ── ONBOARDING (estado vacío guiado, Caso 1) ── checklist de arranque que aparece
+     cuando el artista no tiene lanzamientos; convierte vistas vacías en un primer paso. ── */
+  .onb { background: linear-gradient(135deg, rgba(255,107,48,0.07), var(--surface)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); }
+  .onb-title { font-family: var(--font-display); font-size: var(--h-section); letter-spacing: 0.5px; color: var(--text); margin-bottom: var(--space-1); }
+  .onb-sub { font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-5); }
+  .onb-steps { display: flex; flex-direction: column; gap: var(--space-3); }
+  .onb-step { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+  .onb-step.locked { opacity: 0.55; }
+  .onb-num { flex: none; width: 28px; height: 28px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+  .onb-step.locked .onb-num { background: var(--surface2); color: var(--text-dim); }
+  .onb-step-body { flex: 1; min-width: 0; }
+  .onb-step-title { font-size: 14px; color: var(--text); font-weight: 500; }
+  .onb-step-desc { font-size: 12px; color: var(--text-muted); }
+  .onb-step .tk-btn { flex: none; }
+  @media (max-width: 860px) {
+    .onb-step { flex-wrap: wrap; }
+    .onb-step .tk-btn { width: 100%; margin-top: var(--space-2); }
+  }
+
   .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
   .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; min-height: 320px; transition: border-color 0.15s; }
   .kanban-col.drag-over { border-color: var(--accent); background: rgba(255,107,48,0.03); }
@@ -1824,6 +1843,7 @@
         </div>
         <button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="openPOW()"><span data-icon="checklist" data-isize="15"></span> Plan de la Semana (POW)</button>
       </div>
+      <div id="dash-onboarding"></div>
       <div class="dash-kpis fade-in" id="dash-stats"></div>
 
       <div class="dash-main fade-in">

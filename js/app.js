@@ -3440,10 +3440,51 @@ function renderDashSignals(art) {
     sigTile('finance', (rec != null && rec >= 100) ? 'ok' : 'accent', rec != null ? rec + '%' : '—', 'recoup · ROI ' + (f.roi != null ? f.roi + '%' : '—'));
 }
 
+// Onboarding del Caso 1: checklist de arranque para el artista que abre y no tiene
+// lanzamientos. Convierte las "vistas vacías" en un primer paso obvio (HANDOFF #3).
+function dashOnboardingHTML(art) {
+  return `<div class="onb fade-in">
+    <div class="onb-title">EMPIEZA AQUÍ${art ? ' · ' + esc(up(art.name)) : ''}</div>
+    <div class="onb-sub">Tres pasos para tener tu primer drop corriendo dentro de Tempo.</div>
+    <div class="onb-steps">
+      <div class="onb-step">
+        <span class="onb-num">1</span>
+        <div class="onb-step-body">
+          <div class="onb-step-title">Crea tu primer lanzamiento</div>
+          <div class="onb-step-desc">El single o EP que vas a sacar — todo (calendario, letra, contenido) cuelga de aquí.</div>
+        </div>
+        <button class="tk-btn tk-btn--primary" onclick="abrirWizard()">Crear lanzamiento</button>
+      </div>
+      <div class="onb-step locked">
+        <span class="onb-num">2</span>
+        <div class="onb-step-body">
+          <div class="onb-step-title">Pega la letra de la canción</div>
+          <div class="onb-step-desc">La letra es la semilla: alimenta ideas, contenido y estrategia. (Se desbloquea con tu lanzamiento.)</div>
+        </div>
+      </div>
+      <div class="onb-step locked">
+        <span class="onb-num">3</span>
+        <div class="onb-step-body">
+          <div class="onb-step-title">Genera el contenido del drop</div>
+          <div class="onb-step-desc">Caption, guión y hashtags por pieza, listos para publicar. (Se desbloquea con tu lanzamiento.)</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderDashboard() {
   renderDashLaunches();
   const art = activeArtist();
   const ls = artistLaunches();
+  // Estado vacío guiado (Caso 1): si el artista no tiene lanzamientos, lidera con el
+  // checklist de arranque y oculta tendencia/señales (vacías se ven rotas).
+  const onbHost = document.getElementById('dash-onboarding');
+  const dashMain = document.querySelector('#page-dashboard .dash-main');
+  const isEmpty = !!art && ls.length === 0;
+  if (onbHost) onbHost.innerHTML = isEmpty ? dashOnboardingHTML(art) : '';
+  if (dashMain) dashMain.style.display = isEmpty ? 'none' : '';
+  if (isEmpty && typeof hydrateIcons === 'function') hydrateIcons();
   const statsHost = document.getElementById('dash-stats');
   const nextHost = document.getElementById('dash-next');
   const titleEl = document.getElementById('dash-launches-title');
