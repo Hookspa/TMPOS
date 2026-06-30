@@ -1735,11 +1735,8 @@
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
-    <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+    <div class="nav-item active" data-page="compas" onclick="showPage('compas')" title="Tu centro de mando: roster (riesgo de lanzamientos + salud) y el zoom por artista">
       <span class="icon" data-icon="dashboard" data-isize="17"></span> Dashboard
-    </div>
-    <div class="nav-item" data-page="compas" onclick="showPage('compas')" title="Centro de mando: tu roster (riesgo de lanzamientos + salud) y el zoom por artista">
-      <span class="icon" data-icon="goals" data-isize="17"></span> Compás
     </div>
     <div class="nav-item" data-page="lanzamientos" onclick="showPage('lanzamientos')">
       <span class="icon" data-icon="releases" data-isize="17"></span> Lanzamientos
@@ -1790,7 +1787,7 @@
 <!-- BARRA DE PESTAÑAS INFERIOR (móvil) — Dashboard/Lanzamientos/Tareas siempre a un toque;
      el resto (Perfil, ADN, Banco, Campañas, Label, cuenta) vive en "Más". -->
 <nav class="bottom-tabbar" aria-label="Navegación principal">
-  <button class="tab-item active" data-tab-page="dashboard" onclick="showPage('dashboard')" aria-label="Dashboard">
+  <button class="tab-item active" data-tab-page="dashboard" onclick="showPage('compas')" aria-label="Dashboard">
     <span class="icon" data-icon="dashboard" data-isize="21"></span><span class="tab-label">Dashboard</span>
   </button>
   <button class="tab-item" data-tab-page="lanzamientos" onclick="showPage('lanzamientos')" aria-label="Lanzamientos">
@@ -1835,7 +1832,7 @@
   <div class="content">
 
     <!-- ── DASHBOARD ── -->
-    <div class="page active" id="page-dashboard">
+    <div class="page" id="page-dashboard">
       <div class="dash-head">
         <div>
           <h2 id="dash-title">Dashboard</h2>
@@ -1880,8 +1877,8 @@
     </div>
 
     <!-- ── COMPÁS — centro de mando (roster + artista) ── -->
-    <div class="page" id="page-compas">
-      <div class="dash-head"><div><h2>Compás</h2><div class="dash-sub">Tu centro de mando — roster y artista en un solo lugar</div></div></div>
+    <div class="page active" id="page-compas">
+      <div class="dash-head"><div><h2>Dashboard</h2><div class="dash-sub">Tu centro de mando — roster y artista en un solo lugar</div></div></div>
       <div id="compas-toolbar" class="cal-toolbar" style="margin-bottom:18px"></div>
       <div id="compas-body" class="fade-in"></div>
     </div>

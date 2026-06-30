@@ -228,7 +228,7 @@ function rosterHealthHTML() {
 // ══════════════════════════════════════════
 // COMPÁS — centro de mando (rebautiza el Cockpit y absorbe el Label) · toggle Roster/Artista
 // ══════════════════════════════════════════
-let compasView = 'roster';        // 'roster' | 'artista'
+let compasView = 'artista';       // 'roster' | 'artista' — arranca en Artista (el dashboard familiar); Roster a un clic
 let compasRosterTab = 'riesgo';   // 'riesgo' | 'salud'
 let _compasEmbedded = false;
 function setCompasView(v) { compasView = v; renderCompas(); }

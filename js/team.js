@@ -107,6 +107,7 @@ async function cloudLoad() {
     const p = (document.querySelector('.page.active') || {}).id;
     if (p === 'page-perfil' || p === 'page-adn') renderArtistForms();
     if (p === 'page-dashboard') renderDashboard();
+    if (p === 'page-compas' && typeof renderCompas === 'function') renderCompas();
     setSyncStatus('ok');
   } catch (e) { setSyncStatus('error', friendlyError(e, 'cargar tus datos')); }
 }
@@ -398,7 +399,7 @@ function applyRoleNav() {
 function roleHomePage() {
   const p = currentPreset();
   if (['productor','ingeniero','abogado','disenador','lector'].indexOf(p) >= 0) return 'tareas';
-  return 'dashboard';
+  return 'compas'; // "Dashboard" (centro de mando fusionado: roster + zoom de artista)
 }
 function applyRolePill() {
   const pill = document.querySelector('.role-pill'); if (!pill) return;
