@@ -125,14 +125,14 @@ function releaseAlerts(l){
   const released = (l.status==='complete') || (dleft!=null && dleft<0);
   const ts = (typeof tracksOfLaunch==='function')?tracksOfLaunch(l):[];
   const rc = l.releaseChecklist||{};
-  if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:'')});
+  if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:''), action:{label:'Archivos →', fn:`setReleaseTab('archivos')`}});
   ts.forEach(t=>{ const lg=(t.checklist&&t.checklist.legal)||{}; const a=(t.checklist&&t.checklist.audio)||{};
-    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`});
-    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`});
+    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`openTrack('${t.id}')`}});
+    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}')`}});
   });
   const _rtasks = (typeof tasks!=='undefined') ? tasks.filter(t=>t.releaseId===l.id) : [];
   const overdue = _rtasks.filter(tk=>tk.dueDate && tk.estado!==TASK_DONE && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
-  if(overdue) out.push({level:'red', text:`${overdue} tarea(s) vencida(s)`});
+  if(overdue) out.push({level:'red', text:`${overdue} tarea(s) vencida(s)`, action:{label:'Tareas →', fn:`setReleaseTab('trabajo')`}});
   if(released) out.push({level:'yellow', text:'Ya salió este lanzamiento — genera el reporte', action:{label:`${icon('report',12)} Reporte`, fn:`abrirReporteLanzamiento('${l.id}')`}});
   return out;
 }
