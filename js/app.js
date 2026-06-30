@@ -494,6 +494,7 @@ function showPage(id, skipRecord) {
   document.body.classList.remove('sidebar-open'); // cierra el menú en móvil al navegar
   if (typeof cerrarMoreSheet === 'function') cerrarMoreSheet(); // cierra la hoja "Más" si estaba abierta
   if (typeof releaseRestorePages === 'function') releaseRestorePages(); // devuelve páginas embebidas a .content antes de navegar
+  if (id !== 'compas' && typeof compasRestore === 'function') compasRestore(); // devuelve #page-dashboard si estaba embebido en Compás
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
@@ -502,7 +503,7 @@ function showPage(id, skipRecord) {
   const TAB_FOR_PAGE = { dashboard: 'dashboard', lanzamientos: 'lanzamientos', launch: 'lanzamientos', tareas: 'tareas' };
   const activeTab = TAB_FOR_PAGE[id] || 'mas';
   document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tabPage === activeTab));
-  const titles = {dashboard:'Dashboard',cockpit:'Cockpit',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',compas:'Compás',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   let _ttl = titles[id] || id;
   if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
   document.getElementById('page-title-text').textContent = up(_ttl);
@@ -530,7 +531,7 @@ function showPage(id, skipRecord) {
   if (id === 'aprendizajes') renderAprendizajes();
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
-  if (id === 'cockpit')      renderCockpit();
+  if (id === 'compas')       renderCompas();
   if (id === 'tareas')       renderTareas();
   if (id === 'campanias')    renderCampanias();
   if (id === 'dashboard')    renderDashboard();
@@ -2262,49 +2263,9 @@ function updateLabelNav() {
   el.style.display = (artists.length >= 2 && !_restrictedArtist) ? '' : 'none';
 }
 function renderLabel() {
-  const statsHost = document.getElementById('label-stats');
-  const listHost = document.getElementById('label-list');
-  if (typeof renderRosterHeatmap === 'function') renderRosterHeatmap(); // carga semanal del roster (siempre)
-  if (!artists.length) { statsHost.innerHTML = ''; listHost.innerHTML = '<div class="empty-hint">No hay artistas en este equipo todavía.</div>'; return; }
-  const perf = artists.map(a => ({ art: a, p: artistPerformance(a) }));
-  perf.sort((x, y) => (x.p.rank - y.p.rank) || ((x.p.avg == null ? 999 : x.p.avg) - (y.p.avg == null ? 999 : y.p.avg)));
-  const need = perf.filter(x => x.p.rank === 0).length;
-  const onTrack = perf.filter(x => x.p.rank === 3).length;
-  const proximos = upcomingReleases(30).length;
-  const legalPend = artists.reduce((a, ar) => a + artistLegalPending(ar.id), 0);
-  const fin = artists.reduce((acc, ar) => { const f = artistFinance(ar.id); acc.inv += f.inv; acc.ing += f.ing; return acc; }, { inv: 0, ing: 0 });
-  const card = (label, val, sub, col) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="${col ? `color:${col}` : ''}">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
-  statsHost.innerHTML =
-    card('Artistas', artists.length, '') +
-    card('Necesitan atención', need, need ? 'priorízalos' : 'todo en orden', need ? 'var(--accent2)' : '') +
-    card('Próximos a salir', proximos, '≤ 30 días') +
-    card('Legal pendiente', legalPend, legalPend ? 'requiere acción' : 'al día', legalPend ? 'var(--beat)' : '') +
-    card('Recoupment', fin.inv ? Math.min(100, Math.round(fin.ing / fin.inv * 100)) + '%' : '—', `inv ${money(fin.inv)} · ing ${money(fin.ing)}`);
-  listHost.innerHTML = perf.map(({ art, p }) => {
-    const col = rankColor(p.rank);
-    const launchInfo = p.latest ? `${s(p.latest.name)} · ${(STATUS_MAP[p.latest.status] || {}).tag || p.latest.status}` : 'sin lanzamientos';
-    const cierre = p.end ? `${p.end}${p.dleft != null ? ` (${p.dleft >= 0 ? 'en ' + p.dleft + 'd' : Math.abs(p.dleft) + 'd atrás'})` : ''}` : '—';
-    const bar = p.avg != null ? `<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:180px;margin-top:6px"><div style="height:100%;width:${Math.min(100, p.avg)}%;background:${col}"></div></div>` : '';
-    const alerts = artistAlertCount(art.id), legal = artistLegalPending(art.id), next = nextRelease(art.id);
-    const chips = [
-      alerts ? `<span class="chip" style="cursor:default;color:var(--accent2)">${alerts} alerta${alerts > 1 ? 's' : ''}</span>` : '',
-      legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
-      next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
-    ].filter(Boolean).join(' ');
-    return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
-      <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
-        ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>` : ''}
-        ${bar}
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:var(--font-display);font-size:26px;color:${col}">${p.avg != null ? p.avg + '%' : '—'}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(p.label)}${p.totalGoals ? ` · ${p.met}/${p.totalGoals} metas` : ''}</div>
-      </div>
-    </div>`;
-  }).join('');
+  // Fuente única: la "Salud del roster" vive en js/dashboard.js (rosterHealthHTML), compartida con Compás.
+  const host = document.getElementById('label-body');
+  if (host) { host.innerHTML = (typeof rosterHealthHTML === 'function') ? rosterHealthHTML() : ''; if (typeof hydrateIcons === 'function') hydrateIcons(host); }
 }
 
 // ── Meta manual GUIADA (plataforma → métrica → objetivo → fecha) ──
