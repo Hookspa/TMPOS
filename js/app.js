@@ -1839,7 +1839,7 @@ function contentResultPrevHTML(c) {
   viewContentPrev = c;
   const blk = (label, key, pre) => {
     const v = s(c[key]); if (!v) return '';
-    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContentPrev('${key}',this)">Copiar</button></div><div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'};opacity:.85">${v}</div></div>`;
+    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost btn-sm" onclick="copyContentPrev('${key}',this)">Copiar</button></div><div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'};opacity:.85">${v}</div></div>`;
   };
   const tags = (c.hashtags || []);
   return `<div style="opacity:.95">
@@ -1848,7 +1848,7 @@ function contentResultPrevHTML(c) {
     ${blk('Caption · TikTok', 'caption_tiktok')}
     ${blk('Story', 'story')}
     ${blk('Guión 30–60s', 'script', true)}
-    ${tags.length ? `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContentPrev('hashtags',this)">Copiar todos</button></div><div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('')}</div></div>` : ''}
+    ${tags.length ? `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost btn-sm" onclick="copyContentPrev('hashtags',this)">Copiar todos</button></div><div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('')}</div></div>` : ''}
   </div>`;
 }
 async function generarContenidoIA() {
@@ -1893,7 +1893,7 @@ function contentResultHTML(c) {
       ${contentBlock('Guión 30–60s', 'script', true)}
     </div>
     <div data-cpane="hashtags" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContent('hashtags',this)">Copiar todos</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost btn-sm" onclick="copyContent('hashtags',this)">Copiar todos</button></div>
       <div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('') || '—'}</div>
     </div>
   </div>`;
@@ -1901,7 +1901,7 @@ function contentResultHTML(c) {
 function contentBlock(label, key, pre) {
   const v = s(viewContent ? viewContent[key] : '');
   return `<div style="margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="copyContent('${key}',this)">Copiar</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost btn-sm" onclick="copyContent('${key}',this)">Copiar</button></div>
     <div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'}">${v || '—'}</div>
   </div>`;
 }

@@ -569,10 +569,10 @@ function renderIdeas() {
       </div>
       ${pe.spotify ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span class="brief-label">Spotify</span><span id="pitch-count" style="font-size:10px;font-family:var(--font-mono);color:${pitchCountColor(sLen)}">${sLen}/500</span></div>
         <textarea class="textarea" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" oninput="setPitchField('spotify',this.value)" onchange="setPitchField('spotify',this.value)">${s(pe.spotify)}</textarea>
-        <div style="margin:6px 0 14px"><button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="copyPitch('spotify',this)">${icon('copy',12)} Copiar Spotify</button></div>
+        <div style="margin:6px 0 14px"><button class="btn btn-ghost btn-sm" onclick="copyPitch('spotify',this)">${icon('copy',12)} Copiar Spotify</button></div>
         <div class="brief-label" style="margin-bottom:4px">Apple Music</div>
         <textarea class="textarea" style="min-height:70px;width:100%;font-size:13px;line-height:1.5" onchange="setPitchField('apple',this.value)">${s(pe.apple)}</textarea>
-        <div style="margin-top:6px"><button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="copyPitch('apple',this)">${icon('copy',12)} Copiar Apple</button></div>` : '<div class="empty-hint">Genera el pitch para tener tu draft de Spotify y Apple, listo para copiar.</div>'}
+        <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="copyPitch('apple',this)">${icon('copy',12)} Copiar Apple</button></div>` : '<div class="empty-hint">Genera el pitch para tener tu draft de Spotify y Apple, listo para copiar.</div>'}
       <div id="pitch-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
     </div>`; })()}
 

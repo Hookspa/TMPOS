@@ -275,6 +275,9 @@
   .btn-primary:hover { background: linear-gradient(135deg, var(--accent), var(--beat)); }
   .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: #444; }
+  /* Botón compacto estándar: reemplaza la decena de paddings inline sueltos (3-5px / 8-11px)
+     que tenían los botones pequeños por un solo tamaño. Usar .btn .btn-ghost .btn-sm. */
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .content {
