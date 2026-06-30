@@ -1271,7 +1271,9 @@
 
     /* calendario compacto + kanban apilado */
     .cal-toolbar { gap: 8px; }
-    .view-toggle button, .range-sel button { padding: 6px 10px; font-size: 10px; }
+    /* tap targets ≥44px en móvil (a11y) — el toggle queda chico para el dedo */
+    .view-toggle button, .range-sel button { min-height: var(--tap); padding: 6px 12px; font-size: 10px; }
+    .nav-item { min-height: var(--tap); padding-top: 0; padding-bottom: 0; }
     .calendar-grid { gap: 4px; }
     .cal-day { min-height: 60px; padding: 5px; }
     .cal-day-header { font-size: 8px; }
