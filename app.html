@@ -30,6 +30,27 @@
     --font-display: 'Bebas Neue', sans-serif;
     --font-body: 'DM Sans', sans-serif;
     --font-mono: 'Space Mono', monospace;
+    /* ── ESCALA DE ESPACIADO (base 4px) ── usa estos tokens en vez de números sueltos;
+       así el ritmo es el mismo en toda la app y no hay deriva entre vistas. ── */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    /* ── ESCALA DE RADIOS ── 3 niveles + píldora; no inventar radios sueltos. ── */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 999px;
+    /* ── TAP TARGET MÍNIMO (a11y / móvil) ── 44px = guía táctil mínima. ── */
+    --tap: 44px;
+    /* ── ESCALA DE HEADINGS ── título de página vs título de sección; sustituye los
+       saltos sueltos 26/28/30 por dos pasos sistemáticos. ── */
+    --h-page: 30px;
+    --h-section: 22px;
     /* ── ESCALA DE Z-INDEX ── nombrada por capa, no por número mágico. Cada nueva capa
        flotante debe tomar uno de estos tokens (o agregar uno nuevo aquí) en vez de
        inventar un número suelto — así nunca hay que adivinar qué gana sobre qué. */
@@ -1048,6 +1069,21 @@
   }
   .view-toggle button:hover, .range-sel button:hover { color: var(--text); border-color: #444; }
   .view-toggle button.active, .range-sel button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+  /* ── CLASES UTILITARIAS (tk-*) ── vocabulario único de UI construido sobre los tokens
+     de arriba. Reemplazan gradualmente los estilos inline regados; toda vista nueva debe
+     usarlas en vez de repetir padding/border/radius a mano. ── */
+  .tk-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); }
+  .tk-row { display: flex; align-items: center; gap: var(--space-3); }
+  .tk-row--between { justify-content: space-between; }
+  .tk-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+  .tk-stat { font-family: var(--font-display); font-size: 42px; line-height: 1; color: var(--text); }
+  .tk-label { font-size: 10px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .tk-section-title { font-family: var(--font-display); font-size: var(--h-section); letter-spacing: 0.5px; color: var(--text); }
+  .tk-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border); background: transparent; color: var(--text); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+  .tk-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tk-btn--primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+  .tk-btn--primary:hover { background: var(--accent-dark); color: var(--accent-fg); }
 
   .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
   .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; min-height: 320px; transition: border-color 0.15s; }
