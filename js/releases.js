@@ -1450,6 +1450,7 @@ function renderMoreSheet() {
   const pageLinks = [['campanias','megaphone','Campañas activas']]
     .concat(showLabel ? [['label','label','Label']] : [])
     .concat([['perfil','artist','Perfil del Artista'], ['adn','dna','ADN Artístico'], ['banco','references','Banco de Referencias']]);
+  html += '<div class="more-sheet-item" onclick="cerrarMoreSheet();cmdkOpen()"><span class="icon">' + icon('search', 19) + '</span><span>Buscar… <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">⌘K</span></span></div>';
   html += '<div class="more-sheet-label">Secciones</div>' + pageLinks.map(([id, ic, label]) =>
     `<div class="more-sheet-item" onclick="showPage('${id}');cerrarMoreSheet()"><span class="icon">${icon(ic, 19)}</span><span>${label}</span></div>`
   ).join('');
