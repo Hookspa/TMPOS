@@ -1833,8 +1833,7 @@ let viewContentPrev = null;
 function copyContentPrev(key, btn) {
   if (!viewContentPrev) return;
   const v = key === 'hashtags' ? (viewContentPrev.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContentPrev[key]);
-  if (navigator.clipboard) navigator.clipboard.writeText(v);
-  if (btn) { const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = t; }, 1200); }
+  aiCopy(v, btn);
 }
 function contentResultPrevHTML(c) {
   viewContentPrev = c;
@@ -1911,11 +1910,19 @@ function contentTab(name, el) {
   wrap.querySelectorAll('[data-cpane]').forEach(p => p.style.display = p.dataset.cpane === name ? '' : 'none');
   wrap.querySelectorAll('.ctab').forEach(t => t.classList.toggle('active', t.dataset.ctab === name));
 }
+// Feedback de copia unificado para TODOS los generadores de IA: portapapeles + botón que
+// confirma ("✓ Copiado") + toast. Una sola fuente para que copiar se sienta igual en todos
+// lados (antes unos togglaban el botón, otros un toast, otros nada). HANDOFF #7.
+function aiCopy(text, btn) {
+  const v = (text == null) ? '' : String(text);
+  if (navigator.clipboard) navigator.clipboard.writeText(v);
+  if (btn) { const o = btn.dataset._lbl || btn.textContent; btn.dataset._lbl = o; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = o; }, 1200); }
+  if (typeof uiToast === 'function') uiToast('✓ Copiado');
+}
 function copyContent(key, btn) {
   if (!viewContent) return;
   const v = key === 'hashtags' ? (viewContent.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContent[key]);
-  if (navigator.clipboard) navigator.clipboard.writeText(v);
-  if (btn) { const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = t; }, 1200); }
+  aiCopy(v, btn);
 }
 // Banco: generación transitoria desde una referencia
 async function generarContenidoBanco(idx) {
@@ -2025,9 +2032,7 @@ function powText() {
   return t;
 }
 function copyPOW(btn) {
-  const t = powText();
-  if (navigator.clipboard) navigator.clipboard.writeText(t);
-  if (btn) { const o = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = o; }, 1200); }
+  aiCopy(powText(), btn);
 }
 function ensureJsPDF() {
   return new Promise((resolve, reject) => {
