@@ -1839,10 +1839,10 @@ function contentResultPrevHTML(c) {
   viewContentPrev = c;
   const blk = (label, key, pre) => {
     const v = s(c[key]); if (!v) return '';
-    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost btn-sm" onclick="copyContentPrev('${key}',this)">Copiar</button></div><div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'};opacity:.85">${v}</div></div>`;
+    return aiFieldHTML(label, v, `copyContentPrev('${key}',this)`, { sm: pre });
   };
   const tags = (c.hashtags || []);
-  return `<div style="opacity:.95">
+  return `<div class="ai-field-prev" style="opacity:.95">
     ${blk('Hook (primeros 3s)', 'hook')}
     ${blk('Caption · Instagram', 'caption_ig')}
     ${blk('Caption · TikTok', 'caption_tiktok')}
@@ -1898,12 +1898,20 @@ function contentResultHTML(c) {
     </div>
   </div>`;
 }
+// Bloque de resultado de IA unificado: cabecera (etiqueta + copiar) + caja de valor.
+// Único componente de salida para TODOS los generadores (HANDOFF #7 nivel 2).
+function aiFieldHTML(label, value, copyFn, opts) {
+  opts = opts || {};
+  const v = (value == null || value === '') ? '—' : value;
+  const copyBtn = copyFn ? `<button class="btn btn-ghost btn-sm" onclick="${copyFn}">${opts.copyLabel || 'Copiar'}</button>` : '';
+  return `<div class="ai-field-block">
+    <div class="ai-field-head"><div class="brief-label" style="margin:0">${label}</div>${copyBtn}</div>
+    <div class="ai-field${opts.sm ? ' sm' : ''}">${v}</div>
+  </div>`;
+}
 function contentBlock(label, key, pre) {
   const v = s(viewContent ? viewContent[key] : '');
-  return `<div style="margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="brief-label" style="margin:0">${label}</div><button class="btn btn-ghost btn-sm" onclick="copyContent('${key}',this)">Copiar</button></div>
-    <div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;white-space:pre-wrap;line-height:1.6;font-size:${pre ? '12px' : '13px'}">${v || '—'}</div>
-  </div>`;
+  return aiFieldHTML(label, v, `copyContent('${key}',this)`, { sm: pre });
 }
 function contentTab(name, el) {
   const wrap = el.closest('.content-result'); if (!wrap) return;

@@ -830,6 +830,13 @@
   .brief-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
   .brief-value { font-size: 13px; color: var(--text); line-height: 1.5; }
   .brief-value.large { font-size: 14px; }
+  /* ── RESULTADO DE IA UNIFICADO (tk) ── caja de valor + cabecera (label + copiar) que
+     comparten TODOS los generadores, para que su salida se vea igual (HANDOFF #7 nivel 2). */
+  .ai-field-block { margin-bottom: var(--space-3); }
+  .ai-field-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .ai-field { background: var(--surface2); padding: var(--space-3); border-radius: var(--radius-md); white-space: pre-wrap; line-height: 1.6; font-size: 13px; color: var(--text); }
+  .ai-field.sm { font-size: 12px; }
+  .ai-field-prev .ai-field { opacity: .85; }
   .brief-tags { display: flex; flex-wrap: wrap; gap: 5px; }
   .brief-tag {
     padding: 3px 8px;
