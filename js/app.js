@@ -2014,7 +2014,7 @@ function renderPOW() {
     <div class="pow-section" style="margin-bottom:0">
       <h4>${icon('ideas',14)} Recomendación IA</h4>
       <div id="pow-rec">${powRecommendation
-        ? `<div class="brief-value" style="background:var(--surface2);padding:12px;border-radius:6px;line-height:1.6">${s(powRecommendation)}</div>`
+        ? `<div class="ai-field">${s(powRecommendation)}</div>`
         : `<button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
     </div>`;
 }
