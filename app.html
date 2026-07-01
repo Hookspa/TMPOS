@@ -11,22 +11,30 @@
 <meta name="theme-color" content="#FF6B30">
 <style>
   :root, [data-theme="dark"] {
-    --bg: #060808;
-    --surface: #101510;
-    --surface2: #1a201a;
-    --border: #2a312a;
-    --accent: #FF6B30;        /* TEMPO */
+    /* DESIGN.md — grafito neutro (sin tinte verde), instrumento calmado */
+    --bg: #0a0b0c;
+    --surface: #131517;
+    --surface2: #191c1f;
+    --raise: #1f2327;
+    --border: #262a2e;
+    --accent: #FF6B30;        /* TEMPO — SOLO acción/urgencia (nunca decorativo) */
     --accent-dark: #d4521f;
     --beat: #FFAA00;          /* BEAT (ámbar) */
-    --accent-fg: #2a0e00;
+    --accent-fg: #180a02;
     --accent2: #ff4d4d;
-    --text: #F5F0F5;
-    --text-muted: #8a8a8a;
-    --text-dim: #868d86;        /* was #565b56 — failed contrast (2.7-2.9:1) on dark surfaces; now ≥4.5:1 */
+    /* estados = sistema nervioso del cockpit */
+    --ok: #3FB98A;            /* en tiempo */
+    --risk: #E8A33D;          /* en riesgo */
+    --blocked: #E5484D;       /* bloqueado/vencido */
+    --done: #5A6066;          /* hecho/atenuado */
+    --text: #ECEDEE;
+    --text-muted: #9BA1A6;
+    --text-dim: #878d92;        /* neutralizado (era verdoso #868d86); ≥4.5:1 */
     --shadow: rgba(0,0,0,0.55);
-    --glow: rgba(255,107,48,0.30);
-    --card-top: rgba(255,255,255,0.026);
-    --hairline: rgba(255,255,255,0.06);
+    --glow: rgba(255,255,255,0.05);   /* anti-slop: glow naranja neutralizado */
+    --card-top: rgba(255,255,255,0.02);
+    --hairline: rgba(255,255,255,0.05);
+    --grid: rgba(255,255,255,0.02);   /* textura de instrumento (retícula tenue) */
     --font-display: 'Bebas Neue', sans-serif;
     --font-body: 'DM Sans', sans-serif;
     --font-mono: 'Space Mono', monospace;
@@ -42,8 +50,8 @@
     --space-10: 40px;
     /* ── ESCALA DE RADIOS ── 3 niveles + píldora; no inventar radios sueltos. ── */
     --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
     --radius-pill: 999px;
     /* ── TAP TARGET MÍNIMO (a11y / móvil) ── 44px = guía táctil mínima. ── */
     --tap: 44px;
@@ -67,22 +75,28 @@
     --z-toast: 3200;
   }
   [data-theme="light"] {
-    --bg: #F5F0F5;
+    --bg: #F4F5F6;
     --surface: #ffffff;
-    --surface2: #f2edf2;
-    --border: #e6e0e6;
+    --surface2: #F7F8F9;
+    --raise: #ffffff;
+    --border: #E3E5E8;
     --accent: #d9521a;
     --accent-dark: #b3431a;
     --beat: #e08e00;
     --accent-fg: #ffffff;
     --accent2: #e0464f;
-    --text: #181318;
-    --text-muted: #6a6a6a;
-    --text-dim: #6a6a6a;        /* was #9a9a9a — failed contrast (2.4-2.8:1) on light surfaces; matches --text-muted, which is the lightest gray that still clears 4.5:1 here */
+    --ok: #1F9D6B;
+    --risk: #B9791E;
+    --blocked: #C93338;
+    --done: #9AA0A6;
+    --text: #16181A;
+    --text-muted: #5B6166;
+    --text-dim: #5B6166;        /* = muted: gris más claro que aún clears 4.5:1 en claro */
     --shadow: rgba(0,0,0,0.1);
-    --glow: rgba(217,82,26,0.22);
+    --glow: rgba(0,0,0,0.05);   /* anti-slop: glow neutralizado */
     --card-top: rgba(255,255,255,0.6);
     --hairline: rgba(0,0,0,0.04);
+    --grid: rgba(0,0,0,0.02);
   }
   html { background: var(--bg); }
 
@@ -209,12 +223,13 @@
   .artist-avatar {
     position: relative;
     width: 34px; height: 34px;
-    background: linear-gradient(135deg, #FF6B30, #ff4757);
-    border-radius: 50%;
+    background: var(--raise);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-display);
     font-size: 14px;
-    color: var(--accent-fg);
+    color: var(--accent);
     flex-shrink: 0;
   }
   /* Cloud-sync status, visible at a glance next to the artist switcher — not just inside
@@ -272,7 +287,7 @@
     transition: all 0.15s;
   }
   .btn-primary { background: var(--accent); color: var(--accent-fg); }
-  .btn-primary:hover { background: linear-gradient(135deg, var(--accent), var(--beat)); }
+  .btn-primary:hover { background: var(--accent-dark); }
   .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: #444; }
   /* Botón compacto estándar: reemplaza la decena de paddings inline sueltos (3-5px / 8-11px)
@@ -746,7 +761,6 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.88);
-    backdrop-filter: blur(6px);
     z-index: var(--z-modal-backdrop);
     display: none;
     align-items: center;
@@ -825,7 +839,7 @@
   .brief-layout { display: grid; grid-template-columns: 1fr 260px; gap: 26px; align-items: start; }
   .brief-thumb-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: sticky; top: 0; }
   .brief-thumb-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: #000; display: block; }
-  .brief-thumb-fallback { width: 100%; aspect-ratio: 3/4; align-items: center; justify-content: center; font-size: 48px; background: linear-gradient(135deg,#111,#1a1a1a); }
+  .brief-thumb-fallback { width: 100%; aspect-ratio: 3/4; align-items: center; justify-content: center; font-size: 48px; background: var(--surface2); }
   @media (max-width: 720px) { .brief-layout { grid-template-columns: 1fr; } }
   .brief-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
   .brief-value { font-size: 13px; color: var(--text); line-height: 1.5; }
@@ -932,7 +946,7 @@
     width: 100%;
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, #111, #1a1a1a);
+    background: var(--surface2);
   }
   .ref-thumb-img {
     position: absolute; inset: 0;
@@ -1053,7 +1067,7 @@
 
   /* ── PROGRESO / POW ── */
   .progress-track { height: 12px; background: color-mix(in srgb, var(--text-dim) 24%, transparent); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #4ade80); border-radius: 6px; transition: width 0.4s ease; }
+  .progress-fill { height: 100%; background: var(--ok); border-radius: 4px; transition: width 0.4s ease; }
   .deadline-alert {
     display: flex; align-items: center; gap: 10px; background: rgba(255,71,87,0.08);
     border: 1px solid rgba(255,71,87,0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px;
@@ -1116,7 +1130,7 @@
 
   /* ── ONBOARDING (estado vacío guiado, Caso 1) ── checklist de arranque que aparece
      cuando el artista no tiene lanzamientos; convierte vistas vacías en un primer paso. ── */
-  .onb { background: linear-gradient(135deg, rgba(255,107,48,0.07), var(--surface)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); }
+  .onb { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); }
   .onb-title { font-family: var(--font-display); font-size: var(--h-section); letter-spacing: 0.5px; color: var(--text); margin-bottom: var(--space-1); }
   .onb-sub { font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-5); }
   .onb-steps { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -1347,51 +1361,39 @@
   }
 
   /* ════════════════════════════════════════ */
-  /* ── POLISH / GLASS · GLOW ── */
+  /* ── SUPERFICIES CALMADAS (DESIGN.md: sin glow, sin glass, sin sheen) ── */
   /* ════════════════════════════════════════ */
-  body::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background:
-      radial-gradient(55% 45% at 85% -5%, var(--glow), transparent 60%),
-      radial-gradient(45% 40% at -5% 105%, var(--glow), transparent 55%);
-    opacity: 0.5;
-  }
   .sidebar, .main { position: relative; z-index: 1; }
 
-  /* tarjetas con gradiente sutil + sombra suave */
+  /* tarjetas: superficie sólida, borde hairline, sombra neutra sutil */
   .panel, .stat-card, .panel-card, .idea-card, .learn-card, .kanban-col,
   .ref-page-card, .launch-card, .goal-row, .boxdrop, .wiz-panel {
-    background-image: linear-gradient(180deg, var(--card-top), transparent 42%);
-    box-shadow: 0 6px 24px var(--shadow);
-    border-color: var(--hairline);
+    box-shadow: 0 1px 2px var(--shadow);
+    border-color: var(--border);
   }
-  .stat-card { border-radius: 12px; }
-  .panel { border-radius: 12px; }
+  .stat-card { border-radius: var(--radius-lg); }
+  .panel { border-radius: var(--radius-lg); }
 
-  /* hover con lift + borde acento */
+  /* hover: lift neutro, sin anillo naranja */
   .launch-card:hover, .idea-card:hover, .ref-page-card:hover, .kanban-card:hover {
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-    box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: color-mix(in srgb, var(--text-muted) 40%, var(--border));
+    box-shadow: 0 2px 8px var(--shadow);
   }
 
-  /* barra superior de stat-card como gradiente con glow (TEMPO → BEAT) */
-  .stat-card::before { background: linear-gradient(90deg, var(--accent), var(--beat)); box-shadow: 0 0 16px var(--glow); }
+  /* barra superior de stat-card: hairline neutro (naranja = solo acción) */
+  .stat-card::before { background: var(--border); box-shadow: none; }
 
-  /* botón primario con gradiente cálido + glow */
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--beat));
-    box-shadow: 0 4px 16px var(--glow);
-  }
-  .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 6px 22px var(--glow); }
+  /* botón primario: sólido, sin gradiente ni glow */
+  .btn-primary { background: var(--accent); box-shadow: none; }
+  .btn-primary:hover { background: var(--accent-dark); box-shadow: none; }
 
-  /* nav activo con glow lateral */
+  /* nav activo: indicador funcional (barra lateral) */
   .nav-item.active { box-shadow: inset 2px 0 0 var(--accent); }
 
-  /* progreso/timeline con glow */
-  .progress-fill { box-shadow: 0 0 14px var(--glow); }
+  /* progreso: sin glow */
+  .progress-fill { box-shadow: none; }
 
-  /* avatares y portadas con un poco de profundidad */
-  .artist-avatar { box-shadow: 0 2px 10px var(--shadow); }
+  /* portadas: viñeta interna (contenido, no chrome) */
   .launch-cover { box-shadow: inset 0 -40px 60px rgba(0,0,0,0.35); }
 
   /* donut */
@@ -1401,13 +1403,13 @@
   .donut-legend .dl b { color: var(--text); font-family: var(--font-mono); margin-left: auto; padding-left: 16px; }
   .donut-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
-  /* ── GLASS MODALS ── */
+  /* ── MODALES: superficie sólida, sin glass/blur ── */
   .boxdrop, .wiz-panel {
-    background-color: color-mix(in srgb, var(--surface) 86%, transparent);
-    backdrop-filter: blur(18px) saturate(1.15);
-    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    background-color: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
-  .boxdrop-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .boxdrop-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
 
   /* ── MICRO-ANIMACIONES ── */
   .btn { transition: transform 0.12s ease, filter 0.15s ease, background 0.15s, color 0.15s, border-color 0.15s; }
@@ -1760,7 +1762,7 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
-  <div class="logo"><svg class="logo-mark" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><path d="M22 86 L37 22 L63 22 L78 86 Z" style="stroke:var(--accent)" stroke-width="5" stroke-linejoin="round"></path><g transform="rotate(8 50 80)"><line x1="50" y1="80" x2="50" y2="8" style="stroke:var(--accent)" stroke-width="5" stroke-linecap="round"></line><rect x="42" y="43.6" width="16" height="6.8" rx="1.4" style="fill:var(--accent)"></rect><circle cx="50" cy="8" r="4.6" style="fill:var(--accent)"></circle></g></svg><svg class="logo-word" aria-label="Tempo OS" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 302 74" fill="none"><path transform="translate(2,72)" fill="currentColor" d="M12.70 0L12.70-60L1.20-60L1.20-70L35.20-70L35.20-60L23.70-60L23.70 0L12.70 0ZM40.50 0L40.50-70L70.50-70L70.50-60L51.50-60L51.50-41.50L66.60-41.50L66.60-31.50L51.50-31.50L51.50-10L70.50-10L70.50 0L40.50 0ZM76.80 0L76.80-70L92.50-70L99.50-19.90L99.70-19.90L106.70-70L122.40-70L122.40 0L112 0L112-53L111.80-53L103.80 0L94.60 0L86.60-53L86.40-53L86.40 0L76.80 0ZM130.60 0L130.60-70L146.80-70Q155-70 159.10-65.60Q163.20-61.20 163.20-52.70L163.20-52.70L163.20-45.80Q163.20-37.30 159.10-32.90Q155-28.50 146.80-28.50L146.80-28.50L141.60-28.50L141.60 0L130.60 0ZM141.60-38.50L146.80-38.50Q149.50-38.50 150.85-40Q152.20-41.50 152.20-45.10L152.20-45.10L152.20-53.40Q152.20-57 150.85-58.50Q149.50-60 146.80-60L146.80-60L141.60-60L141.60-38.50ZM185.10 1Q177 1 172.70-3.60Q168.40-8.20 168.40-16.60L168.40-16.60L168.40-53.40Q168.40-61.80 172.70-66.40Q177-71 185.10-71L185.10-71Q193.20-71 197.50-66.40Q201.80-61.80 201.80-53.40L201.80-53.40L201.80-16.60Q201.80-8.20 197.50-3.60Q193.20 1 185.10 1L185.10 1ZM185.10-9Q190.80-9 190.80-15.90L190.80-15.90L190.80-54.10Q190.80-61 185.10-61L185.10-61Q179.40-61 179.40-54.10L179.40-54.10L179.40-15.90Q179.40-9 185.10-9L185.10-9Z"></path><path transform="translate(223.1,72)" style="fill:var(--accent)" d="M20 1Q11.90 1 7.60-3.60Q3.30-8.20 3.30-16.60L3.30-16.60L3.30-53.40Q3.30-61.80 7.60-66.40Q11.90-71 20-71L20-71Q28.10-71 32.40-66.40Q36.70-61.80 36.70-53.40L36.70-53.40L36.70-16.60Q36.70-8.20 32.40-3.60Q28.10 1 20 1L20 1ZM20-9Q25.70-9 25.70-15.90L25.70-15.90L25.70-54.10Q25.70-61 20-61L20-61Q14.30-61 14.30-54.10L14.30-54.10L14.30-15.90Q14.30-9 20-9L20-9ZM58.40 1Q50.40 1 46.30-3.55Q42.20-8.10 42.20-16.60L42.20-16.60L42.20-20.60L52.60-20.60L52.60-15.80Q52.60-9 58.30-9L58.30-9Q61.10-9 62.55-10.65Q64-12.30 64-16L64-16Q64-20.40 62-23.75Q60-27.10 54.60-31.80L54.60-31.80Q47.80-37.80 45.10-42.65Q42.40-47.50 42.40-53.60L42.40-53.60Q42.40-61.90 46.60-66.45Q50.80-71 58.80-71L58.80-71Q66.70-71 70.75-66.45Q74.80-61.90 74.80-53.40L74.80-53.40L74.80-50.50L64.40-50.50L64.40-54.10Q64.40-57.70 63-59.35Q61.60-61 58.90-61L58.90-61Q53.40-61 53.40-54.30L53.40-54.30Q53.40-50.50 55.45-47.20Q57.50-43.90 62.90-39.20L62.90-39.20Q69.80-33.20 72.40-28.30Q75-23.40 75-16.80L75-16.80Q75-8.20 70.75-3.60Q66.50 1 58.40 1L58.40 1Z"></path></svg><span>Sistema operativo musical · v0.56.0&#8209;alpha</span></div>
+  <div class="logo"><svg class="logo-mark" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><path d="M22 86 L37 22 L63 22 L78 86 Z" style="stroke:var(--accent)" stroke-width="5" stroke-linejoin="round"></path><g transform="rotate(8 50 80)"><line x1="50" y1="80" x2="50" y2="8" style="stroke:var(--accent)" stroke-width="5" stroke-linecap="round"></line><rect x="42" y="43.6" width="16" height="6.8" rx="1.4" style="fill:var(--accent)"></rect><circle cx="50" cy="8" r="4.6" style="fill:var(--accent)"></circle></g></svg><svg class="logo-word" aria-label="Tempo OS" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 302 74" fill="none"><path transform="translate(2,72)" fill="currentColor" d="M12.70 0L12.70-60L1.20-60L1.20-70L35.20-70L35.20-60L23.70-60L23.70 0L12.70 0ZM40.50 0L40.50-70L70.50-70L70.50-60L51.50-60L51.50-41.50L66.60-41.50L66.60-31.50L51.50-31.50L51.50-10L70.50-10L70.50 0L40.50 0ZM76.80 0L76.80-70L92.50-70L99.50-19.90L99.70-19.90L106.70-70L122.40-70L122.40 0L112 0L112-53L111.80-53L103.80 0L94.60 0L86.60-53L86.40-53L86.40 0L76.80 0ZM130.60 0L130.60-70L146.80-70Q155-70 159.10-65.60Q163.20-61.20 163.20-52.70L163.20-52.70L163.20-45.80Q163.20-37.30 159.10-32.90Q155-28.50 146.80-28.50L146.80-28.50L141.60-28.50L141.60 0L130.60 0ZM141.60-38.50L146.80-38.50Q149.50-38.50 150.85-40Q152.20-41.50 152.20-45.10L152.20-45.10L152.20-53.40Q152.20-57 150.85-58.50Q149.50-60 146.80-60L146.80-60L141.60-60L141.60-38.50ZM185.10 1Q177 1 172.70-3.60Q168.40-8.20 168.40-16.60L168.40-16.60L168.40-53.40Q168.40-61.80 172.70-66.40Q177-71 185.10-71L185.10-71Q193.20-71 197.50-66.40Q201.80-61.80 201.80-53.40L201.80-53.40L201.80-16.60Q201.80-8.20 197.50-3.60Q193.20 1 185.10 1L185.10 1ZM185.10-9Q190.80-9 190.80-15.90L190.80-15.90L190.80-54.10Q190.80-61 185.10-61L185.10-61Q179.40-61 179.40-54.10L179.40-54.10L179.40-15.90Q179.40-9 185.10-9L185.10-9Z"></path><path transform="translate(223.1,72)" style="fill:var(--accent)" d="M20 1Q11.90 1 7.60-3.60Q3.30-8.20 3.30-16.60L3.30-16.60L3.30-53.40Q3.30-61.80 7.60-66.40Q11.90-71 20-71L20-71Q28.10-71 32.40-66.40Q36.70-61.80 36.70-53.40L36.70-53.40L36.70-16.60Q36.70-8.20 32.40-3.60Q28.10 1 20 1L20 1ZM20-9Q25.70-9 25.70-15.90L25.70-15.90L25.70-54.10Q25.70-61 20-61L20-61Q14.30-61 14.30-54.10L14.30-54.10L14.30-15.90Q14.30-9 20-9L20-9ZM58.40 1Q50.40 1 46.30-3.55Q42.20-8.10 42.20-16.60L42.20-16.60L42.20-20.60L52.60-20.60L52.60-15.80Q52.60-9 58.30-9L58.30-9Q61.10-9 62.55-10.65Q64-12.30 64-16L64-16Q64-20.40 62-23.75Q60-27.10 54.60-31.80L54.60-31.80Q47.80-37.80 45.10-42.65Q42.40-47.50 42.40-53.60L42.40-53.60Q42.40-61.90 46.60-66.45Q50.80-71 58.80-71L58.80-71Q66.70-71 70.75-66.45Q74.80-61.90 74.80-53.40L74.80-53.40L74.80-50.50L64.40-50.50L64.40-54.10Q64.40-57.70 63-59.35Q61.60-61 58.90-61L58.90-61Q53.40-61 53.40-54.30L53.40-54.30Q53.40-50.50 55.45-47.20Q57.50-43.90 62.90-39.20L62.90-39.20Q69.80-33.20 72.40-28.30Q75-23.40 75-16.80L75-16.80Q75-8.20 70.75-3.60Q66.50 1 58.40 1L58.40 1Z"></path></svg><span>Sistema operativo musical · v0.57.0&#8209;alpha</span></div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>

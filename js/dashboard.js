@@ -178,6 +178,57 @@ function cockpitBodyHTML() {
 }
 
 // ══════════════════════════════════════════
+// TABLERO POR ESTADO DE RIESGO (dirección "F", DESIGN.md) — mismo dato que la tabla, en kanban.
+// Columnas: Bloqueado → En riesgo → En tiempo → Post-drop. El naranja solo en la acción del bloqueado.
+// ══════════════════════════════════════════
+function _cockpitState(l, r) {
+  if (r.d != null && r.d < 0) return 'post';                                   // ya salió
+  if (r.blocked || r.reds || r.overdue) return 'blocked';                      // hay algo rojo
+  if (r.yellows || (r.d != null && r.d >= 0 && r.d <= 14 && r.pct < 70)) return 'risk';
+  return 'ok';
+}
+function cockpitBoardHTML() {
+  const list = cockpitLaunches();
+  if (!list.length) return '<div class="empty-hint">No hay lanzamientos activos. Crea uno para verlo aquí.</div>';
+  const cols = {
+    blocked: { label: 'Bloqueado', color: 'var(--blocked)', items: [] },
+    risk:    { label: 'En riesgo', color: 'var(--risk)',    items: [] },
+    ok:      { label: 'En tiempo', color: 'var(--ok)',      items: [] },
+    post:    { label: 'Post-drop', color: 'var(--done)',    items: [] },
+  };
+  list.map(l => ({ l, r: _cockpitRisk(l) }))
+    .sort((a, b) => b.r.score - a.r.score || ((a.r.d == null ? 9999 : a.r.d) - (b.r.d == null ? 9999 : b.r.d)))
+    .forEach(x => cols[_cockpitState(x.l, x.r)].items.push(x));
+  const card = ({ l, r }, showAct) => {
+    const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === l.artistId) : null;
+    const phase = (typeof releasePhase === 'function') ? releasePhase(l) : '—';
+    const rcol = r.pct >= 80 ? 'var(--ok)' : r.pct >= 40 ? 'var(--risk)' : 'var(--blocked)';
+    const topAlert = r.alerts.find(a => a.level === 'red') || r.alerts.find(a => a.level === 'yellow');
+    const dLabel = r.d == null ? 's/f' : (r.d < 0 ? 'live' : r.d);
+    const dCol = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? 'var(--done)' : (r.d <= 7 ? 'var(--blocked)' : (r.d <= 21 ? 'var(--risk)' : 'var(--text)')));
+    const act = (showAct && topAlert) ? `<button class="btn btn-primary" style="width:100%;margin-top:9px;font-size:11px;padding:6px 8px" onclick="event.stopPropagation();cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : '';
+    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
+      <div style="font-size:13px;font-weight:600">${esc(l.name)}</div>
+      <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);text-transform:uppercase;margin:1px 0 8px">${esc(art ? art.name : '—')}</div>
+      <div class="progress-track" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px">
+        <div style="font-size:11px;color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topAlert ? esc(topAlert.text) : esc(phase)}">${topAlert ? esc(topAlert.text) : esc(phase)}</div>
+        <div style="font-family:var(--font-display);font-size:22px;line-height:.8;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
+      </div>${act}</div>`;
+  };
+  const colHTML = (key) => {
+    const c = cols[key];
+    return `<div style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:${c.color};padding:2px 4px 10px;border-bottom:1px solid var(--border);margin-bottom:10px"><span>${c.label}</span><span>${c.items.length}</span></div>
+      ${c.items.map(x => card(x, key === 'blocked')).join('') || '<div style="font-size:11px;color:var(--text-dim);padding:6px 4px">—</div>'}
+    </div>`;
+  };
+  const count = list.length;
+  const line = `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:14px">${count} lanzamiento${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} · por estado de riesgo</div>`;
+  return line + `<div style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px">${['blocked', 'risk', 'ok', 'post'].map(colHTML).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
 // SALUD DEL ROSTER (antes "Label") — builder puro único (lo comparten Compás y la pág. Label legacy)
 // ══════════════════════════════════════════
 function rosterHealthHTML() {
@@ -233,6 +284,8 @@ let compasRosterTab = 'riesgo';   // 'riesgo' | 'salud'
 let _compasEmbedded = false;
 function setCompasView(v) { compasView = v; renderCompas(); }
 function setCompasRosterTab(t) { compasRosterTab = t; renderCompas(); }
+let compasRiskView = 'tabla';     // 'tabla' | 'tablero' (dirección F, kanban por estado)
+function setCompasRiskView(v) { compasRiskView = v; renderCompas(); }
 // Devuelve el #page-dashboard a .content cuando salimos de la mira Artista (patrón embebido).
 function compasRestore() {
   if (!_compasEmbedded) return;
@@ -244,7 +297,8 @@ function renderCompas() {
   const tb = document.getElementById('compas-toolbar'); const body = document.getElementById('compas-body'); if (!body) return;
   const seg = (active, opts, fn) => `<div class="view-toggle">${opts.map(o => `<button class="${active === o[0] ? 'active' : ''}" onclick="${fn}('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
   if (tb) tb.innerHTML = seg(compasView, [['roster', 'Roster'], ['artista', 'Artista']], 'setCompasView')
-    + (compasView === 'roster' ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRosterTab, [['riesgo', 'Riesgo de lanzamientos'], ['salud', 'Salud del roster']], 'setCompasRosterTab')}</div>` : '');
+    + (compasView === 'roster' ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRosterTab, [['riesgo', 'Riesgo de lanzamientos'], ['salud', 'Salud del roster']], 'setCompasRosterTab')}</div>` : '')
+    + ((compasView === 'roster' && compasRosterTab === 'riesgo') ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRiskView, [['tabla', 'Tabla'], ['tablero', 'Tablero']], 'setCompasRiskView')}</div>` : '');
   if (compasView === 'artista') {
     if (!_compasEmbedded) {
       body.innerHTML = '';
@@ -255,6 +309,6 @@ function renderCompas() {
     return;
   }
   compasRestore(); // si veníamos de Artista, devuelve el dashboard a su sitio
-  body.innerHTML = (compasRosterTab === 'salud') ? rosterHealthHTML() : cockpitBodyHTML();
+  body.innerHTML = (compasRosterTab === 'salud') ? rosterHealthHTML() : (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML());
   if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }
