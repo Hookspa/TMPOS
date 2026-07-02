@@ -1,3 +1,32 @@
+# ══════════════════════════════════════════════════════════════════════
+# Solo el codigo necesario para CORRER el app se pushea a Hookspa/TMPOS.
+# Todo documento/artefacto interno queda LOCAL (uso interno).
+# git NO soporta comentarios inline: cada # va en su propia linea.
+# En vivo queda: app.html, index.html, ver.html, report.html, js/,
+#   refs_02.csv, logo_exports/, screenshots/, supabase/, README.md, .gitignore
+# ══════════════════════════════════════════════════════════════════════
+
+# Sistema / herramientas
 .claude/
-*.json
+.gstack/
 .DS_Store
+
+# Backups JSON (artistos-backup-*.json).
+# OJO: ignora tambien package.json/manifest.json futuros -> whitelistealos con !package.json
+*.json
+
+# Entregables estrategicos y de negocio - NUNCA al repo publico
+# (investor deck, modelo financiero, CEO/Council reviews, specs)
+research/
+
+# Previews/mockups de diseno internos
+design/
+
+# Documentos internos de trabajo (no necesarios para correr el app)
+HANDOFF.md
+CHANGELOG.md
+DESIGN.md
+CLAUDE.md
+
+# Scripts one-off de dev (rehost de miniaturas, downloader IG) - no runtime
+tools/
