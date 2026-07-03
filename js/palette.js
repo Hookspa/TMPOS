@@ -119,4 +119,63 @@ function cmdkToggle() { _cmdkOpen ? cmdkClose() : cmdkOpen(); }
 
 document.addEventListener('keydown', function (e) {
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); cmdkToggle(); }
+  else if (e.key === 'Escape') { const m = document.getElementById('modal-ayuda'); if (m && m.classList.contains('open')) { e.preventDefault(); m.classList.remove('open'); } }
 });
+
+// ══════════════════════════════════════════
+// AYUDA (modal) — guía de módulos, primeros pasos y atajos de teclado
+// ══════════════════════════════════════════
+function cmdkModLabel() { return /Mac|iPhone|iPad|iPod/.test((navigator.platform || '') + ' ' + (navigator.userAgent || '')) ? '⌘' : 'Ctrl '; }
+function cmdkKeyLabel() { return cmdkModLabel() + 'K'; }
+function ayudaHTML() {
+  const k = cmdkKeyLabel();
+  const steps = [
+    ['Crea tu lanzamiento', 'Con "+ Nuevo Lanzamiento". Single, EP o álbum — todo cuelga de aquí.'],
+    ['Pega la letra de la canción', 'En Lanzamientos → Generar Ideas. La letra alimenta el Campaign DNA, las ideas y el pitch.'],
+    ['Genera el contenido del drop', 'Caption, guión y hashtags por pieza, desde el ADN del artista y de la campaña.'],
+    ['Arma tu Plan de Medios y Objetivos', 'Plataformas y montos en el Plan de Medios; metas SMART en Objetivos.'],
+    ['Sigue todo desde el Dashboard', 'Riesgo de lanzamientos, tareas y la franja ON AIR con el próximo drop.'],
+  ];
+  const mods = [
+    ['dashboard', 'Dashboard', 'Roster: riesgo de lanzamientos + salud, y el zoom por artista.'],
+    ['releases', 'Lanzamientos', 'Cada release y su ficha: estado, música, campaña, plan de medios, tareas.'],
+    ['checklist', 'Tareas', 'To-dos del equipo con vistas: lista, kanban, calendario, Gantt…'],
+    ['megaphone', 'Campañas activas', 'Las campañas en curso del workspace, de un vistazo.'],
+    ['artist', 'Perfil & ADN Artístico', 'Identidad, bio y el ADN del artista (wizard con IA).'],
+    ['references', 'Banco de Referencias', 'Miles de ideas de contenido; marca con ★ las de tu lanzamiento.'],
+    ['ai', 'Generadores con IA', 'Campaign DNA desde la letra, ideas, contenido por pieza, pitch, objetivos y estrategia.'],
+    ['search', 'Buscar (' + k + ')', 'Salta a cualquier artista, lanzamiento, sección o referencia.'],
+  ];
+  const shortcuts = [
+    [[k], 'Abrir la búsqueda / paleta de comandos'],
+    [['↑', '↓'], 'Moverte por los resultados'],
+    [['↵'], 'Abrir el resultado seleccionado'],
+    [['Esc'], 'Cerrar la búsqueda o cualquier ventana'],
+  ];
+  return `
+    <div class="help-sec">
+      <div class="help-sec-title">Primeros pasos</div>
+      ${steps.map((st, i) => `<div class="help-step"><span class="hs-n">${i + 1}</span><div class="hs-body"><div class="hs-t">${st[0]}</div><div class="hs-d">${st[1]}</div></div></div>`).join('')}
+    </div>
+    <div class="help-sec">
+      <div class="help-sec-title">Módulos y herramientas</div>
+      ${mods.map(m => `<div class="help-mod"><span class="hm-ic">${(typeof icon === 'function') ? icon(m[0], 16) : ''}</span><div style="flex:1;min-width:0"><div class="hm-t">${m[1]}</div><div class="hm-d">${m[2]}</div></div></div>`).join('')}
+    </div>
+    <div class="help-sec">
+      <div class="help-sec-title">Atajos de teclado</div>
+      ${shortcuts.map(sc => `<div class="help-kbd-row"><span>${sc[1]}</span><span class="hk-keys">${sc[0].map(key => `<span class="kbd">${key}</span>`).join('')}</span></div>`).join('')}
+    </div>`;
+}
+function abrirAyuda() {
+  const body = document.getElementById('ayuda-body'); if (body) body.innerHTML = ayudaHTML();
+  const m = document.getElementById('modal-ayuda'); if (m) m.classList.add('open');
+}
+function cerrarAyuda(e) {
+  if (e && e.target && e.target.id !== 'modal-ayuda') return;
+  const m = document.getElementById('modal-ayuda'); if (m) m.classList.remove('open');
+}
+// Etiqueta de tecla en la caja de búsqueda de la barra (⌘K / Ctrl K según plataforma).
+(function () {
+  function setKbd() { const el = document.getElementById('ts-kbd'); if (el) el.textContent = cmdkKeyLabel(); }
+  if (document.readyState !== 'loading') setKbd(); else document.addEventListener('DOMContentLoaded', setKbd);
+})();

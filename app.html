@@ -288,7 +288,31 @@
      En móvil ese indicador desapareció junto con el sidebar, así que se repite aquí
      para no perder de vista "de qué artista son estos datos" al navegar. */
   .topbar-title-artist { display: none; }
-  .topbar-actions { display: flex; gap: 8px; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+  /* ── Caja de búsqueda ⌘K en la barra ── abre la paleta de comandos */
+  .topbar-search { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; min-width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: border-color .15s, color .15s; }
+  .topbar-search:hover { border-color: var(--muted); color: var(--text); }
+  .topbar-search .ts-label { flex: 1; text-align: left; }
+  .topbar-search .ts-kbd { font-family: var(--font-mono); font-size: 10px; color: var(--dim); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 5px; letter-spacing: .5px; }
+  @media (max-width: 860px) { .topbar-search { min-width: 0; padding: 0 9px; } .topbar-search .ts-label, .topbar-search .ts-kbd { display: none; } }
+  /* ── Modal de Ayuda ── */
+  .help-sec { margin-bottom: var(--space-6); }
+  .help-sec:last-child { margin-bottom: 0; }
+  .help-sec-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-3); }
+  .help-step { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2) 0; }
+  .help-step .hs-n { flex: none; width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--surface2); color: var(--muted); font-family: var(--font-mono); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .help-step .hs-body { flex: 1; min-width: 0; }
+  .help-step .hs-t { font-size: 13px; color: var(--text); }
+  .help-step .hs-d { font-size: 12px; color: var(--text-muted); margin-top: 1px; line-height: 1.4; }
+  .help-mod { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2) 0; border-bottom: 1px solid var(--hairline); }
+  .help-mod:last-child { border-bottom: 0; }
+  .help-mod .hm-ic { flex: none; width: 20px; color: var(--muted); display: inline-flex; align-items: center; }
+  .help-mod .hm-t { font-size: 13px; color: var(--text); }
+  .help-mod .hm-d { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .help-kbd-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+  .help-kbd-row:last-child { border-bottom: 0; }
+  .help-kbd-row .hk-keys { display: flex; gap: 5px; }
+  .kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px 7px; min-width: 20px; text-align: center; }
   .btn {
     padding: 7px 16px;
     border-radius: 4px;
@@ -1875,6 +1899,17 @@
   </div>
 </div>
 
+<!-- ── MODAL AYUDA ── -->
+<div class="boxdrop-overlay" id="modal-ayuda" onclick="cerrarAyuda(event)">
+  <div class="boxdrop" style="width:560px;max-width:95vw">
+    <div class="boxdrop-header">
+      <div class="boxdrop-title"><span data-icon="help" data-isize="17" style="vertical-align:-3px"></span> Ayuda</div>
+      <div class="boxdrop-close" onclick="cerrarAyuda()"><span data-icon="close" data-isize="15"></span></div>
+    </div>
+    <div class="boxdrop-body" id="ayuda-body" style="padding:24px"></div>
+  </div>
+</div>
+
 <!-- MAIN -->
 <div class="main">
   <div class="on-air" id="on-air"></div>
@@ -1884,6 +1919,8 @@
     <div class="topbar-title" id="page-title"><span id="page-title-text">DASHBOARD</span><span class="topbar-title-artist" id="topbar-title-artist"></span></div>
     <span class="role-pill"><span data-icon="eye" data-isize="13"></span> Modo lectura</span>
     <div class="topbar-actions">
+      <button class="topbar-search" onclick="cmdkOpen()" title="Buscar (⌘K)" aria-label="Buscar"><span data-icon="search" data-isize="15"></span><span class="ts-label">Buscar…</span><span class="ts-kbd" id="ts-kbd">⌘K</span></button>
+      <button class="btn btn-ghost" id="help-btn" onclick="abrirAyuda()" title="Ayuda" style="padding:7px 11px"><span data-icon="help" data-isize="16"></span></button>
       <div class="notif-wrap">
         <button class="btn btn-ghost" id="notif-btn" onclick="toggleNotifPanel()" title="Notificaciones" style="padding:7px 11px;position:relative"><span data-icon="bell" data-isize="15"></span><span class="notif-dot" id="notif-dot" style="display:none"></span></button>
         <div class="notif-panel" id="notif-panel" style="display:none"></div>
