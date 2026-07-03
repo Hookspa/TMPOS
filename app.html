@@ -375,7 +375,7 @@
   }
   .panel-head .ph-sub { font-size: 11px; color: var(--text-dim); margin-left: auto; font-family: var(--font-mono); }
 
-  .field-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .field-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
   .field-grid.three { grid-template-columns: repeat(3, 1fr); }
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field.full { grid-column: 1 / -1; }
@@ -416,6 +416,14 @@
   }
   .chip:hover { color: var(--text); border-color: #444; }
   .chip.on { background: rgba(255,107,48,0.1); color: var(--accent); border-color: rgba(255,107,48,0.3); }
+
+  /* ── PLAN DE MEDIOS (líneas editables: plataforma + monto) ── */
+  .mp-list { display: flex; flex-direction: column; gap: var(--space-2); }
+  .mp-row { display: flex; align-items: center; gap: var(--space-2); }
+  .mp-plat { flex: 1; min-width: 0; font-size: 12px; padding: 6px 9px; }
+  .mp-amt { position: relative; flex: 0 0 108px; }
+  .mp-amt .mp-cur { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--dim); font-family: var(--font-mono); font-size: 12px; pointer-events: none; }
+  .mp-amt input { width: 100%; font-size: 12px; padding: 6px 9px 6px 20px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
 
   .empty-hint {
     padding: 14px;
@@ -602,7 +610,7 @@
   .lh-meta .lh-date { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
   .lh-timeline { margin-top: auto; }
   .lh-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
-  .dna-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .dna-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
   .dna-field .brief-label { margin-bottom: 6px; }
   .dna-empty { color: var(--text-dim); font-style: italic; font-size: 13px; }
   .launch-info { padding: 14px; }
@@ -872,7 +880,7 @@
   .boxdrop-body::-webkit-scrollbar-thumb { background: var(--border); }
 
   /* tab: brief */
-  .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: 14px; }
   .brief-layout { display: grid; grid-template-columns: 1fr 260px; gap: 26px; align-items: start; }
   .brief-thumb-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: sticky; top: 0; }
   .brief-thumb-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: #000; display: block; }
@@ -1000,7 +1008,7 @@
   .ref-page-title { font-size: 12px; font-weight: 500; margin-bottom: 5px; line-height: 1.3; }
 
   /* ── IDEAS GENERATOR ── */
-  .ideas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .ideas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
   .idea-card {
     background: var(--surface);
     border: 1px solid var(--border);

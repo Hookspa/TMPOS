@@ -423,19 +423,7 @@ function releaseResumenContentHTML(l) {
         <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="setReleaseTab('calendario')">▦ Ver Calendario</button>
       </div>
 
-      <div class="panel" style="margin:0">
-        <div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Plan de Medios</span></div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
-          <div class="brief-label">Presupuesto total</div>
-          <div style="font-family:var(--font-display);font-size:28px;letter-spacing:1px">${money(b.total)}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${[['Meta Ads',b.meta],['TikTok Ads',b.tiktok],['Spotify / DSP',b.dsp],['Producción',b.prod]].map(([k,v]) =>
-            `<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">${k}</span><span style="font-family:var(--font-mono)">${money(v)}</span></div>`
-          ).join('')}
-        </div>
-        <button class="btn btn-ghost" style="margin-top:16px;width:100%" onclick="setReleaseTab('objetivos')">◎ Ver Objetivos SMART</button>
-      </div>
+      ${mediaPlanPanelHTML(l)}
     </div>
 
     <div class="panel">
@@ -447,6 +435,77 @@ function releaseResumenContentHTML(l) {
     </div>`;
 }
 
+// ══════════════════════════════════════════
+// PLAN DE MEDIOS (editable: plataformas + montos + tipos de medio)
+// ══════════════════════════════════════════
+const MEDIA_TYPES = [['propios', 'Propios'], ['pagados', 'Pagados'], ['ganados', 'Ganados']];
+// Normaliza el budget a un modelo de líneas {key?,label,amount}. Migra desde los campos legacy
+// (b.meta/tiktok/dsp/prod = las cats de finanzas) la primera vez, para no perder datos ni romper
+// la vista "plan vs real" de Inversión.
+function budgetEnsure(l) {
+  l.budget = l.budget || {};
+  const b = l.budget;
+  if (!Array.isArray(b.lines)) {
+    const cats = (typeof EXPENSE_CATS !== 'undefined') ? EXPENSE_CATS : [['meta', 'Meta Ads'], ['tiktok', 'TikTok Ads'], ['dsp', 'Spotify / DSP'], ['prod', 'Producción']];
+    const seeded = cats.map(([k, lbl]) => ({ key: k, label: lbl, amount: +(b[k] || 0) })).filter(x => x.amount > 0);
+    b.lines = seeded.length ? seeded : [{ key: 'meta', label: 'Meta Ads', amount: 0 }, { key: 'tiktok', label: 'TikTok Ads', amount: 0 }, { key: 'dsp', label: 'Spotify / DSP', amount: 0 }];
+  }
+  if (!b.media || typeof b.media !== 'object') b.media = { propios: false, pagados: true, ganados: false };
+  return b;
+}
+function budgetTotal(l) { return budgetEnsure(l).lines.reduce((a, ln) => a + (+ln.amount || 0), 0); }
+// Espejo de compat: montos por-cat → b[key] (Inversión) + b.total (dashboards/wizard).
+function budgetSync(l) {
+  const b = l.budget;
+  const cats = (typeof EXPENSE_CATS !== 'undefined') ? EXPENSE_CATS : [];
+  cats.forEach(([k]) => { const ln = b.lines.find(x => x.key === k); b[k] = ln ? String(+ln.amount || 0) : ''; });
+  b.total = String(budgetTotal(l));
+}
+function mediaPlanPanelHTML(l) {
+  const b = budgetEnsure(l);
+  const total = budgetTotal(l);
+  const canE = (typeof canDo === 'function') ? canDo('edit_launch') : true;
+  const rows = b.lines.map((ln, i) => `<div class="mp-row">
+      <input class="input mp-plat" value="${esc(ln.label)}" placeholder="Plataforma" ${canE ? '' : 'disabled'} onchange="budgetSetLine('${l.id}',${i},'label',this.value)">
+      <div class="mp-amt"><span class="mp-cur">$</span><input class="input" type="number" min="0" step="any" value="${+ln.amount || 0}" ${canE ? '' : 'disabled'} onchange="budgetSetLine('${l.id}',${i},'amount',this.value)"></div>
+      ${canE ? `<button class="goal-btn reject" title="Quitar plataforma" onclick="budgetRemoveLine('${l.id}',${i})">${icon('close', 12)}</button>` : ''}
+    </div>`).join('');
+  return `<div class="panel" style="margin:0">
+    <div class="panel-head"><span class="ph-icon">${icon('finance', 18)}</span><span class="ph-title">Plan de Medios</span></div>
+    <div class="brief-label" style="margin-bottom:6px">Tipos de medio</div>
+    <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-4)">
+      ${MEDIA_TYPES.map(([k, lab]) => `<span class="chip${b.media[k] ? ' on' : ''}" style="cursor:${canE ? 'pointer' : 'default'}" ${canE ? `onclick="budgetToggleMedia('${l.id}','${k}')"` : ''} title="Medios ${lab.toLowerCase()}">${lab}</span>`).join('')}
+    </div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--space-3)">
+      <div class="brief-label">Presupuesto total</div>
+      <div style="font-family:var(--font-mono);font-weight:700;font-size:28px;font-variant-numeric:tabular-nums;color:var(--text)">${money(total)}</div>
+    </div>
+    <div class="mp-list">${rows}</div>
+    ${canE ? `<button class="btn btn-ghost btn-sm" style="margin-top:var(--space-3)" onclick="budgetAddLine('${l.id}')">+ Agregar plataforma</button>` : ''}
+    <button class="btn btn-ghost" style="margin-top:var(--space-4);width:100%" onclick="setReleaseTab('objetivos')">◎ Ver Objetivos SMART</button>
+  </div>`;
+}
+function budgetSetLine(id, i, field, val) {
+  const l = launches.find(x => x.id === id); if (!l) return;
+  const b = budgetEnsure(l); if (!b.lines[i]) return;
+  b.lines[i][field] = (field === 'amount') ? (+val || 0) : s(val);
+  budgetSync(l); saveLaunches(); renderLaunchDetail();
+}
+function budgetAddLine(id) {
+  const l = launches.find(x => x.id === id); if (!l) return;
+  budgetEnsure(l).lines.push({ label: '', amount: 0 });
+  budgetSync(l); saveLaunches(); renderLaunchDetail();
+}
+function budgetRemoveLine(id, i) {
+  const l = launches.find(x => x.id === id); if (!l) return;
+  budgetEnsure(l).lines.splice(i, 1);
+  budgetSync(l); saveLaunches(); renderLaunchDetail();
+}
+function budgetToggleMedia(id, k) {
+  const l = launches.find(x => x.id === id); if (!l) return;
+  const b = budgetEnsure(l); b.media[k] = !b.media[k];
+  saveLaunches(); renderLaunchDetail();
+}
 
 // ══════════════════════════════════════════
 // GENERADOR DE IDEAS (insumos del lanzamiento activo)
@@ -473,7 +532,7 @@ function renderIdeas() {
     ? ideas.map((it, i) => {
         const col = catColor((it.cat||[])[0]);
         return `<div class="idea-card" style="cursor:pointer" onclick="openIdeaCard(${i})" title="Abrir la tarjeta para ver toda la info">
-          <button class="del-btn" style="position:relative;float:right;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
+          <button class="del-btn" style="position:absolute;top:10px;right:10px;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
