@@ -441,7 +441,7 @@ function releaseResumenContentHTML(l) {
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas Seleccionadas</span><span class="ph-sub">${(l.ideas||[]).length} referencias</span></div>
       ${(l.ideas||[]).length
-        ? `<div class="chips">${l.ideas.slice(0,8).map(it => `<span class="chip on" style="cursor:default;display:inline-flex;align-items:center;gap:5px">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:default">+${l.ideas.length-8} más</span>`:''}</div>`
+        ? `<div class="chips">${l.ideas.slice(0,8).map((it, idx) => `<span class="chip on" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="openIdeaCard(${idx})" title="Abrir la idea">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:pointer" onclick="setReleaseTab('ideas')" title="Ver todas">+${l.ideas.length-8} más</span>`:''}</div>`
         : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ${icon('star',12)} en el Banco de Referencias.</div>`}
       <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="setReleaseTab('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
     </div>
@@ -523,7 +523,7 @@ function renderIdeas() {
     ? ideas.map((it, i) => {
         const col = catColor((it.cat||[])[0]);
         return `<div class="idea-card" style="cursor:pointer" onclick="openIdeaCard(${i})" title="Abrir la tarjeta para ver toda la info">
-          <button class="del-btn" style="position:static;float:right;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
+          <button class="del-btn" style="position:relative;float:right;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
