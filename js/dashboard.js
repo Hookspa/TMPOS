@@ -171,7 +171,7 @@ function cockpitBodyHTML() {
         ${topAlert ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(topAlert.text)}"><span class="dot ${topAlert.level === 'red' ? 'dot--red' : 'dot--yellow'}" style="margin-right:4px"></span>${esc(topAlert.text)}</div>` : ''}
       </div>
       <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
-      <div style="flex:0 0 auto;text-align:right;min-width:62px"><div style="font-family:var(--font-display);font-size:22px;color:${dColor};line-height:1">${esc(dLabel)}</div><div style="font-size:8px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px">AL DROP</div></div>
+      <div style="flex:0 0 auto;min-width:130px;display:flex;justify-content:flex-end">${(typeof dropClockHTML === 'function') ? dropClockHTML(l) : ''}</div>
     </div>`;
   }).join('');
   return countLine + queue + rowsHTML;

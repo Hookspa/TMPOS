@@ -3387,6 +3387,20 @@ function diasRestantes(iso) {
   const d = new Date(iso + 'T00:00:00');
   return Math.round((d - today) / 86400000);
 }
+// Momento firma 01 (DESIGN.md v2): countdown como instrumento. T−NN en Space Mono tabular +
+// regla de ticks; a T−3 o menos, numeral+ticks en naranja (único acento de la tarjeta).
+function dropClockHTML(l, large) {
+  const d = (l && l.date) ? diasRestantes(l.date) : null;
+  const lg = large ? ' drop-clock--lg' : '';
+  if (d == null) return `<div class="drop-clock${lg}"><div class="tc-out">SIN FECHA</div></div>`;
+  if (d < 0) return `<div class="drop-clock${lg}"><div class="tc-out">SALIÓ<br>hace ${-d}d</div></div>`;
+  const horizon = Math.max((l.preDays != null ? l.preDays : 21), 1);
+  const p = Math.max(0.04, Math.min(1, (horizon - d) / horizon));
+  const hot = d <= 3 ? ' hot' : '';
+  return `<div class="drop-clock${lg}${hot}">` +
+    `<div class="tc-row"><span class="tc">T−${String(d).padStart(2, '0')}</span><span class="tc-unit">DÍAS</span></div>` +
+    `<div class="ruler"><i style="--p:${Math.round(p * 100)}%"></i></div></div>`;
+}
 
 // ── DASHBOARD (per-artista, datos reales) ──
 // ── Tendencia (gráfica real, Chart.js bajo demanda) ──

@@ -531,6 +531,20 @@
   .launch-cover .cover-date { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
   .launch-cover.has-art { padding: 0; }
   .launch-cover.has-art > .cover-cat, .launch-cover.has-art > .cover-title, .launch-cover.has-art > .cover-date { display: none; }
+
+  /* ── MOMENTO FIRMA 01 · drop-clock (DESIGN.md v2) ── countdown como instrumento: timecode
+     Space Mono tabular + regla de ticks (un tick ≈ un día). A T−3 el numeral+ticks → naranja. */
+  .drop-clock { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .drop-clock .tc-row { display: flex; align-items: baseline; gap: 5px; }
+  .drop-clock .tc { font-family: var(--font-mono); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: var(--text); line-height: 1; }
+  .drop-clock .tc-unit { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--dim); }
+  .drop-clock .ruler { width: 120px; height: 8px; background: repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 8px); }
+  .drop-clock .ruler i { display: block; height: 100%; width: var(--p, 0%); background: repeating-linear-gradient(90deg, var(--muted) 0 1px, transparent 1px 8px); }
+  .drop-clock.hot .tc { color: var(--accent); }
+  .drop-clock.hot .ruler i { background: repeating-linear-gradient(90deg, var(--accent) 0 1px, transparent 1px 8px); }
+  .drop-clock .tc-out { font-family: var(--font-mono); font-size: 11px; color: var(--dim); text-align: right; }
+  .drop-clock--lg .tc { font-size: 40px; }
+  .drop-clock--lg .ruler { width: 160px; }
   .launch-card { position: relative; }
   .launch-card .del-btn {
     position: absolute; top: 8px; right: 8px;
