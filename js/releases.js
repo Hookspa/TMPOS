@@ -444,59 +444,9 @@ function releaseResumenContentHTML(l) {
         ? `<div class="chips">${l.ideas.slice(0,8).map((it, idx) => `<span class="chip on" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="openIdeaCard(${idx})" title="Abrir la idea">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:pointer" onclick="setReleaseTab('ideas')" title="Ver todas">+${l.ideas.length-8} más</span>`:''}</div>`
         : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ${icon('star',12)} en el Banco de Referencias.</div>`}
       <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="setReleaseTab('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
-    </div>
-
-    ${revenuePanelHTML(l)}`;
+    </div>`;
 }
 
-
-// ══════════════════════════════════════════
-// FASE 5: Revenue Streams (checklist por lanzamiento)
-// ══════════════════════════════════════════
-const REVENUE_ITEMS = [
-  { key:'pro', label:'PRO registrado (ASCAP / BMI / SAYCO / SGAE)', money:'Regalías por composición cada vez que tu canción suena en radio, streaming o en vivo.', link:'https://www.ascap.com/', linkLabel:'Registrar' },
-  { key:'contentid', label:'YouTube Content ID activado', money:'Monetiza cualquier video que use tu música en YouTube (covers, ediciones de fans).', link:'https://support.google.com/youtube/answer/3244015', linkLabel:'Cómo activar' },
-  { key:'tiktoksounds', label:'TikTok Sounds registrado', money:'Tu canción como sonido oficial → uso viral = más streams y descubrimiento.', link:'https://www.tiktok.com/business/es', linkLabel:'TikTok' },
-  { key:'spotifyartist', label:'Spotify for Artists reclamado', money:'Datos, pitch a playlists editoriales, Canvas y Marquee.', link:'https://artists.spotify.com/', linkLabel:'Reclamar' },
-  { key:'appleartist', label:'Apple Music for Artists activado', money:'Datos de Apple + Shazam y herramientas de promoción.', link:'https://artists.apple.com/', linkLabel:'Activar' },
-  { key:'presave', label:'Pre-save configurado', money:'Guardados antes del drop → más streams el día 1 → mejor empuje del algoritmo.', link:'', linkLabel:'', hasInput:true, inputPh:'Link del pre-save' },
-  { key:'smartlink', label:'Smart link creado (Feature.fm / Linktree)', money:'Un solo link a todas las plataformas → no pierdes oyentes.', link:'https://linktr.ee/', linkLabel:'Crear', hasInput:true, inputPh:'Link' },
-  { key:'sync', label:'Sincronización disponible (sello / publisher notificado)', money:'Licencias para cine, TV y publicidad: pagos grandes por una sola colocación.', link:'', linkLabel:'' },
-  { key:'merch', label:'Merchandise listo', money:'Margen alto y conexión con fans (camisetas, vinilos, posters).', link:'', linkLabel:'' },
-  { key:'merchdigital', label:'Merch digital (samples / stems)', money:'Vende stems y samples a productores: ingreso pasivo de tu material.', link:'', linkLabel:'' },
-];
-function revenuePanelHTML(l) {
-  const rev = l.revenue || {};
-  const done = REVENUE_ITEMS.filter(it => rev[it.key] && rev[it.key].done).length;
-  const pct = Math.round(done / REVENUE_ITEMS.length * 100);
-  return `<div class="panel">
-    <div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Revenue Streams</span><span class="ph-sub">${done}/${REVENUE_ITEMS.length} activados · ${pct}%</span></div>
-    <div class="progress-track" style="margin-bottom:16px"><div class="progress-fill" style="width:${pct}%"></div></div>
-    ${REVENUE_ITEMS.map(it => {
-      const st = rev[it.key] || {};
-      return `<div class="rev-item ${st.done ? 'done' : ''}">
-        <div class="rev-check" onclick="revenueToggle('${l.id}','${it.key}')" title="Marcar">${st.done ? icon('check',12) : ''}</div>
-        <div style="flex:1;min-width:0">
-          <div class="rev-label">${it.label}</div>
-          <div class="rev-money">${it.money}</div>
-          ${it.hasInput ? `<input class="input" style="margin-top:8px;font-size:11px" placeholder="${it.inputPh || 'Link'}" value="${s(st.value)}" onchange="revenueSetValue('${l.id}','${it.key}',this.value)">` : ''}
-        </div>
-        ${it.link ? `<a href="${it.link}" target="_blank" class="btn btn-ghost" style="padding:4px 10px;font-size:10px;text-decoration:none;align-self:flex-start;white-space:nowrap">${it.linkLabel || 'Ir'} ↗</a>` : ''}
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-function revenueToggle(launchId, key) {
-  const l = launches.find(x => x.id === launchId); if (!l) return;
-  l.revenue = l.revenue || {}; l.revenue[key] = l.revenue[key] || {};
-  l.revenue[key].done = !l.revenue[key].done;
-  saveLaunches(); renderLaunchDetail();
-}
-function revenueSetValue(launchId, key, val) {
-  const l = launches.find(x => x.id === launchId); if (!l) return;
-  l.revenue = l.revenue || {}; l.revenue[key] = l.revenue[key] || {};
-  l.revenue[key].value = val; saveLaunches();
-}
 
 // ══════════════════════════════════════════
 // GENERADOR DE IDEAS (insumos del lanzamiento activo)
