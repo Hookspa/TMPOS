@@ -48,9 +48,12 @@ const CAT_ES = {
 };
 const FOR_ES = { 'musician/band':'Músico / banda','vocalist/rapper':'Vocalista / rapero','producer':'Productor','dj':'DJ' };
 function trTag(tag, kind) {
-  if (!bancoTranslate) return tag;
-  const k = s(tag).toLowerCase();
-  return (kind === 'for' ? (FOR_ES[k] || tag) : (CAT_ES[k] || tag));
+  // Limpieza de emoji AL RENDER (DESIGN.md v2 T5): "✨ Vibes" → "Vibes". Los datos (CSV) no se
+  // tocan; sólo el display. Strip primero también arregla el lookup de traducción (clave sin emoji).
+  const raw = (typeof stripEmoji === 'function') ? stripEmoji(tag) : s(tag);
+  if (!bancoTranslate) return raw;
+  const k = raw.toLowerCase();
+  return (kind === 'for' ? (FOR_ES[k] || raw) : (CAT_ES[k] || raw));
 }
 // Caché de traducciones de texto libre (título/hook/descripción).
 function _trCache() { try { return JSON.parse(localStorage.getItem('ao_tr_cache')) || {}; } catch(e){ return {}; } }
