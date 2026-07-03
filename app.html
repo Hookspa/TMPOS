@@ -861,7 +861,7 @@
     text-transform: uppercase;
   }
   .boxdrop-tab:hover { color: var(--text); }
-  .boxdrop-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .boxdrop-tab.active { color: var(--text); border-bottom-color: var(--muted); }
 
   .boxdrop-body {
     flex: 1;
@@ -1119,7 +1119,7 @@
   .ctabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
   .ctab { padding: 8px 14px; font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.5px; }
   .ctab:hover { color: var(--text); }
-  .ctab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .ctab.active { color: var(--text); border-bottom-color: var(--muted); }
 
   /* ── CALENDARIO: toolbar, vistas, kanban ── */
   .cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -1214,7 +1214,7 @@
     letter-spacing: 0.5px; transition: all 0.15s;
   }
   .mtab:hover { color: var(--text); }
-  .mtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .mtab.active { color: var(--text); border-bottom-color: var(--muted); }
   .mtab-pane { animation: fadeInUp 0.25s ease; }
   .plat-pill { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-family:var(--font-mono); padding:3px 9px; border-radius:var(--radius-pill); }
   .metric-entry-row { display:grid; grid-template-columns: 1fr 120px 32px; gap:8px; margin-bottom:8px; align-items:center; }
@@ -1676,13 +1676,13 @@
   .tv-tabs { display:flex; gap:6px; flex-wrap:wrap; }
   .tv-tab { display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .15s; }
   .tv-tab:hover { color:var(--text); background:var(--surface2); }
-  .tv-tab.active { color:var(--accent); border-color:rgba(255,107,48,.4); background:rgba(255,107,48,.06); }
+  .tv-tab.active { color:var(--text); border-color:var(--muted); background:var(--surface2); }
   .tv-filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .tv-filters select, .tv-filters input { background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--font-body); font-size:12px; padding:7px 10px; }
   .tv-filters input.tv-search { min-width:160px; flex:1; max-width:280px; }
   .tv-seg { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
   .tv-seg button { background:var(--surface); border:0; color:var(--text-muted); font-size:11px; font-weight:600; padding:7px 12px; cursor:pointer; font-family:var(--font-body); }
-  .tv-seg button.on { background:var(--accent); color:var(--accent-fg); }
+  .tv-seg button.on { background:var(--surface2); color:var(--text); }
   /* chips de estado / prioridad */
   .tk-chip { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-family:var(--font-mono); letter-spacing:.03em; padding:3px 8px; border-radius:var(--radius-pill); white-space:nowrap; }
   .tk-pri { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:var(--font-mono); }
@@ -1751,7 +1751,7 @@
   /* comentarios */
   .cmt-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
   .cmt-tab { padding:5px 11px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; }
-  .cmt-tab.active { color:var(--accent); border-color:rgba(255,107,48,.4); background:rgba(255,107,48,.06); }
+  .cmt-tab.active { color:var(--text); border-color:var(--muted); background:var(--surface2); }
   .cmt-tab.priv.active { color:var(--accent2); border-color:rgba(255,77,77,.4); background:rgba(255,77,77,.06); }
   .cmt { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--hairline); }
   .cmt-av { width:30px; height:30px; border-radius:50%; flex-shrink:0; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
