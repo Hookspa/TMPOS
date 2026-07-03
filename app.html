@@ -1435,12 +1435,11 @@
   .auth-gate {
     position: fixed; inset: 0; z-index: var(--z-modal-alert); display: none;
     align-items: center; justify-content: center; padding: 24px;
-    background: var(--bg);
-    background-image: radial-gradient(50% 40% at 80% 0%, var(--glow), transparent 60%), radial-gradient(45% 40% at 0% 100%, var(--glow), transparent 55%);
+    background: var(--bg);   /* anti-slop T7: sin radial-gradient (glow) — superficie sólida */
   }
   .auth-card {
     width: 400px; max-width: 100%; background: var(--surface);
-    border: 1px solid var(--hairline); border-radius: 14px; padding: 32px;
+    border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;
     box-shadow: 0 20px 60px var(--shadow);
     animation: popIn 0.35s ease;
   }
