@@ -187,6 +187,10 @@ function _cockpitState(l, r) {
   if (r.yellows || (r.d != null && r.d >= 0 && r.d <= 14 && r.pct < 70)) return 'risk';
   return 'ok';
 }
+// Momento firma 03 (DESIGN.md v2): el silencio. All-clear como recompensa, no empty-state ilustrado.
+function _verifiedStamp() { const n = new Date(); const p2 = x => String(x).padStart(2, '0'); return `${p2(n.getHours())}:${p2(n.getMinutes())}`; }
+function silenceBlockHTML() { return `<div class="silence"><b>— SILENCIO —</b>NADA BLOQUEADO · VERIFICADO ${_verifiedStamp()}</div>`; }
+function allClearHTML() { return `<div class="all-clear"><div class="ac-line">TODO EN TEMPO.</div><div class="ac-sub">ROSTER VERIFICADO · ${_verifiedStamp()}</div></div>`; }
 function cockpitBoardHTML() {
   const list = cockpitLaunches();
   if (!list.length) return '<div class="empty-hint">No hay lanzamientos activos. Crea uno para verlo aquí.</div>';
@@ -213,18 +217,21 @@ function cockpitBoardHTML() {
       <div class="progress-track" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px">
         <div style="font-size:11px;color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topAlert ? esc(topAlert.text) : esc(phase)}">${topAlert ? esc(topAlert.text) : esc(phase)}</div>
-        <div style="font-family:var(--font-display);font-size:22px;line-height:.8;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
+        <div style="font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:18px;line-height:.9;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
       </div>${act}</div>`;
   };
   const colHTML = (key) => {
     const c = cols[key];
+    const empty = (key === 'blocked' && typeof silenceBlockHTML === 'function') ? silenceBlockHTML() : '<div style="font-size:11px;color:var(--text-dim);padding:6px 4px">—</div>';
     return `<div style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:${c.color};padding:2px 4px 10px;border-bottom:1px solid var(--border);margin-bottom:10px"><span>${c.label}</span><span>${c.items.length}</span></div>
-      ${c.items.map(x => card(x, key === 'blocked')).join('') || '<div style="font-size:11px;color:var(--text-dim);padding:6px 4px">—</div>'}
+      ${c.items.map(x => card(x, key === 'blocked')).join('') || empty}
     </div>`;
   };
   const count = list.length;
   const line = `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:14px">${count} lanzamiento${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} · por estado de riesgo</div>`;
+  // El silencio como recompensa: si nada está bloqueado ni en riesgo, el cockpit es una sola línea.
+  if (!cols.blocked.items.length && !cols.risk.items.length && typeof allClearHTML === 'function') return line + allClearHTML();
   return line + `<div style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px">${['blocked', 'risk', 'ok', 'post'].map(colHTML).join('')}</div>`;
 }
 
