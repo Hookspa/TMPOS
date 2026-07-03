@@ -43,7 +43,6 @@ function renderLaunchDetail() {
   document.getElementById('page-title-text').textContent = up(l.name);
 
   const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
-  const cover = /^c[1-5]$/.test(l.cover) ? l.cover : 'c5';
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
 
   // timeline
@@ -64,7 +63,7 @@ function renderLaunchDetail() {
     </div>
 
     <div class="launch-hero">
-      <div class="launch-hero-cover launch-cover ${cover}">${up(l.name)}</div>
+      ${(typeof coverHTML === 'function') ? coverHTML(l, '', 'launch-hero-cover') : ''}
       <div class="launch-hero-info">
         <div style="display:flex;align-items:flex-start;gap:14px">
           <div class="lh-name">${esc(l.name)}</div>

@@ -3310,9 +3310,26 @@ function launchDateLabel(l) {
   return `${st.tag} · ${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// Número de catálogo estable derivado del id (cosmético, tipo "TMP-004").
+function catalogNo(l) {
+  let h = 0; const str = String((l && (l.id || l.name)) || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return 'TMP-' + String(h % 1000).padStart(3, '0');
+}
+function coverDateLabel(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00'); if (isNaN(d)) return '—';
+  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+}
+function coverHTML(l, extraInner, extraClass) {
+  const hasArt = l && l.cover && /^(https?:|data:)/.test(l.cover);
+  return `<div class="launch-cover${extraClass ? ' ' + extraClass : ''}${hasArt ? ' has-art' : ''}" ${hasArt ? `style="background-image:url('${safeUrl(l.cover)}')"` : ''}>${extraInner || ''}` +
+    `<div class="cover-cat">${catalogNo(l)} · ${up(l.type || 'single')}</div>` +
+    `<div class="cover-title">${esc(up(l.name).slice(0, 12))}</div>` +
+    `<div class="cover-date">${coverDateLabel(l.date)}</div></div>`;
+}
 function launchCardHTML(l) {
   const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
-  const cover = /^c[1-5]$/.test(l.cover) ? l.cover : 'c5';
   // Surface blocking alerts (missing cover, unsigned split, etc.) right on the card —
   // without this, "Lanzado"/"En campaña" is the *only* signal visible outside the release
   // detail page, even when something there needs urgent attention.
@@ -3321,7 +3338,7 @@ function launchCardHTML(l) {
   return `
     <div class="launch-card fade-in" onclick="openLaunch('${l.id}')">
       <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
-      <div class="launch-cover ${cover}">${alertBadge}${up(l.name).slice(0,9)}</div>
+      ${coverHTML(l, alertBadge)}
       <div class="launch-info">
         <div class="launch-name">${esc(l.name)}</div>
         <div class="launch-date">${launchDateLabel(l)}</div>

@@ -339,7 +339,7 @@
     flex-shrink: 0;
   }
   .module-badge.soon { background: rgba(255,170,0,0.12); color: var(--beat); border: 1px solid rgba(255,170,0,0.25); }
-  .module-badge.live { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+  .module-badge.live { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
 
   .panel {
     background: var(--surface);
@@ -515,23 +515,22 @@
   }
   .launch-card.add:hover { color: var(--accent); border-color: rgba(255,107,48,0.4); }
   .launch-card.add .plus { font-size: 32px; font-family: var(--font-display); }
+  /* Cover "etiqueta de cinta" (DESIGN.md v2 T2): sin gradientes neón. Placeholder honesto
+     en superficie + mono; con arte real subido, el arte manda. */
   .launch-cover {
     height: 120px;
     position: relative;
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-display);
-    font-size: 28px;
-    letter-spacing: 4px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    background-size: cover; background-position: center;
   }
-  .launch-cover.k { background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); color: #FF6B30; }
-  .launch-cover.g { background: linear-gradient(135deg, #2d1b2e, #4a1942, #6b2d6b); color: #ff6b9d; }
-  .launch-cover.x { background: linear-gradient(135deg, #0d1b0d, #1a3a1a, #0a4a2a); color: #4ade80; }
-  .launch-cover.new { background: linear-gradient(135deg, #1a1a1a, #252525); color: var(--accent); }
-  .launch-cover.c1 { background: linear-gradient(135deg, #1a1a2e, #0f3460); color: #FF6B30; }
-  .launch-cover.c2 { background: linear-gradient(135deg, #2d1b2e, #6b2d6b); color: #ff6b9d; }
-  .launch-cover.c3 { background: linear-gradient(135deg, #0d1b0d, #0a4a2a); color: #4ade80; }
-  .launch-cover.c4 { background: linear-gradient(135deg, #2d0000, #6b1d1d); color: #ff8a8a; }
-  .launch-cover.c5 { background: linear-gradient(135deg, #1a1a1a, #383838); color: #FF6B30; }
+  .launch-cover .cover-cat { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--dim); border-bottom: 1px solid var(--hairline); padding-bottom: 8px; }
+  .launch-cover .cover-title { font-family: var(--font-display); font-size: 30px; letter-spacing: 1px; color: var(--text); line-height: 1; }
+  .launch-cover .cover-date { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+  .launch-cover.has-art { padding: 0; }
+  .launch-cover.has-art > .cover-cat, .launch-cover.has-art > .cover-title, .launch-cover.has-art > .cover-date { display: none; }
   .launch-card { position: relative; }
   .launch-card .del-btn {
     position: absolute; top: 8px; right: 8px;
@@ -559,10 +558,11 @@
   /* ── LAUNCH DETAIL (hub) ── */
   .launch-hero { display: flex; gap: 22px; align-items: stretch; margin-bottom: 24px; }
   .launch-hero-cover {
-    width: 190px; min-height: 150px; border-radius: 10px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px;
-    font-family: var(--font-display); font-size: 30px; letter-spacing: 3px; line-height: 1.05;
+    width: 190px; min-height: 150px; border-radius: var(--radius-lg); flex-shrink: 0;
+    padding: 14px 16px; text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between;
   }
+  .launch-hero-cover .cover-title { font-size: 34px; }
   .launch-hero-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .lh-name { font-family: var(--font-display); font-size: 42px; letter-spacing: 2px; line-height: 1; margin-bottom: 10px; }
   .lh-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
@@ -1633,11 +1633,8 @@
     transition: all 0.15s;
   }
   .cover-opt.sel { border-color: var(--accent); }
-  .cover-opt.c1 { background: linear-gradient(135deg, #1a1a2e, #0f3460); }
-  .cover-opt.c2 { background: linear-gradient(135deg, #2d1b2e, #6b2d6b); }
-  .cover-opt.c3 { background: linear-gradient(135deg, #0d1b0d, #0a4a2a); }
-  .cover-opt.c4 { background: linear-gradient(135deg, #2d0000, #6b1d1d); }
-  .cover-opt.c5 { background: linear-gradient(135deg, #1a1a1a, #383838); }
+  /* Swatches del wizard neutralizados (los covers ya no usan color; ver T2). */
+  .cover-opt.c1, .cover-opt.c2, .cover-opt.c3, .cover-opt.c4, .cover-opt.c5 { background: var(--surface2); }
 
   /* ── TAREAS (global · inbox + 5 vistas) ── */
   .nav-item .badge { margin-left:auto; background:var(--accent); color:var(--accent-fg); font-size:9px; font-weight:700; font-family:var(--font-mono); min-width:16px; height:16px; padding:0 4px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
