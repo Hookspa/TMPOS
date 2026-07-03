@@ -9,6 +9,7 @@ if (typeof updateTaskBadge === 'function') updateTaskBadge();             // con
 if (typeof renderNotifBadge === 'function') renderNotifBadge();          // campana de notificaciones
 renderSidebarArtist();
 renderAllLaunches();
+if (typeof renderOnAir === 'function') { renderOnAir(); setInterval(renderOnAir, 30000); }  // franja ON AIR + reloj
 
 // Banco por defecto: CSV embebido (Test ArtistOS — Ideas de contenido)
 (function loadEmbeddedBank() {

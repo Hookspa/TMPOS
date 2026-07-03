@@ -256,6 +256,17 @@
     overflow: hidden;
   }
 
+  /* ── MOMENTO FIRMA 02 · franja ON AIR (DESIGN.md v2) ── el reloj de la sala: barra sticky
+     de 36px arriba de todo, visible desde cualquier vista. 'nada se te cae' hecho mueble. */
+  .on-air {
+    display: flex; align-items: center; gap: 7px;
+    height: 36px; flex: 0 0 36px; padding: 0 28px;
+    background: var(--bg); border-bottom: 1px solid var(--hairline);
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .5px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .on-air .oa-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+  @media (max-width: 860px) { .on-air { padding: 0 14px; } }
   .topbar {
     height: 56px;
     border-bottom: 1px solid var(--border);
@@ -1858,6 +1869,7 @@
 
 <!-- MAIN -->
 <div class="main">
+  <div class="on-air" id="on-air"></div>
   <div class="topbar">
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú"><span data-icon="menu" data-isize="20"></span></button>
     <button class="navback" id="nav-back-btn" onclick="navBack()" aria-label="Atrás" title="Atrás" style="display:none"><span data-icon="arrowLeft" data-isize="18"></span></button>

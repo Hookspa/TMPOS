@@ -542,6 +542,7 @@ function showPage(id, skipRecord) {
   document.querySelector('.content').scrollTop = 0;
   if (id !== 'launch') _viewingTrack = false; // navegar fuera del release ya no es vista de track
   updateBackBtn();
+  if (typeof renderOnAir === 'function') renderOnAir();
 }
 
 // ══════════════════════════════════════════
@@ -3400,6 +3401,29 @@ function dropClockHTML(l, large) {
   return `<div class="drop-clock${lg}${hot}">` +
     `<div class="tc-row"><span class="tc">T−${String(d).padStart(2, '0')}</span><span class="tc-unit">DÍAS</span></div>` +
     `<div class="ruler"><i style="--p:${Math.round(p * 100)}%"></i></div></div>`;
+}
+// Momento firma 02 (DESIGN.md v2): la franja ON AIR — el reloj de la sala.
+function _onAirRoster() {
+  return (typeof launches !== 'undefined') ? launches.filter(l => l.type !== 'evergreen') : [];
+}
+function onAirBlockedCount() {
+  if (typeof releaseAlerts !== 'function') return 0;
+  return _onAirRoster().filter(l => releaseAlerts(l).some(a => a.level === 'red')).length;
+}
+function renderOnAir() {
+  const el = document.getElementById('on-air'); if (!el) return;
+  const now = new Date();
+  const DIAS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+  const MES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const p2 = n => String(n).padStart(2, '0');
+  const stamp = `${DIAS[now.getDay()]} ${p2(now.getDate())} ${MES[now.getMonth()]} ${p2(now.getHours())}:${p2(now.getMinutes())}`;
+  const drops = _onAirRoster().filter(l => l.date && diasRestantes(l.date) >= 0).sort((a, b) => a.date < b.date ? -1 : 1);
+  const drop = drops[0];
+  const blocked = onAirBlockedCount();
+  const dotCol = blocked ? 'var(--blocked)' : 'var(--ok)';
+  const dropPart = drop ? ` · PRÓXIMO DROP: «${esc(up(drop.name))}» — T−${p2(diasRestantes(drop.date))}` : ' · SIN DROPS PROGRAMADOS';
+  const blockedPart = blocked ? ` · <span style="color:var(--blocked)">${blocked} BLOQUEADO${blocked === 1 ? '' : 'S'}</span>` : '';
+  el.innerHTML = `<span class="oa-dot" style="background:${dotCol}"></span>${stamp}${dropPart}${blockedPart}`;
 }
 
 // ── DASHBOARD (per-artista, datos reales) ──
