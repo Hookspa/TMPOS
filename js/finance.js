@@ -19,32 +19,53 @@ const _signedMoney = n => (n < 0 ? '-' : '') + money(Math.abs(n));
 function releaseInversionHTML(l){
   if(!canDo('ver_finanzas') && !canDo('editar_finanzas')) return `<div class="empty-hint">No tienes acceso a las finanzas de este release.</div>`;
   const editable = canDo('editar_finanzas');
-  const fs = financeSummary(l), byCat = expensesByCat(l), b = l.budget || {};
+  const fs = financeSummary(l), byCat = expensesByCat(l);
   const estadoColor = { no_recuperado:'var(--accent2)', parcial:'var(--beat)', recuperado:'#4ade80' }[fs.estado];
   const card = (label, val, sub, col) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="${col ? `color:${col}` : ''}">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
-  const planRows = EXPENSE_CATS.map(([k, lbl]) => { const plan = +(b[k] || 0), real = byCat[k] || 0; if (!plan && !real) return ''; const diff = plan - real;
-    return `<tr><td style="padding:6px 8px">${lbl}</td>
+  // "Plan vs real" unificado: las PLATAFORMAS del Plan de Medios (b.lines) son las categorías.
+  // Cada línea → plan = monto de la línea, real = gastos con esa plataforma; + gastos huérfanos; + total.
+  const lines = (typeof budgetEnsure === 'function') ? budgetEnsure(l).lines : ((l.budget && l.budget.lines) || []);
+  const labelOf = id => (typeof planLineLabel === 'function') ? planLineLabel(l, id) : catLabel(id);
+  const _row = (lbl, plan, real) => { const diff = plan - real; return `<tr><td style="padding:6px 8px">${s(lbl)}</td>
       <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">${money(plan)}</td>
       <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">${money(real)}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:${diff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(diff)}</td></tr>`; }).filter(Boolean).join('');
-  const gastos = (l.expenses || []).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(e => `<div class="panel" style="display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s(catLabel(e.categoria))}</span>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:${diff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(diff)}</td></tr>`; };
+  const usedIds = {}; let planTotal = 0, realTotal = 0; const _body = [];
+  lines.forEach(ln => { usedIds[ln.id] = true; const plan = +ln.amount || 0, real = byCat[ln.id] || 0; planTotal += plan; realTotal += real; if (plan || real) _body.push(_row(ln.label || labelOf(ln.id), plan, real)); });
+  Object.keys(byCat).forEach(cat => { if (usedIds[cat]) return; const real = byCat[cat] || 0; if (!real) return; realTotal += real; _body.push(_row(labelOf(cat), 0, real)); });
+  const planRows = _body.join('');
+  const _tdiff = planTotal - realTotal;
+  const totalRow = planRows ? `<tr style="border-top:1px solid var(--border)"><td style="padding:8px;font-weight:600">Total</td>
+      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(planTotal)}</td>
+      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(realTotal)}</td>
+      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:${_tdiff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(_tdiff)}</td></tr>` : '';
+  const gastos = (l.expenses || []).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(e => `<div class="panel${_editingExpId === e.id ? ' editing' : ''}" style="display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap${_editingExpId === e.id ? ';border-color:var(--accent)' : ''}">
+      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s(labelOf(e.categoria))}</span>
       <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${money(+e.monto || 0)}${e.proveedor ? ` <span style="color:var(--text-muted);font-size:12px;font-weight:400">· ${s(e.proveedor)}</span>` : ''}</div>
         <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(e.fecha) || ''}${e.metodo ? ' · ' + s(e.metodo) : ''}${e.note ? ' · ' + s(e.note) : ''}</div></div>
       ${e.reciboLink ? `<a href="${safeUrl(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono)">↗ recibo</a>` : ''}
-      ${editable ? `<button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">${icon('close',12)}</button>` : ''}
+      ${editable ? `<button class="goal-btn" title="Editar" onclick="editarGasto('${e.id}')">${icon('pencil',12)}</button><button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">${icon('close',12)}</button>` : ''}
     </div>`).join('');
-  const addForm = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('plus',18)}</span><span class="ph-title">Registrar gasto</span></div>
+  // Opciones de categoría = tus plataformas del Plan de Medios (+ Otros; + la del gasto en edición si ya no existe).
+  const _editE = _editingExpId ? (l.expenses || []).find(x => x.id === _editingExpId) : null;
+  const catOpts = (selId) => {
+    const opts = lines.map(ln => `<option value="${ln.id}"${selId === ln.id ? ' selected' : ''}>${s(ln.label || '—')}</option>`);
+    if (!lines.some(ln => ln.id === 'otros')) opts.push(`<option value="otros"${selId === 'otros' ? ' selected' : ''}>Otros</option>`);
+    if (selId && selId !== 'otros' && !lines.some(ln => ln.id === selId)) opts.unshift(`<option value="${selId}" selected>${s(labelOf(selId))}</option>`);
+    return opts.join('');
+  };
+  const _ev = (k, d) => _editE ? s(_editE[k] || '') : (d || '');
+  const addForm = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon(_editE ? 'pencil' : 'plus',18)}</span><span class="ph-title">${_editE ? 'Editar gasto' : 'Registrar gasto'}</span>${_editE ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="cancelarEditarGasto()">Cancelar</button>` : ''}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
-        <div class="field"><label>Monto</label><input class="input" id="exp-monto" inputmode="decimal" placeholder="0"></div>
-        <div class="field"><label>Categoría</label><select class="input" id="exp-cat">${EXPENSE_CATS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
-        <div class="field"><label>Proveedor</label><input class="input" id="exp-prov" placeholder="Meta, agencia…"></div>
-        <div class="field"><label>Fecha</label><input class="input" id="exp-fecha" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-        <div class="field"><label>Método</label><select class="input" id="exp-metodo">${EXPENSE_METODOS.map(m => `<option>${m}</option>`).join('')}</select></div>
-        <div class="field"><label>Link recibo</label><input class="input" id="exp-recibo" placeholder="https://…"></div>
+        <div class="field"><label>Monto</label><input class="input" id="exp-monto" inputmode="decimal" placeholder="0" value="${_editE ? (+_editE.monto || '') : ''}"></div>
+        <div class="field"><label>Categoría</label><select class="input" id="exp-cat">${catOpts(_editE ? _editE.categoria : (lines[0] && lines[0].id))}</select></div>
+        <div class="field"><label>Proveedor</label><input class="input" id="exp-prov" placeholder="Meta, agencia…" value="${_ev('proveedor')}"></div>
+        <div class="field"><label>Fecha</label><input class="input" id="exp-fecha" type="date" value="${_ev('fecha', new Date().toISOString().slice(0, 10))}"></div>
+        <div class="field"><label>Método</label><select class="input" id="exp-metodo">${EXPENSE_METODOS.map(m => `<option${_editE && _editE.metodo === m ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
+        <div class="field"><label>Link recibo</label><input class="input" id="exp-recibo" placeholder="https://…" value="${_ev('reciboLink')}"></div>
       </div>
-      <div class="field" style="margin-top:8px"><label>Nota</label><input class="input" id="exp-note"></div>
-      <button class="btn btn-primary" style="margin-top:10px" onclick="agregarGasto()">Agregar gasto</button></div>` : '';
+      <div class="field" style="margin-top:8px"><label>Nota</label><input class="input" id="exp-note" value="${_ev('note')}"></div>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="agregarGasto()">${_editE ? 'Guardar cambios' : 'Agregar gasto'}</button></div>` : '';
   return `
     <div class="dashboard-grid" style="margin-bottom:16px">
       ${card('Inversión total', money(fs.inversion), `${(l.expenses || []).length} gasto(s)`)}
@@ -59,21 +80,32 @@ function releaseInversionHTML(l){
     <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chart',18)}</span><span class="ph-title">Plan vs. gasto real</span><span class="ph-sub">por categoría</span></div>
       <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
         <th style="text-align:left;padding:6px 8px">Categoría</th><th style="text-align:right;padding:6px 8px">Plan</th><th style="text-align:right;padding:6px 8px">Real</th><th style="text-align:right;padding:6px 8px">Dif.</th></tr></thead>
-        <tbody>${planRows || '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin presupuesto ni gastos aún.</td></tr>'}</tbody></table>
+        <tbody>${planRows ? planRows + totalRow : '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin presupuesto ni gastos aún. Define plataformas en el Plan de Medios.</td></tr>'}</tbody></table>
     </div>
     ${gastos ? `<div class="panel-head" style="margin:4px 0 8px"><span class="ph-icon">${icon('receipt',18)}</span><span class="ph-title">Gastos (${(l.expenses || []).length})</span></div>${gastos}` : ''}
     ${addForm}`;
 }
+let _editingExpId = null;
 function agregarGasto(){
   if(!requireCan('editar_finanzas')) return;
   const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
   const monto = parseFloat(document.getElementById('exp-monto').value);
   if(!monto){ uiAlert('Pon el monto del gasto.'); return; }
+  const data = { monto, categoria:document.getElementById('exp-cat').value, proveedor:(document.getElementById('exp-prov').value||'').trim(), fecha:document.getElementById('exp-fecha').value, metodo:document.getElementById('exp-metodo').value, reciboLink:(document.getElementById('exp-recibo').value||'').trim(), note:(document.getElementById('exp-note').value||'').trim() };
   l.expenses = l.expenses || [];
-  l.expenses.push({ id:'ex-'+Date.now(), monto, categoria:document.getElementById('exp-cat').value, proveedor:(document.getElementById('exp-prov').value||'').trim(), fecha:document.getElementById('exp-fecha').value, metodo:document.getElementById('exp-metodo').value, reciboLink:(document.getElementById('exp-recibo').value||'').trim(), note:(document.getElementById('exp-note').value||'').trim() });
-  saveLaunches(); renderReleaseTab('inversion'); uiToast('✓ Gasto registrado');
+  if (_editingExpId) {
+    const e = l.expenses.find(x => x.id === _editingExpId);
+    if (e) Object.assign(e, data);
+    _editingExpId = null;
+    saveLaunches(); renderReleaseTab('inversion'); uiToast('✓ Gasto actualizado');
+  } else {
+    l.expenses.push(Object.assign({ id:'ex-'+Date.now() }, data));
+    saveLaunches(); renderReleaseTab('inversion'); uiToast('✓ Gasto registrado');
+  }
 }
-function quitarGasto(id){ if(!requireCan('editar_finanzas')) return; const l = launches.find(x => x.id === currentLaunchId); if(!l) return; l.expenses = (l.expenses||[]).filter(e => e.id !== id); saveLaunches(); renderReleaseTab('inversion'); }
+function editarGasto(id){ if(!requireCan('editar_finanzas')) return; _editingExpId = id; renderReleaseTab('inversion'); const f = document.getElementById('exp-monto'); if (f && f.scrollIntoView) f.scrollIntoView({ block:'center' }); }
+function cancelarEditarGasto(){ _editingExpId = null; renderReleaseTab('inversion'); }
+function quitarGasto(id){ if(!requireCan('editar_finanzas')) return; const l = launches.find(x => x.id === currentLaunchId); if(!l) return; if(_editingExpId===id)_editingExpId=null; l.expenses = (l.expenses||[]).filter(e => e.id !== id); saveLaunches(); renderReleaseTab('inversion'); }
 function setRecoupIngresos(val){ if(!requireCan('editar_finanzas')) return; const l = launches.find(x => x.id === currentLaunchId); if(!l) return; l.recoup = l.recoup || {}; l.recoup.ingresos = parseFloat(val) || 0; saveLaunches(); renderReleaseTab('inversion'); }
 
 // ══════════════════════════════════════════

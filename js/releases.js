@@ -439,27 +439,38 @@ function releaseResumenContentHTML(l) {
 // PLAN DE MEDIOS (editable: plataformas + montos + tipos de medio)
 // ══════════════════════════════════════════
 const MEDIA_TYPES = [['propios', 'Propios'], ['pagados', 'Pagados'], ['ganados', 'Ganados']];
-// Normaliza el budget a un modelo de líneas {key?,label,amount}. Migra desde los campos legacy
-// (b.meta/tiktok/dsp/prod = las cats de finanzas) la primera vez, para no perder datos ni romper
-// la vista "plan vs real" de Inversión.
+function _mlId() { return 'ml-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+// Normaliza el budget a un modelo de líneas {id,label,amount}. Cada línea = una PLATAFORMA, que es
+// también la categoría de gasto (unifica Plan de Medios ↔ 'plan vs real' de Inversión). Migra desde
+// los campos legacy (b.meta/tiktok/dsp/prod = cats de finanzas) la primera vez; el id de esas líneas
+// = la key de la cat, para que los gastos ya registrados sigan matcheando.
 function budgetEnsure(l) {
   l.budget = l.budget || {};
   const b = l.budget;
   if (!Array.isArray(b.lines)) {
     const cats = (typeof EXPENSE_CATS !== 'undefined') ? EXPENSE_CATS : [['meta', 'Meta Ads'], ['tiktok', 'TikTok Ads'], ['dsp', 'Spotify / DSP'], ['prod', 'Producción']];
-    const seeded = cats.map(([k, lbl]) => ({ key: k, label: lbl, amount: +(b[k] || 0) })).filter(x => x.amount > 0);
-    b.lines = seeded.length ? seeded : [{ key: 'meta', label: 'Meta Ads', amount: 0 }, { key: 'tiktok', label: 'TikTok Ads', amount: 0 }, { key: 'dsp', label: 'Spotify / DSP', amount: 0 }];
+    const seeded = cats.map(([k, lbl]) => ({ id: k, label: lbl, amount: +(b[k] || 0) })).filter(x => x.amount > 0);
+    b.lines = seeded.length ? seeded : [{ id: 'meta', label: 'Meta Ads', amount: 0 }, { id: 'tiktok', label: 'TikTok Ads', amount: 0 }, { id: 'dsp', label: 'Spotify / DSP', amount: 0 }];
   }
+  b.lines.forEach(ln => { if (!ln.id) ln.id = ln.key || _mlId(); });  // compat v0.60 (usaba 'key' o nada)
   if (!b.media || typeof b.media !== 'object') b.media = { propios: false, pagados: true, ganados: false };
   return b;
 }
 function budgetTotal(l) { return budgetEnsure(l).lines.reduce((a, ln) => a + (+ln.amount || 0), 0); }
-// Espejo de compat: montos por-cat → b[key] (Inversión) + b.total (dashboards/wizard).
+// Espejo de compat: montos de las líneas que coinciden con cats de finanzas → b[cat] (prefill del
+// wizard) + b.total (dashboards). La verdad del plan son b.lines; esto es solo para no romper legacy.
 function budgetSync(l) {
   const b = l.budget;
   const cats = (typeof EXPENSE_CATS !== 'undefined') ? EXPENSE_CATS : [];
-  cats.forEach(([k]) => { const ln = b.lines.find(x => x.key === k); b[k] = ln ? String(+ln.amount || 0) : ''; });
+  cats.forEach(([k]) => { const ln = b.lines.find(x => x.id === k); b[k] = ln ? String(+ln.amount || 0) : ''; });
   b.total = String(budgetTotal(l));
+}
+// Etiqueta de una plataforma/categoría por id: primero las líneas del plan, luego las cats de finanzas.
+function planLineLabel(l, id) {
+  const bl = (l && l.budget && Array.isArray(l.budget.lines)) ? l.budget.lines : [];
+  const ln = bl.find(x => x.id === id); if (ln) return ln.label || id;
+  const c = (typeof EXPENSE_CATS !== 'undefined') ? EXPENSE_CATS.find(x => x[0] === id) : null;
+  return c ? c[1] : (id || 'Otros');
 }
 function mediaPlanPanelHTML(l) {
   const b = budgetEnsure(l);
@@ -493,7 +504,7 @@ function budgetSetLine(id, i, field, val) {
 }
 function budgetAddLine(id) {
   const l = launches.find(x => x.id === id); if (!l) return;
-  budgetEnsure(l).lines.push({ label: '', amount: 0 });
+  budgetEnsure(l).lines.push({ id: _mlId(), label: '', amount: 0 });
   budgetSync(l); saveLaunches(); renderLaunchDetail();
 }
 function budgetRemoveLine(id, i) {
