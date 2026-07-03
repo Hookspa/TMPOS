@@ -728,7 +728,7 @@ function renderBancoToolbar() {
       <button onclick="toggleBancoTranslate()" title="Traducir las referencias al español (Google)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid ${bancoTranslate?'var(--accent)':'var(--border)'};background:${bancoTranslate?'rgba(255,107,48,0.1)':'transparent'};color:${bancoTranslate?'var(--accent)':'var(--text-muted)'}">${icon('globe',13)} ${bancoTranslate?'Español ON':'Traducir'}</button>
       <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent)">${icon('link',13)} Importar desde link</button>
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('link',13)} Importar desde link</button>
       ${(typeof isAdmin === 'function' && isAdmin()) ? `<button onclick="abrirModeracion()" title="Moderar el pool de la comunidad (reportes)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}
     </div>`;
@@ -3122,7 +3122,7 @@ function renderCampanias() {
     const pieces = (l.cal || []).length;
     const next = (l.cal || []).filter(c => c.fecha && c.fecha >= today).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0];
     const isEv = l.type === 'evergreen';
-    const col = isEv ? (l.color || 'var(--beat)') : 'var(--accent)';
+    const col = isEv ? (l.color || 'var(--beat)') : 'var(--muted)';
     const st = isEv ? 'always-on' : ((STATUS_MAP[l.status] || {}).word || l.status);
     return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
@@ -3421,16 +3421,15 @@ async function renderDashTrend(art, ls) {
   try { await ensureChartJs(); } catch (e) { host.innerHTML = '<div class="dash-chart-empty">No se pudo cargar la gráfica (¿sin internet?).</div>'; return; }
   const cv = document.getElementById('dash-trend'); if (!cv) return;
   const css = getComputedStyle(document.documentElement);
-  const accent = (css.getPropertyValue('--accent').trim()) || '#FF6B30';
+  // Anti-slop (DESIGN.md §Color): la tendencia es dato, no urgencia → línea neutra, sin fill degradado.
+  const line = (css.getPropertyValue('--text-muted').trim()) || '#9BA1A6';
   const grid = (css.getPropertyValue('--border').trim()) || 'rgba(255,255,255,.08)';
   const txt = (css.getPropertyValue('--text-muted').trim()) || '#8a8a8a';
   const ctx = cv.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, 240);
-  grad.addColorStop(0, accent + '40'); grad.addColorStop(1, accent + '00');
   if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} }
   _dashChart = new Chart(ctx, {
     type: 'line',
-    data: { labels: series.dates.map(fmtDateShort), datasets: [{ data: series.values, borderColor: accent, backgroundColor: grad, fill: true, tension: 0.32, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: accent, pointBorderColor: accent }] },
+    data: { labels: series.dates.map(fmtDateShort), datasets: [{ data: series.values, borderColor: line, backgroundColor: 'transparent', fill: false, tension: 0.32, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: line, pointBorderColor: line }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,12,10,.92)', borderColor: grid, borderWidth: 1, padding: 10, displayColors: false, callbacks: { label: c => fmtNum(c.parsed.y) } } },

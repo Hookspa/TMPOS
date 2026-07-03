@@ -30,6 +30,8 @@
     --text: #ECEDEE;
     --text-muted: #9BA1A6;
     --text-dim: #878d92;        /* neutralizado (era verdoso #868d86); ≥4.5:1 */
+    --muted: var(--text-muted);  /* alias DESIGN.md — secundario */
+    --dim: var(--text-dim);      /* alias DESIGN.md — terciario/metadata */
     --shadow: rgba(0,0,0,0.55);
     --glow: rgba(255,255,255,0.05);   /* anti-slop: glow naranja neutralizado */
     --card-top: rgba(255,255,255,0.02);
@@ -161,7 +163,7 @@
     position: relative;
   }
   .nav-item:hover { color: var(--text); background: var(--surface2); }
-  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(255,107,48,0.04); }
+  .nav-item.active { color: var(--text); border-left-color: var(--muted); background: var(--surface2); }
   .nav-item .icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; }
   /* — Sistema de íconos SVG inline — */
   .ico { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
@@ -352,7 +354,7 @@
     gap: 10px;
     margin-bottom: 16px;
   }
-  .panel-head .ph-icon { font-size: 16px; display: inline-flex; align-items: center; color: var(--accent); }
+  .panel-head .ph-icon { font-size: 16px; display: inline-flex; align-items: center; color: var(--muted); }
   .panel-head .ph-title {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -464,7 +466,7 @@
   .sig-ic.warn { background: rgba(255,77,77,.1); color: var(--accent2); }
   .sig-ic.beat { background: rgba(255,170,0,.1); color: var(--beat); }
   .sig-ic.ok { background: rgba(74,222,128,.1); color: #4ade80; }
-  .sig-ic.accent { background: rgba(255,107,48,.1); color: var(--accent); }
+  .sig-ic.accent { background: var(--raise); color: var(--muted); }
   .sig-tile .sig-main { flex: 1; min-width: 0; }
   .sig-tile .sig-v { font-family: var(--font-display); font-size: 20px; letter-spacing: .5px; color: var(--text); line-height: 1.1; }
   .sig-tile .sig-l { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
@@ -930,7 +932,8 @@
     letter-spacing: 0.5px;
   }
   .filter-btn:hover { color: var(--text); border-color: #444; }
-  .filter-btn.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .filter-btn.active { background: var(--surface2); color: var(--text); border-color: var(--muted); }
+  .link-muted:hover { color: var(--text) !important; text-decoration: underline; }
 
   .ref-page-card {
     background: var(--surface);
@@ -1092,10 +1095,10 @@
     transition: all 0.15s; letter-spacing: 0.5px;
   }
   .view-toggle button:hover, .range-sel button:hover { color: var(--text); border-color: #444; }
-  .view-toggle button.active, .range-sel button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .view-toggle button.active, .range-sel button.active { background: var(--surface2); color: var(--text); border-color: var(--muted); }
   /* Sub-toggle (eje secundario, p. ej. Riesgo|Salud dentro de Roster): activo en "ghost"
      —outline naranja, no relleno— para distinguirlo del selector primario de alcance. */
-  .cmp-sub .view-toggle button.active { background: transparent; color: var(--accent); border-color: var(--accent); }
+  .cmp-sub .view-toggle button.active { background: transparent; color: var(--text); border-color: var(--muted); }
 
   /* ── COMMAND PALETTE (Cmd/Ctrl-K) ── */
   .cmdk-overlay { position: fixed; inset: 0; z-index: var(--z-modal); background: rgba(0,0,0,0.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
@@ -1388,7 +1391,7 @@
   .btn-primary:hover { background: var(--accent-dark); box-shadow: none; }
 
   /* nav activo: indicador funcional (barra lateral) */
-  .nav-item.active { box-shadow: inset 2px 0 0 var(--accent); }
+  .nav-item.active { box-shadow: inset 2px 0 0 var(--muted); }
 
   /* progreso: sin glow */
   .progress-fill { box-shadow: none; }
@@ -1869,7 +1872,7 @@
           <h2 id="dash-title">Dashboard</h2>
           <div class="dash-sub" id="dash-subtitle"></div>
         </div>
-        <button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="openPOW()"><span data-icon="checklist" data-isize="15"></span> Plan de la Semana (POW)</button>
+        <button class="btn btn-ghost" onclick="openPOW()"><span data-icon="checklist" data-isize="15"></span> Plan de la Semana (POW)</button>
       </div>
       <div id="dash-onboarding"></div>
       <div class="dash-kpis fade-in" id="dash-stats"></div>
@@ -2685,7 +2688,7 @@
       <button class="btn btn-ghost" onclick="signUp()">Crear cuenta</button>
       <button class="btn btn-ghost" onclick="signInMagic()" style="margin-left:auto"><span data-icon="invite" data-isize="14"></span> Enlace mágico</button>
     </div>
-    <div style="margin-top:14px"><span onclick="forgotPassword()" style="font-size:11px;color:var(--accent);cursor:pointer;font-family:var(--font-mono)">¿Olvidaste tu contraseña?</span></div>
+    <div style="margin-top:14px"><span onclick="forgotPassword()" class="link-muted" style="font-size:11px;color:var(--muted);cursor:pointer;font-family:var(--font-mono)">¿Olvidaste tu contraseña?</span></div>
     <div id="ag-status" style="font-family:var(--font-mono);font-size:11px;margin-top:12px;min-height:16px;color:var(--text-muted)"></div>
   </div>
 </div>
