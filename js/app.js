@@ -3203,6 +3203,11 @@ function normalizeTrack(t) {
   t.credits.writers   = Array.isArray(t.credits.writers)   ? t.credits.writers   : [];
   t.links = t.links || {}; t.meta = t.meta || {}; t.master = t.master || {}; t.publishing = t.publishing || {};
   t.labelCopy = t.labelCopy || {}; t.labelCopy.contacts = Array.isArray(t.labelCopy.contacts) ? t.labelCopy.contacts : [];
+  t.labelCopy.track        = t.labelCopy.track || {};                                                       // campos de nivel track (main artists, repertoire owner, explicit, clean, featuring, release date)
+  t.labelCopy.recording    = t.labelCopy.recording || {};                                                   // créditos de grabación: rol → nombre
+  t.labelCopy.royaltySplit = Array.isArray(t.labelCopy.royaltySplit)  ? t.labelCopy.royaltySplit  : [];     // reparto de dinero (distinto del split de composición)
+  t.labelCopy.businessSplit= Array.isArray(t.labelCopy.businessSplit) ? t.labelCopy.businessSplit : [];     // % invitados (socios × madre/aporte/final)
+  t.labelCopy.filing       = t.labelCopy.filing || {};                                                      // metadata de filing (video ISRC, P&C, provisto por, O/R + fecha/nombre)
   t.legal = Array.isArray(t.legal) ? t.legal : [];
   t.checklist = t.checklist || {};
   t.checklist.audio   = t.checklist.audio   || {};

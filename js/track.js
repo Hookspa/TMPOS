@@ -177,29 +177,86 @@ function trackAudioHTML(t) {
   </div>`;
 }
 
-// ── Label Copy (documento madre) ──
+// ── Label Copy (documento madre — formato FRIKIX completo, 5 secciones + PDF) ──
+// Roles fijos de "Recording Credits" en el orden del template real (research/label-copy/FRIKIX-label-copy-template.csv)
+const LC_RECORDING_ROLES = ['Producer','Programming','Executive Producer','Vocal Production','Background Vocals','Recording Engineer(s)','Recorded at','Contracted Performer(s)','Mixing Engineer','Mix Assistant','Mixed at','Immersive Mixing Engineer','Mastering Engineer','Mastered at','Immersive Mastering Engineer','A&R Direction','A&R Manager','Artwork Design','Artwork Photography','Director','Production House','Editor'];
+// Roles del Royalty Split (ARTISTA / LABEL / MIXER / VIDEOGRAFO …)
+const LC_ROYALTY_ROLES = ['ARTISTA','LABEL','MIXER','VIDEOGRAFO','PRODUCTOR','OTRO'];
+
+// Suma numérica de un campo (%split) tolerando "25", "25%", "25 %"
+function lcSum(arr, key) { return (arr || []).reduce((n, x) => n + (parseFloat(String((x && x[key]) || '').replace(/[^0-9.\-]/g, '')) || 0), 0); }
+// Badge de total: verde si =100, naranja si no
+function lcTotalBadge(sum, label) {
+  const ok = Math.round(sum * 100) / 100 === 100;
+  const col = ok ? 'var(--ok)' : 'var(--accent)';
+  return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 4px;font-family:var(--font-mono);font-size:11px">
+    <span style="color:var(--text-muted)">${label || 'TOTAL'}</span>
+    <span style="color:${col};font-weight:700">${sum % 1 ? sum.toFixed(2) : sum}%</span>
+    ${ok ? `<span style="color:var(--ok)">${icon('check',11)}</span>` : `<span style="color:var(--accent)" title="Debe sumar 100%">${icon('warning',11)} ${sum > 100 ? 'excede' : 'falta ' + (100 - sum) + '%'}</span>`}</div>`;
+}
+
 function trackLabelCopyHTML(t) {
-  const lc = t.labelCopy || {};
-  const f = (label, path, val) => `<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" onchange="setTrackField('${path}',this.value,'editar_labelcopy')"></div>`;
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Label Copy</span><span class="ph-sub">documento madre</span></div>
-    ${f('Artista principal', 'credits.mainArtist', (t.credits || {}).mainArtist)}
-    ${f('Sello', 'labelCopy.label', lc.label)}
-    ${f('Distribuidora', 'labelCopy.distributor', lc.distributor)}
-    ${f('Género', 'labelCopy.genre', lc.genre)}
-    ${f('Dueño del máster', 'master.owner', (t.master || {}).owner)}
-    ${f('% máster', 'master.ownerSplit', (t.master || {}).ownerSplit)}
-    ${f('Editorial (publisher)', 'publishing.publisher', (t.publishing || {}).publisher)}
-    ${f('Sociedad de gestión (PRO)', 'publishing.pro', (t.publishing || {}).pro)}
-    <div class="field"><label>Notas</label><textarea class="textarea" onchange="setTrackField('labelCopy.notes',this.value,'editar_labelcopy')">${s(lc.notes)}</textarea></div>
+  const lc = t.labelCopy || {}, lct = lc.track || {}, fil = lc.filing || {};
+  const l = launches.find(x => x.id === currentLaunchId);
+  const f = (label, path, val, ph) => `<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${esc(val)}" placeholder="${ph || ''}" onchange="setTrackField('${path}',this.value,'editar_labelcopy')"></div>`;
+  const sel = (label, path, val, opts) => `<div class="field" style="margin-bottom:12px"><label>${label}</label><select class="input" onchange="setTrackField('${path}',this.value,'editar_labelcopy')">${['', ...opts].map(o => `<option ${s(val) === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>`;
+  const wSum = lcSum(t.credits.writers, 'split'), rSum = lcSum(lc.royaltySplit, 'split');
+
+  return `${lcPeopleDatalist()}
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Label Copy</span><span class="ph-sub">documento madre · formato disquera</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="labelCopyPDF()">${icon('download',13)} Generar Label Copy (PDF)</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px">
+      ${f('Álbum / Release', 'labelCopy.album', lc.album, l ? l.name : '')}
+      ${f('Sello', 'labelCopy.label', lc.label)}
+      ${f('Distribuidora', 'labelCopy.distributor', lc.distributor)}
+      ${f('Género', 'labelCopy.genre', lc.genre)}
+      ${f('Main artist(s)', 'labelCopy.track.mainArtists', lct.mainArtists, 'ELTY, BCA, JEYSON…')}
+      ${f('Repertoire owner', 'labelCopy.track.repertoireOwner', lct.repertoireOwner, 'Genios Musicales LLC')}
+      ${f('Featuring artists', 'labelCopy.track.featuring', lct.featuring)}
+      ${f('Release date', 'labelCopy.track.releaseDate', lct.releaseDate || (l && l.date) || '')}
+      ${sel('Explicit', 'labelCopy.track.explicit', lct.explicit, ['No', 'Sí'])}
+      ${sel('Clean version disponible', 'labelCopy.track.cleanVersion', lct.cleanVersion, ['No', 'Sí'])}
+      ${f('Dueño del máster', 'master.owner', (t.master || {}).owner)}
+      ${f('% máster', 'master.ownerSplit', (t.master || {}).ownerSplit)}
+    </div>
+    <div class="field"><label>Notas</label><textarea class="textarea" onchange="setTrackField('labelCopy.notes',this.value,'editar_labelcopy')">${esc(lc.notes)}</textarea></div>
   </div>
-  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">Créditos</span></div>
-    ${trackListField(t, 'credits.featured',  [['name','Artista feat.'],['role','Rol']],     'Artistas invitados (feat.)', 'feat')}
-    ${trackListField(t, 'credits.producers', [['name','Productor'],['contact','Contacto']],  'Productores',                'productor')}
-    ${trackListField(t, 'credits.composers', [['name','Compositor'],['split','% comp.']],    'Compositores (split %)',     'compositor')}
-    ${trackListField(t, 'credits.writers',   [['name','Letrista'],['split','% letra']],      'Letristas (split %)',        'letrista')}
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">1 · Publishing / Composición</span><span class="ph-sub">writers · % · publisher/IPI · PRO</span></div>
+    ${lcListField(t, 'credits.writers', [['name','Writer'],['split','%'],['publisher','Publisher'],['ipi','IPI'],['pro','PRO']], 'Writers (composición)', 'writer')}
+    ${lcTotalBadge(wSum, 'TOTAL SPLIT COMPOSICIÓN')}
   </div>
-  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos</span></div>
-    ${trackListField(t, 'labelCopy.contacts', [['name','Nombre'],['role','Rol'],['email','Email']], 'Contactos del release', 'contacto')}
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">2 · Recording Credits</span><span class="ph-sub">rol → nombre</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px">
+      ${LC_RECORDING_ROLES.map(role => `<div class="field" style="margin-bottom:10px"><label style="font-size:10px">${role}</label><input class="input" list="lc-people-list" style="padding:5px 8px;font-size:12px" value="${esc((lc.recording || {})[role])}" onchange="lcRecordingSet('${esc(role)}',this.value)"></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">3 · Royalty Split</span><span class="ph-sub">reparto de dinero por canción</span></div>
+    ${lcListField(t, 'labelCopy.royaltySplit', [['name','Titular'],['split','%'],['lender','Lender'],['rol','Rol']], 'Royalty split', 'fila', LC_ROYALTY_ROLES)}
+    ${lcTotalBadge(rSum, 'TOTAL ROYALTY')}
+  </div>
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">4 · Split de negocio (% invitados)</span><span class="ph-sub">socios × madre/aporte/final</span></div>
+    ${lcBusinessField(t)}
+  </div>
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos del release</span><span class="ph-sub">people book · autocompleta al escribir</span></div>
+    ${lcListField(t, 'labelCopy.contacts', [['name','Nombre'],['role','Rol'],['email','Email']], 'Contactos', 'contacto')}
+  </div>
+
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">5 · Metadata de filing + códigos</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px">
+      ${f('Audio ISRC', 'isrc', t.isrc)}
+      ${f('Video ISRC', 'labelCopy.filing.videoIsrc', fil.videoIsrc)}
+      ${f('P&C Line', 'labelCopy.filing.pcLine', fil.pcLine, '℗ & © 2026 …')}
+      ${f('Info provista por (nombre)', 'labelCopy.filing.providedName', fil.providedName)}
+      ${f('Título / cargo', 'labelCopy.filing.providedTitle', fil.providedTitle)}
+      ${sel('Original (O) / Revisión (R)', 'labelCopy.filing.revision', fil.revision, ['Original', 'Revisión'])}
+      ${f('Fecha del filing', 'labelCopy.filing.date', fil.date || todayISO())}
+      ${f('Nombre de quien llena', 'labelCopy.filing.filedBy', fil.filedBy)}
+    </div>
   </div>`;
 }
 // Editor genérico de listas de objetos en el track (créditos/contactos)
@@ -214,6 +271,147 @@ function trackListField(t, path, fields, label, addLabel) {
 function setTrackListItem(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); } }
 function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); let arr = getPath(t, path); if (!Array.isArray(arr)) { setPath(t, path, []); arr = getPath(t, path); } arr.push({}); saveTracks(); renderTrackTab('labelcopy'); }
 function removeTrackListItem(path, i) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; arr.splice(i, 1); saveTracks(); renderTrackTab('labelcopy'); }
+
+// ── People book (contactos reutilizables a nivel equipo) ──
+function lcPeople() { try { const a = JSON.parse(localStorage.getItem('ao_labelcopy_people')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function lcPeopleSave(list) { try { localStorage.setItem('ao_labelcopy_people', JSON.stringify(list)); } catch (e) {} }
+// Upsert por nombre: acumula email/ipi/pro/rol de cada persona a medida que se captura
+function lcPeopleUpsert(person) {
+  if (!person) return; const name = s(person.name).trim(); if (!name) return;
+  const list = lcPeople(); let p = list.find(x => s(x.name).toLowerCase() === name.toLowerCase());
+  if (!p) { p = { name }; list.push(p); }
+  ['email', 'ipi', 'pro', 'role', 'rol', 'publisher'].forEach(k => { if (person[k]) p[k] = person[k]; });
+  lcPeopleSave(list);
+}
+function lcPeopleDatalist() { return `<datalist id="lc-people-list">${lcPeople().map(p => `<option value="${esc(p.name)}">`).join('')}</datalist>`; }
+
+// ── Editor de listas del Label Copy con autocompletado (name → autofill de campos vacíos) ──
+// fields: [[key,placeholder]…]; selOpts (opcional): opciones para el campo 'rol'
+function lcListField(t, path, fields, label, addLabel, selOpts) {
+  const arr = getPath(t, path) || [];
+  const cell = (item, i, fk, fl) => {
+    if (fk === 'rol' && selOpts) return `<select class="input" style="flex:1;min-width:80px;padding:5px 8px;font-size:12px" onchange="lcListSet('${path}',${i},'rol',this.value)">${['', ...selOpts].map(o => `<option ${s(item.rol) === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+    const isName = fk === 'name';
+    return `<input class="input" ${isName ? 'list="lc-people-list"' : ''} style="flex:${isName ? 2 : 1};min-width:80px;padding:5px 8px;font-size:12px" placeholder="${fl}" value="${esc(item[fk])}" onchange="${isName ? `lcListName('${path}',${i},this.value)` : `lcListSet('${path}',${i},'${fk}',this.value)`}">`;
+  };
+  const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      ${fields.map(([fk, fl]) => cell(item, i, fk, fl)).join('')}
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
+    </div>`).join('');
+  return `<div class="field" style="margin-bottom:12px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
+}
+function lcListSet(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); lcPeopleUpsert(arr[i]); if (fk === 'split') renderTrackTab('labelcopy'); /* refresca el total */ } }
+function lcListName(path, i, val) {
+  if (!requireCan('editar_labelcopy')) return;
+  const t = curTrack(); const arr = getPath(t, path) || []; if (!arr[i]) return;
+  arr[i].name = val;
+  const p = lcPeople().find(x => s(x.name).toLowerCase() === s(val).trim().toLowerCase());
+  if (p) ['email', 'ipi', 'pro', 'role', 'rol', 'publisher'].forEach(k => { if (p[k] && !arr[i][k]) arr[i][k] = p[k]; });
+  saveTracks(); renderTrackTab('labelcopy');
+}
+function lcRecordingSet(role, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); if (!t) return; t.labelCopy = t.labelCopy || {}; t.labelCopy.recording = t.labelCopy.recording || {}; t.labelCopy.recording[role] = val; saveTracks(); lcPeopleUpsert({ name: val }); }
+
+// ── Split de negocio (% invitados): socios × madre/aporte/final con totales por columna ──
+function lcBusinessField(t) {
+  const arr = (t.labelCopy && t.labelCopy.businessSplit) || [];
+  const path = 'labelCopy.businessSplit';
+  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+  const tM = arr.reduce((n, x) => n + num(x.madre), 0), tA = arr.reduce((n, x) => n + num(x.aporte), 0), tF = arr.reduce((n, x) => n + num(x.final), 0);
+  const head = `<div style="display:flex;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-bottom:4px">
+      <span style="flex:2;min-width:80px">SOCIO</span><span style="flex:1;min-width:60px">NEGOCIO MADRE %</span><span style="flex:1;min-width:60px">APORTE INVITADO %</span><span style="flex:1;min-width:60px">% FINAL</span><span style="width:24px"></span></div>`;
+  const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <input class="input" style="flex:2;min-width:80px;padding:5px 8px;font-size:12px" placeholder="Socio" value="${esc(item.partner)}" onchange="lcListSet('${path}',${i},'partner',this.value)">
+      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Madre %" value="${esc(item.madre)}" onchange="lcBizSet(${i},'madre',this.value)">
+      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Aporte %" value="${esc(item.aporte)}" onchange="lcBizSet(${i},'aporte',this.value)">
+      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Final %" value="${esc(item.final)}" onchange="lcListSet('${path}',${i},'final',this.value)">
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
+    </div>`).join('');
+  const totals = arr.length ? `<div style="display:flex;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:5px">
+      <span style="flex:2;min-width:80px;font-weight:700">TOTAL</span><span style="flex:1;min-width:60px">${tM}%</span><span style="flex:1;min-width:60px">${tA}%</span><span style="flex:1;min-width:60px">${tF}%</span><span style="width:24px"></span></div>` : '';
+  return `<div class="field" style="margin-bottom:6px">${arr.length ? head : ''}${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}${totals}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-top:6px" onclick="addTrackListItem('${path}')">+ socio</button></div>`;
+}
+// Auto-calcula el % final = madre − aporte al editar madre/aporte (el usuario puede sobreescribirlo)
+function lcBizSet(i, fk, val) {
+  if (!requireCan('editar_labelcopy')) return;
+  const t = curTrack(); const arr = (t.labelCopy && t.labelCopy.businessSplit) || []; if (!arr[i]) return;
+  arr[i][fk] = val;
+  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+  arr[i].final = (num(arr[i].madre) - num(arr[i].aporte)) + '%';
+  saveTracks(); renderTrackTab('labelcopy');
+}
+
+// ── Generar Label Copy → PDF (replica el layout del template FRIKIX) ──
+async function labelCopyPDF() {
+  const t = curTrack(); if (!t) return;
+  try { await ensureJsPDF(); } catch (e) { uiAlert('No se pudo cargar el generador de PDF (¿sin internet?).'); return; }
+  const { jsPDF } = window.jspdf;
+  const lc = t.labelCopy || {}, lct = lc.track || {}, fil = lc.filing || {};
+  const l = launches.find(x => x.id === currentLaunchId);
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40; let y = 0;
+  const clean = v => stripEmoji ? stripEmoji(s(v)) : s(v);
+  const need = h => { if (y + h > H - 40) { doc.addPage(); y = 40; } };
+  const sectionTitle = txt => { need(30); y += 10; doc.setFillColor(20, 20, 20); doc.rect(M, y, W - M * 2, 20, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.text(clean(txt), M + 8, y + 14); y += 30; };
+  const kv = (k, v) => { need(16); doc.setFontSize(9); doc.setTextColor(120, 120, 120); doc.text(clean(k), M, y); doc.setTextColor(20, 20, 20); doc.text(clean(v) || '—', M + 150, y); y += 15; };
+
+  // Cabecera
+  doc.setFillColor(10, 10, 10); doc.rect(0, 0, W, 78, 'F');
+  doc.setTextColor(255, 107, 48); doc.setFontSize(20); doc.text('LABEL COPY', M, 38);
+  doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text(clean(t.title) || '(sin título)', M, 58);
+  doc.setTextColor(160, 160, 160); doc.setFontSize(9);
+  doc.text(`${clean(lc.album || (l && l.name))}  ·  ${clean(lct.mainArtists || (t.credits || {}).mainArtist)}  ·  ${clean(lc.label)}`, M, 72);
+  y = 100;
+  doc.setTextColor(20, 20, 20);
+  kv('Repertoire owner', lct.repertoireOwner); kv('Featuring', lct.featuring);
+  kv('Release date', lct.releaseDate || (l && l.date)); kv('Explicit', lct.explicit);
+  kv('Clean version', lct.cleanVersion); kv('Género', lc.genre);
+  kv('Dueño del máster', `${clean((t.master || {}).owner)}${(t.master || {}).ownerSplit ? ' (' + clean((t.master || {}).ownerSplit) + '%)' : ''}`);
+
+  // 1 · Publishing
+  sectionTitle('1 · PUBLISHING / COMPOSICIÓN'); doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120); doc.text('WRITER', M, y); doc.text('%', M + 200, y); doc.text('PUBLISHER / IPI', M + 240, y); doc.text('PRO', W - M - 40, y); y += 4;
+  doc.setDrawColor(220, 220, 220); doc.line(M, y, W - M, y); y += 12;
+  doc.setTextColor(20, 20, 20); doc.setFontSize(9);
+  (t.credits.writers || []).forEach(w => { need(14); doc.text(clean(w.name), M, y); doc.text(clean(w.split), M + 200, y); doc.text(`${clean(w.publisher)}${w.ipi ? ' / ' + clean(w.ipi) : ''}`, M + 240, y, { maxWidth: W - M - 240 - 50 }); doc.text(clean(w.pro), W - M - 40, y); y += 14; });
+  need(14); doc.setFontSize(9); doc.setTextColor(255, 107, 48); doc.text(`TOTAL  ${lcSum(t.credits.writers, 'split')}%`, M, y); doc.setTextColor(20, 20, 20); y += 6;
+
+  // 2 · Recording credits (2 columnas)
+  sectionTitle('2 · RECORDING CREDITS'); doc.setFontSize(9);
+  const rec = lc.recording || {}, colX = [M, W / 2 + 10], startY = y; let col = 0, cy = [startY, startY];
+  LC_RECORDING_ROLES.forEach((role, idx) => {
+    col = idx % 2; if (cy[col] + 14 > H - 40) { doc.addPage(); cy = [40, 40]; }
+    doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.text(clean(role), colX[col], cy[col]);
+    doc.setTextColor(20, 20, 20); doc.setFontSize(9); doc.text(clean(rec[role]) || '—', colX[col] + 130, cy[col]);
+    cy[col] += 15;
+  });
+  y = Math.max(cy[0], cy[1]) + 6;
+
+  // 3 · Royalty split
+  sectionTitle('3 · ROYALTY SPLIT'); doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120); doc.text('TITULAR', M, y); doc.text('%', M + 200, y); doc.text('LENDER', M + 240, y); doc.text('ROL', W - M - 70, y); y += 4;
+  doc.line(M, y, W - M, y); y += 12; doc.setTextColor(20, 20, 20); doc.setFontSize(9);
+  (lc.royaltySplit || []).forEach(r => { need(14); doc.text(clean(r.name), M, y); doc.text(clean(r.split), M + 200, y); doc.text(clean(r.lender) || '—', M + 240, y); doc.text(clean(r.rol), W - M - 70, y); y += 14; });
+  need(14); doc.setTextColor(255, 107, 48); doc.text(`TOTAL  ${lcSum(lc.royaltySplit, 'split')}%`, M, y); doc.setTextColor(20, 20, 20); y += 6;
+
+  // 4 · % invitados
+  if ((lc.businessSplit || []).length) {
+    sectionTitle('4 · SPLIT DE NEGOCIO (% INVITADOS)'); doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120); doc.text('SOCIO', M, y); doc.text('NEGOCIO MADRE', M + 180, y); doc.text('APORTE', M + 300, y); doc.text('% FINAL', W - M - 60, y); y += 4;
+    doc.line(M, y, W - M, y); y += 12; doc.setTextColor(20, 20, 20); doc.setFontSize(9);
+    lc.businessSplit.forEach(b => { need(14); doc.text(clean(b.partner), M, y); doc.text(clean(b.madre), M + 180, y); doc.text(clean(b.aporte), M + 300, y); doc.text(clean(b.final), W - M - 60, y); y += 14; });
+  }
+
+  // 5 · Filing
+  sectionTitle('5 · FILING'); doc.setTextColor(20, 20, 20);
+  kv('Audio ISRC', t.isrc); kv('Video ISRC', fil.videoIsrc); kv('P&C Line', fil.pcLine);
+  kv('Info provista por', `${clean(fil.providedName)}${fil.providedTitle ? ' · ' + clean(fil.providedTitle) : ''}`);
+  kv('Tipo', fil.revision); kv('Fecha', fil.date); kv('Llenado por', fil.filedBy);
+
+  // Pie
+  doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+  doc.text(`Tempo OS · Label Copy generado ${todayISO()}`, M, H - 24);
+  doc.save(`LabelCopy-${clean(t.title)}-${todayISO()}.pdf`.replace(/\s+/g, '_'));
+}
 
 // ── Legal (por canción) ──
 const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'var(--accent)', aprobado:'#4ade80' };
