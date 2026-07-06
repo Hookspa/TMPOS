@@ -22,7 +22,7 @@ function _memberLabel(uid) { const m = _members().find(x => x.user_id === uid); 
 // ══════════════════════════════════════════
 // NOTIFICACIONES (campana en el topbar)
 // ══════════════════════════════════════════
-const NOTIF_ICON = { assigned: 'person', due_soon: 'clock', overdue: 'warning', approval_request: 'bell', approved: 'check', comment: 'chat', mention: 'chat', system: 'info' };
+function NOTIF_ICON_MAP() { return { assigned: 'person', due_soon: 'clock', overdue: 'warning', approval_request: 'bell', approved: 'check', comment: 'chat', mention: 'chat', system: 'info' }; }
 function renderNotifBadge() {
   const dot = document.getElementById('notif-dot'); if (!dot) return;
   const n = (typeof unreadNotifCount === 'function') ? unreadNotifCount() : 0;
@@ -30,17 +30,26 @@ function renderNotifBadge() {
 }
 function toggleNotifPanel(force) {
   const p = document.getElementById('notif-panel'); if (!p) return;
-  const open = force != null ? force : p.style.display === 'none';
-  if (open) { renderNotifPanel(); p.style.display = 'block'; setTimeout(() => document.addEventListener('click', _notifOutside), 0); }
-  else { p.style.display = 'none'; document.removeEventListener('click', _notifOutside); }
+  const hidden = p.style.display === 'none' || p.style.display === ''; // '' = nunca abierto → tratar como cerrado
+  const open = force != null ? force : hidden;
+  if (open) {
+    p.style.display = 'block'; // abrir PRIMERO: si el render falla, el panel igual se muestra (antes el orden inverso lo dejaba oculto)
+    try { renderNotifPanel(); }
+    catch (e) { console.error('notif render:', e); p.innerHTML = '<div class="notif-empty" style="padding:22px 15px">No se pudieron cargar las notificaciones.</div>'; }
+    setTimeout(() => document.addEventListener('click', _notifOutside), 0);
+  } else {
+    p.style.display = 'none';
+    document.removeEventListener('click', _notifOutside);
+  }
 }
 function _notifOutside(e) { const w = e.target.closest('.notif-wrap'); if (!w) toggleNotifPanel(false); }
 function renderNotifPanel() {
   const p = document.getElementById('notif-panel'); if (!p) return;
+  const ICONS = NOTIF_ICON_MAP(); // mapa local (evita TDZ del const top-level)
   const list = (typeof myNotifications === 'function') ? myNotifications() : [];
   const unread = list.filter(n => !n.isRead).length;
   const rows = list.length ? list.slice(0, 40).map(n => `<div class="notif-item ${n.isRead ? '' : 'unread'}" onclick="openNotif('${n.id}')">
-      <div class="notif-ic">${icon(NOTIF_ICON[n.type] || 'info', 15)}</div>
+      <div class="notif-ic">${icon(ICONS[n.type] || 'info', 15)}</div>
       <div style="flex:1;min-width:0"><div class="nt">${s(n.title)}</div>${n.body ? `<div class="nb">${s(n.body)}</div>` : ''}<div class="ntime">${_ago(n.createdAt)}</div></div>
     </div>`).join('') : `<div class="notif-empty">${icon('bell', 26)}<div style="margin-top:8px">Sin notificaciones</div></div>`;
   p.innerHTML = `<div class="notif-head"><span>Notificaciones</span>${unread ? `<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();markAllNotifsRead()">Marcar leídas</button>` : ''}</div>${rows}`;
@@ -96,7 +105,8 @@ function mentionContacts() {
 }
 function contactLabel(c) { return c.name || c.email; }
 function contactById(id) { return mentionContacts().find(c => c.id === id || s(c.email).toLowerCase() === s(id).toLowerCase()) || null; }
-function _esc(x) { return s(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+// NOTA: se usa el `_esc` global (app.js) — NO redeclarar aquí. Tener `function _esc` acá colisionaba con
+// el `const _esc` de app.js y abortaba la ejecución del cuerpo de este archivo (todos sus const quedaban en TDZ).
 
 // ── Dropdown reusable de "Responsable" — mismas personas que @menciones (miembros del workspace ∪ contactos) ──
 function assigneeOptionsHTML(selected) {
