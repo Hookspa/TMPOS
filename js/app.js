@@ -3229,14 +3229,19 @@ function saveTracks() { saveTracksLocal(); scheduleCloudSync(); }
 function tracksOfLaunch(l) { return ((l && l.tracklist) || []).map(ref => tracks.find(t => t.id === ref.trackId)).filter(Boolean); }
 
 // Migración (idempotente): cada launch sin tracklist → release type=single con 1 track extraído.
+// También SANA referencias colgadas: si el tracklist apunta a un track que ya no existe en `tracks`
+// (p. ej. un track local que nunca subió a la nube y el cloud-load reemplazó el set), recrea un track
+// base para que la pestaña Música no quede en "Sin tracks". Solo cura cuando NINGUNA referencia resuelve
+// (un álbum con 1 de 3 tracks vivos NO se toca).
 function migrateLaunchesToTracks() {
   let changed = false;
   (launches || []).forEach(l => {
     if (l.type === 'evergreen') return; // las campañas always-on no tienen tracks
     if (!l.type) { l.type = 'single'; changed = true; }
     if (!Array.isArray(l.tracklist)) l.tracklist = [];
-    if (!l.tracklist.length) {
-      const tid = 'TRK-' + l.id;
+    const hasLiveTrack = l.tracklist.some(ref => tracks.find(t => t.id === ref.trackId));
+    if (!l.tracklist.length || !hasLiveTrack) {
+      const tid = (l.tracklist[0] && l.tracklist[0].trackId) || ('TRK-' + l.id); // reusa el id colgado si existe
       if (!tracks.find(t => t.id === tid)) {
         tracks.push(normalizeTrack({ id: tid, artistId: l.artistId, title: l.name, createdAt: l.createdAt || new Date().toISOString() }));
       }
