@@ -3,9 +3,9 @@
 // ══════════════════════════════════════════
 let currentTrackId = null, _trackTab = 'checklist';
 function curTrack() { return tracks.find(x => x.id === currentTrackId); }
-function openTrack(id) {
+function openTrack(id, tab) {
   if (typeof navRecord === 'function') navRecord(); // graba la vista del release antes de entrar al track
-  currentTrackId = id; _trackTab = 'checklist';
+  currentTrackId = id; _trackTab = tab || 'checklist'; // tab opcional: saltar directo a labelcopy/legal/audio…
   if (typeof _viewingTrack !== 'undefined') _viewingTrack = true;
   renderTrackDetail();
   const c = document.querySelector('.content'); if (c) c.scrollTop = 0;
@@ -185,6 +185,25 @@ const LC_ROYALTY_ROLES = ['ARTISTA','LABEL','MIXER','VIDEOGRAFO','PRODUCTOR','OT
 
 // Suma numérica de un campo (%split) tolerando "25", "25%", "25 %"
 function lcSum(arr, key) { return (arr || []).reduce((n, x) => n + (parseFloat(String((x && x[key]) || '').replace(/[^0-9.\-]/g, '')) || 0), 0); }
+
+// Ruteo legal: conflictos de titularidad derivados del Label Copy de un track (input del estado "Conflicto").
+// level 'red' = bloqueante (split ≠ 100%), 'yellow' = revisar (dato faltante). Lo consume la pestaña Legal + releaseAlerts.
+function labelCopyIssues(t) {
+  const out = []; if (!t) return out;
+  const lc = t.labelCopy || {};
+  const writers = (t.credits && t.credits.writers) || [];
+  const wSum = lcSum(writers, 'split'), rSum = lcSum(lc.royaltySplit, 'split');
+  if (writers.length && Math.round(wSum) !== 100) out.push({ level: 'red', text: `Split de composición suma ${wSum % 1 ? wSum.toFixed(2) : wSum}% (debe ser 100%)` });
+  writers.forEach(w => {
+    if (!s(w.name).trim()) return;
+    if (!s(w.split).trim()) out.push({ level: 'yellow', text: `${s(w.name)}: sin % de split` });
+    if (!s(w.publisher).trim() && !s(w.pro).trim()) out.push({ level: 'yellow', text: `${s(w.name)}: sin publisher ni PRO` });
+  });
+  const roy = lc.royaltySplit || [];
+  if (roy.length && Math.round(rSum) !== 100) out.push({ level: 'red', text: `Royalty split suma ${rSum % 1 ? rSum.toFixed(2) : rSum}% (debe ser 100%)` });
+  if (!writers.length) out.push({ level: 'yellow', text: 'Sin writers cargados en el Label Copy' });
+  return out;
+}
 // Badge de total: verde si =100, naranja si no
 function lcTotalBadge(sum, label) {
   const ok = Math.round(sum * 100) / 100 === 100;

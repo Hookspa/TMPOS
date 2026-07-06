@@ -127,8 +127,11 @@ function releaseAlerts(l){
   const rc = l.releaseChecklist||{};
   if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:''), action:{label:'Archivos →', fn:`setReleaseTab('archivos')`}});
   ts.forEach(t=>{ const lg=(t.checklist&&t.checklist.legal)||{}; const a=(t.checklist&&t.checklist.audio)||{};
-    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`openTrack('${t.id}')`}});
-    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}')`}});
+    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`openTrack('${t.id}','legal')`}});
+    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}','audio')`}});
+    // Ruteo legal: conflicto de titularidad del Label Copy (split ≠ 100%) → salta a la pestaña Legal del release
+    const iss=(typeof labelCopyIssues==='function')?labelCopyIssues(t):[];
+    if(iss.some(i=>i.level==='red')) out.push({level:near?'red':'yellow', text:`Titularidad con conflicto: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`setReleaseTab('legal')`}});
   });
   const _rtasks = (typeof tasks!=='undefined') ? tasks.filter(t=>t.releaseId===l.id) : [];
   const overdue = _rtasks.filter(tk=>tk.dueDate && tk.estado!==TASK_DONE && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
