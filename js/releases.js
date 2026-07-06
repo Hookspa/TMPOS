@@ -1468,7 +1468,7 @@ function renderSidebarArtist() {
     + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</div>`) : '')
     + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
     + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
-    + (authed() ? '' : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
+    + (authed() ? `<div class="artist-menu-item" onclick="signOutTempo()" style="color:var(--accent2)">${icon('logout',14)} Salir</div>` : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
   renderMoreSheet();
 }
 // ── Hoja "Más" (móvil) — agrupa lo que no entra en la barra de pestañas inferior:
