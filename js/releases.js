@@ -192,26 +192,39 @@ function renderReleaseGroup(group, l){
 function releaseLegalHTML(l){
   const ts = (typeof tracksOfLaunch==='function') ? tracksOfLaunch(l) : [];
   if(!ts.length) return `${secInfo('Legal y titularidad', 'Estado de titularidad y documentos legales por canción.')}<div class="empty-hint">Este release no tiene canciones todavía. Agrégalas en la pestaña <b>Música</b>.</div>`;
+  const canLegal = (typeof canDo==='function') && canDo('editar_legal');
   const cards = ts.map(t=>{
     const issues = (typeof labelCopyIssues==='function') ? labelCopyIssues(t) : [];
     const legal = t.legal || [];
     const firmados = legal.filter(d=>d.state==='firmado'||d.state==='aprobado').length;
     const conflict = issues.some(i=>i.level==='red');
+    const routed = k => (typeof legalHasConflict==='function') && legalHasConflict(t, k);
+    const unrouted = issues.filter(i=>i.key && !routed(i.key));
     const stateChip = conflict
       ? `<span class="chip on" style="cursor:default;color:var(--accent);border-color:var(--accent)">Conflicto</span>`
       : issues.length ? `<span class="chip on" style="cursor:default;color:var(--beat);border-color:var(--beat)">Revisar</span>`
       : `<span class="chip on" style="cursor:default;color:var(--ok);border-color:var(--ok)">OK</span>`;
+    // cada conflicto: si ya está ruteado → chip "✓ En Legal"; si no y hay permiso → botón "Rutear a Legal"
+    const issueRow = i=>{
+      const isRouted = i.key && routed(i.key);
+      const action = isRouted
+        ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--ok);white-space:nowrap">${icon('check',11)} En Legal</span>`
+        : (canLegal && i.key ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px;white-space:nowrap" onclick="routeIssueToLegal('${t.id}','${i.key}')">${icon('plus',10)} Rutear a Legal</button>` : '');
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot ${i.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${s(i.text)}</span>${action}</div>`;
+    };
     const issuesHTML = issues.length
-      ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">${issues.map(i=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot ${i.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${s(i.text)}</span></div>`).join('')}</div>`
+      ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${issues.map(issueRow).join('')}</div>`
       : `<div style="margin-top:8px;font-size:12px;color:var(--ok)">${icon('check',12)} Titularidad completa — splits al 100%, writers con publisher/PRO.</div>`;
     const docsHTML = legal.length
-      ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${legal.map(d=>`${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
+      ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${legal.map(d=>`${d.source==='labelcopy'?icon('flag',10)+' ':''}${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
       : `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Sin documentos legales cargados.</div>`;
+    const bulkBtn = (canLegal && unrouted.length>1) ? `<button class="btn btn-ghost btn-sm" onclick="routeAllIssuesToLegal('${t.id}')">${icon('plus',12)} Rutear ${unrouted.length} a Legal</button>` : '';
     return `<div class="panel" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:150px"><div style="font-family:var(--font-display);font-size:20px;letter-spacing:.5px">${s(t.title)||'(sin título)'}</div>
           <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">ISRC ${s(t.isrc)||'— por asignar'} · ${legal.length} doc(s) · ${firmados} firmado(s)</div></div>
         ${stateChip}
+        ${bulkBtn}
         <button class="btn btn-ghost btn-sm" onclick="openTrack('${t.id}','labelcopy')">${icon('file',13)} Label Copy</button>
         <button class="btn btn-ghost btn-sm" onclick="openTrack('${t.id}','legal')">${icon('signature',13)} Documentos</button>
       </div>

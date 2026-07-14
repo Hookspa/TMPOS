@@ -188,20 +188,22 @@ function lcSum(arr, key) { return (arr || []).reduce((n, x) => n + (parseFloat(S
 
 // Ruteo legal: conflictos de titularidad derivados del Label Copy de un track (input del estado "Conflicto").
 // level 'red' = bloqueante (split ≠ 100%), 'yellow' = revisar (dato faltante). Lo consume la pestaña Legal + releaseAlerts.
+// Cada issue trae { level, text, key, type }: `key` = idempotencia del ruteo a Legal, `type` = título de la tarea legal.
 function labelCopyIssues(t) {
   const out = []; if (!t) return out;
   const lc = t.labelCopy || {};
   const writers = (t.credits && t.credits.writers) || [];
   const wSum = lcSum(writers, 'split'), rSum = lcSum(lc.royaltySplit, 'split');
-  if (writers.length && Math.round(wSum) !== 100) out.push({ level: 'red', text: `Split de composición suma ${wSum % 1 ? wSum.toFixed(2) : wSum}% (debe ser 100%)` });
+  const slug = x => s(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  if (writers.length && Math.round(wSum) !== 100) out.push({ level: 'red', key: 'comp-total', type: 'Cuadrar split de composición (100%)', text: `Split de composición suma ${wSum % 1 ? wSum.toFixed(2) : wSum}% (debe ser 100%)` });
   writers.forEach(w => {
     if (!s(w.name).trim()) return;
-    if (!s(w.split).trim()) out.push({ level: 'yellow', text: `${s(w.name)}: sin % de split` });
-    if (!s(w.publisher).trim() && !s(w.pro).trim()) out.push({ level: 'yellow', text: `${s(w.name)}: sin publisher ni PRO` });
+    if (!s(w.split).trim()) out.push({ level: 'yellow', key: 'w-split-' + slug(w.name), type: `Asignar % de split a ${s(w.name)}`, text: `${s(w.name)}: sin % de split` });
+    if (!s(w.publisher).trim() && !s(w.pro).trim()) out.push({ level: 'yellow', key: 'w-pubpro-' + slug(w.name), type: `Completar publisher/PRO de ${s(w.name)}`, text: `${s(w.name)}: sin publisher ni PRO` });
   });
   const roy = lc.royaltySplit || [];
-  if (roy.length && Math.round(rSum) !== 100) out.push({ level: 'red', text: `Royalty split suma ${rSum % 1 ? rSum.toFixed(2) : rSum}% (debe ser 100%)` });
-  if (!writers.length) out.push({ level: 'yellow', text: 'Sin writers cargados en el Label Copy' });
+  if (roy.length && Math.round(rSum) !== 100) out.push({ level: 'red', key: 'roy-total', type: 'Cuadrar royalty split (100%)', text: `Royalty split suma ${rSum % 1 ? rSum.toFixed(2) : rSum}% (debe ser 100%)` });
+  if (!writers.length) out.push({ level: 'yellow', key: 'no-writers', type: 'Cargar writers en el Label Copy', text: 'Sin writers cargados en el Label Copy' });
   return out;
 }
 // Badge de total: verde si =100, naranja si no
@@ -438,6 +440,7 @@ function trackLegalHTML(t) {
   const legal = t.legal || [];
   const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value)"`;
   const rows = legal.map((d, i) => `<div class="panel" style="margin-bottom:10px">
+    ${d.source === 'labelcopy' ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy</div>` : ''}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -471,6 +474,32 @@ async function agregarLegal() {
 }
 function setLegalState(i, state) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal[i].state = state; t.legal[i].updatedAt = new Date().toISOString(); saveTracks(); renderTrackTab('legal'); } }
 function quitarLegal(i) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal.splice(i, 1); saveTracks(); renderTrackTab('legal'); } }
+
+// ── Ruteo legal nivel 2: convierte un conflicto del Label Copy en una tarea legal accionable en t.legal ──
+// Idempotente por conflictKey (no duplica). Por trackId → funciona desde la pestaña Legal del release (track no activo).
+function legalHasConflict(t, key) { return !!(t && (t.legal || []).some(d => d.conflictKey === key)); }
+function routeIssueToLegal(trackId, key) {
+  if (!requireCan('editar_legal')) return;
+  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null; if (!t) return;
+  const iss = (typeof labelCopyIssues === 'function' ? labelCopyIssues(t) : []).find(x => x.key === key); if (!iss) return; // deriva type/note del key (sin pasarlos por el DOM)
+  t.legal = t.legal || [];
+  if (t.legal.some(d => d.conflictKey === key)) { if (typeof uiToast === 'function') uiToast('Ese conflicto ya está en Legal'); return; }
+  t.legal.push({ id: 'lg-' + Date.now() + '-' + Math.floor(Math.random() * 999), type: iss.type, state: 'pendiente', responsable: '', fileLink: '', note: iss.text, source: 'labelcopy', conflictKey: key, updatedAt: new Date().toISOString() });
+  saveTracks();
+  if (typeof logActivity === 'function') { try { logActivity('created', `Tarea legal creada desde Label Copy: ${iss.type}`, { trackId: t.id, releaseId: (typeof currentLaunchId !== 'undefined' ? currentLaunchId : null) }); } catch (e) {} }
+  // re-render la vista activa (pestaña Legal del release o del track)
+  if (typeof _releaseTab !== 'undefined' && _releaseTab === 'legal' && typeof renderReleaseTab === 'function') renderReleaseTab('legal');
+  if (typeof curTrack === 'function' && curTrack() && curTrack().id === t.id && typeof renderTrackTab === 'function' && _trackTab === 'legal') renderTrackTab('legal');
+  if (typeof uiToast === 'function') uiToast('✓ Conflicto ruteado a Legal');
+}
+// Rutea todos los conflictos aún no ruteados de un track (bulk).
+function routeAllIssuesToLegal(trackId) {
+  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null; if (!t) return;
+  const pend = (typeof labelCopyIssues === 'function' ? labelCopyIssues(t) : []).filter(iss => iss.key && !legalHasConflict(t, iss.key));
+  if (!pend.length) return;
+  if (!requireCan('editar_legal')) return;
+  pend.forEach(iss => routeIssueToLegal(trackId, iss.key, iss.type, iss.text));
+}
 
 // ── Tareas (del track) ──
 function trackTareasHTML(t) { return tareasPanelHTML('track'); } // motor compartido (crm.js)
