@@ -293,16 +293,32 @@ function setTrackListItem(path, i, fk, val) { if (!requireCan('editar_labelcopy'
 function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); let arr = getPath(t, path); if (!Array.isArray(arr)) { setPath(t, path, []); arr = getPath(t, path); } arr.push({}); saveTracks(); renderTrackTab('labelcopy'); }
 function removeTrackListItem(path, i) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; arr.splice(i, 1); saveTracks(); renderTrackTab('labelcopy'); }
 
-// ── People book (contactos reutilizables a nivel equipo) ──
-function lcPeople() { try { const a = JSON.parse(localStorage.getItem('ao_labelcopy_people')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-function lcPeopleSave(list) { try { localStorage.setItem('ao_labelcopy_people', JSON.stringify(list)); } catch (e) {} }
-// Upsert por nombre: acumula email/ipi/pro/rol de cada persona a medida que se captura
+// ── People book (contactos reutilizables a nivel equipo · local + nube) ──
+// Estado en memoria (mirror de localStorage `ao_labelcopy_people`); se sincroniza a Supabase (tabla labelcopy_people).
+let lcPeopleList = [];
+try { lcPeopleList = JSON.parse(localStorage.getItem('ao_labelcopy_people')); } catch (e) {}
+if (!Array.isArray(lcPeopleList)) lcPeopleList = [];
+function lcPeople() { return lcPeopleList; }
+function lcPeopleId(name) { return 'lcp-' + s(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60); }
+function lcPeopleSaveLocal() { try { localStorage.setItem('ao_labelcopy_people', JSON.stringify(lcPeopleList)); } catch (e) {} }
+function lcPeopleSave() { lcPeopleSaveLocal(); if (typeof scheduleCloudSync === 'function') scheduleCloudSync(); } // → sube a la nube (best-effort)
+// Reemplaza la lista desde la nube por MERGE (union por nombre): nunca pierde contactos locales; la nube gana campos no vacíos.
+function lcPeopleSetAll(cloudList) {
+  const byName = {};
+  lcPeopleList.forEach(p => { if (p && s(p.name).trim()) byName[s(p.name).toLowerCase()] = Object.assign({}, p); });
+  (cloudList || []).forEach(p => { if (!p || !s(p.name).trim()) return; const k = s(p.name).toLowerCase(); byName[k] = Object.assign(byName[k] || {}, p); });
+  lcPeopleList = Object.values(byName).map(p => { if (!p.id) p.id = lcPeopleId(p.name); return p; });
+  lcPeopleSaveLocal();
+}
+// Upsert por nombre: acumula email/ipi/pro/rol de cada persona a medida que se captura.
 function lcPeopleUpsert(person) {
   if (!person) return; const name = s(person.name).trim(); if (!name) return;
-  const list = lcPeople(); let p = list.find(x => s(x.name).toLowerCase() === name.toLowerCase());
-  if (!p) { p = { name }; list.push(p); }
-  ['email', 'ipi', 'pro', 'role', 'rol', 'publisher'].forEach(k => { if (person[k]) p[k] = person[k]; });
-  lcPeopleSave(list);
+  let p = lcPeopleList.find(x => s(x.name).toLowerCase() === name.toLowerCase());
+  let changed = false;
+  if (!p) { p = { id: lcPeopleId(name), name }; lcPeopleList.push(p); changed = true; }
+  if (!p.id) { p.id = lcPeopleId(name); changed = true; }
+  ['email', 'ipi', 'pro', 'role', 'rol', 'publisher'].forEach(k => { if (person[k] && p[k] !== person[k]) { p[k] = person[k]; changed = true; } });
+  if (changed) lcPeopleSave();
 }
 function lcPeopleDatalist() { return `<datalist id="lc-people-list">${lcPeople().map(p => `<option value="${esc(p.name)}">`).join('')}</datalist>`; }
 

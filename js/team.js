@@ -70,6 +70,12 @@ async function cloudSyncAll() {
       const tRows = tracks.map(t => ({ id: t.id, artist_id: t.artistId, team_id: _teamId, data: t, updated_at: now }));
       if (tRows.length) await sb.from('tracks').upsert(tRows);
     } catch (e) { /* tabla tracks aún no creada → ignorar */ }
+    // people book (Label Copy): best-effort (una fila por persona, team-scoped)
+    try {
+      const people = (typeof lcPeople === 'function') ? lcPeople() : [];
+      const pRows = people.filter(p => p && p.name).map(p => ({ id: p.id || ('lcp-' + s(p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)), team_id: _teamId, data: p, updated_at: now }));
+      if (pRows.length) await sb.from('labelcopy_people').upsert(pRows);
+    } catch (e) { /* tabla labelcopy_people aún no creada → ignorar */ }
     // capa colaborativa (tasks/comments/activity/notifications/approvals): best-effort
     if (typeof collabCloudSync === 'function') { try { await collabCloudSync(sb, now); } catch (e) {} }
     setSyncStatus('ok');
@@ -92,6 +98,12 @@ async function cloudLoad() {
       const tq = sb.from('tracks').select('data'); if (_teamId) tq.eq('team_id', _teamId);
       const tr = await tq;
       if (!tr.error) { tracks = (tr.data || []).map(r => normalizeTrack(r.data)); }
+    } catch (e) {}
+    // people book: MERGE de la nube (no reemplaza — nunca pierde contactos locales)
+    try {
+      const pq = sb.from('labelcopy_people').select('data'); if (_teamId) pq.eq('team_id', _teamId);
+      const pr = await pq;
+      if (!pr.error && typeof lcPeopleSetAll === 'function') lcPeopleSetAll((pr.data || []).map(r => r.data));
     } catch (e) {}
     // capa colaborativa: cargar de la nube (best-effort)
     if (typeof collabCloudLoad === 'function') { try { await collabCloudLoad(sb, _teamId); } catch (e) {} }
