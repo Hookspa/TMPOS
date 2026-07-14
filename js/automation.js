@@ -109,7 +109,7 @@ function _autoModal(title, bodyHTML, footHTML) {
   ov.id = 'auto-modal';
   ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px';
   ov.onclick = e => { if (e.target === ov) closeAutoModal(); };
-  ov.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 20px 60px var(--shadow)">
+  ov.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 20px 60px var(--shadow)">
     <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-display);font-size:18px;letter-spacing:.5px;flex:1">${title}</span><button class="boxdrop-close" onclick="closeAutoModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted)">${icon('close',16)}</button></div>
     <div style="padding:18px">${bodyHTML}</div>
     ${footHTML ? `<div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">${footHTML}</div>` : ''}
@@ -122,7 +122,7 @@ function closeAutoModal() { const el = document.getElementById('auto-modal'); if
 function openTemplatePicker(launchId) {
   if (!requireCan('gestionar_tareas')) return;
   const l = launches.find(x => x.id === launchId); if (!l) return;
-  const cards = PROJECT_TEMPLATES.map(t => `<label style="display:block;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
+  const cards = PROJECT_TEMPLATES.map(t => `<label style="display:block;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
       <div style="display:flex;align-items:center;gap:10px"><input type="radio" name="tpl" value="${t.id}" ${t.id === (l.type || 'single') ? 'checked' : ''}><strong style="font-size:14px">${t.name}</strong><span style="margin-left:auto;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${t.tasks.length} tareas · ${t.calendar.length} piezas</span></div>
       <div style="font-size:12px;color:var(--text-muted);margin-top:5px;margin-left:24px">${t.desc}</div>
     </label>`).join('');

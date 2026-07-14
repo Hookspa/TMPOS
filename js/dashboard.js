@@ -72,7 +72,7 @@ function rosterHeatmapHTML(){
       return `<span class="chip" style="cursor:pointer" onclick="openLaunch('${r.id}')">${art ? esc(art.name) + ' · ' : ''}${esc(r.name)}</span>`; }).join(' ');
     const warn = n >= 3 ? `<span style="color:var(--accent2);font-size:11px;font-family:var(--font-mono)">sobrecargada · máx 2–3</span>`
               : (n === 2 ? `<span style="color:var(--beat);font-size:11px;font-family:var(--font-mono)">al límite</span>` : '');
-    return `<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:10px;padding:12px 14px;margin-bottom:8px">
+    return `<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:8px;padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'6px':'0'};flex-wrap:wrap"><span style="font-size:13px;font-weight:600">${fmt(w.start)} – ${fmt(w.end)}</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${n} release${n!==1?'s':''}</span>${warn}</div>
       ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>` : ''}
     </div>`; }).join('') || `<div class="empty-hint">No hay releases con fecha en las próximas ${N} semanas.</div>`;
@@ -159,7 +159,7 @@ function cockpitBodyHTML() {
       r.overdue ? `<span class="chip" style="cursor:default;color:var(--accent2);border-color:rgba(255,77,77,.3)">${r.overdue} vencida${r.overdue === 1 ? '' : 's'}</span>` : '',
       r.blocked ? `<span class="chip" style="cursor:default;color:var(--beat)">${r.blocked} bloqueada${r.blocked === 1 ? '' : 's'}</span>` : '',
     ].filter(Boolean).join('');
-    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="flex:1.4;min-width:190px">
         <div style="font-size:15px;font-weight:600">${esc(l.name)}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
@@ -265,7 +265,7 @@ function rosterHealthHTML() {
       legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
       next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
     ].filter(Boolean).join(' ');
-    return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
       <div style="flex:1;min-width:200px">
         <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>

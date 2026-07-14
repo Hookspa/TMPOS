@@ -148,7 +148,7 @@ async function tvBulkDelete() {
 }
 function _tvBulkBar() {
   if (!_tvSel.size) return '';
-  return `<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:12px">
+  return `<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:12px">
     <span style="font-size:12px;font-weight:600;color:var(--accent)">${_tvSel.size} seleccionada(s)</span>
     <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('estado',this.value);this.value=''"><option value="">Estado…</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
     <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('priority',this.value);this.value=''"><option value="">Prioridad…</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
@@ -502,7 +502,7 @@ function _treeInjectStyles() {
   .tree-caret{width:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:11px;flex:0 0 auto}
   .tree-name{flex:1;cursor:pointer;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tree-name:hover{color:var(--accent)}
-  .tree-badge{font-size:10px;font-family:var(--font-mono);background:var(--surface2);color:var(--text-muted);border-radius:10px;padding:1px 7px;flex:0 0 auto}`;
+  .tree-badge{font-size:10px;font-family:var(--font-mono);background:var(--surface2);color:var(--text-muted);border-radius:8px;padding:1px 7px;flex:0 0 auto}`;
   document.head.appendChild(st);
 }
 function _treeOpenCount(arr) { return (arr || []).filter(t => t.estado !== TASK_DONE).length; }
@@ -620,7 +620,7 @@ function _tdInjectStyles() {
   .td-prop{padding:9px 0;border-bottom:1px solid var(--border)}
   .td-prop-l{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
   .td-tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-  .td-tag-add{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:1px dashed var(--border);border-radius:10px;padding:2px 8px}
+  .td-tag-add{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:1px dashed var(--border);border-radius:8px;padding:2px 8px}
   .td-att{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0}
   .td-att a{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   @media(max-width:720px){.td-grid{grid-template-columns:1fr}.td-main{border-right:0;border-bottom:1px solid var(--border)}}`;

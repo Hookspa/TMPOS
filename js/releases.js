@@ -18,7 +18,7 @@ function mixBadges(mix) {
   if (!mix || !mix.length) return '<span class="dna-empty">— sin definir</span>';
   return mix.map(m => {
     const col = catColor(m);
-    return `<span style="display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-mono);margin:2px;background:${col}18;color:${col};border:1px solid ${col}44">${s(m)}</span>`;
+    return `<span style="display:inline-block;padding:3px 9px;border-radius:4px;font-size:10px;font-family:var(--font-mono);margin:2px;background:${col}18;color:${col};border:1px solid ${col}44">${s(m)}</span>`;
   }).join('');
 }
 
@@ -109,7 +109,7 @@ function _infoTipStyles(){
   st.textContent = `
   .info-tip{position:relative;display:inline-flex;align-items:center;color:var(--text-dim);cursor:help;vertical-align:middle}
   .info-tip:hover,.info-tip:focus{color:var(--accent);outline:none}
-  .info-tip-bubble{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;width:max-content;max-width:280px;font-size:11px;line-height:1.5;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;box-shadow:0 10px 30px var(--shadow);opacity:0;visibility:hidden;transition:opacity .15s;z-index:60;pointer-events:none}
+  .info-tip-bubble{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;width:max-content;max-width:280px;font-size:11px;line-height:1.5;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;box-shadow:0 10px 30px var(--shadow);opacity:0;visibility:hidden;transition:opacity .15s;z-index:60;pointer-events:none}
   .info-tip:hover .info-tip-bubble,.info-tip:focus .info-tip-bubble{opacity:1;visibility:visible}
   .info-tip-bubble::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:var(--border)}
   .sec-label{display:flex;align-items:center;gap:7px;margin-bottom:12px;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase}`;
@@ -1483,7 +1483,7 @@ function renderMoreSheet() {
   // así que va primero y se reconoce de inmediato, igual que un selector de cuenta/workspace.
   const _a = activeArtist();
   if (!_restrictedArtist && _a) {
-    html += `<div class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:10px;margin-bottom:4px">
+    html += `<div class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:8px;margin-bottom:4px">
       <div class="artist-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${up(_a.name).slice(0,1)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:600;color:var(--text)">${s(_a.name)}</div>

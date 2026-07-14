@@ -1440,25 +1440,25 @@ function buildCalDoc(printMode) {
   const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p.id}">${_pieceDetailHTML(p)}</div>`).join('');
   const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
   const CSS = `
-    :root{--ac:#FF6B30;--bg:#0c0e0c;--surf:#14171420;--card:#16191680;--bd:#2a2e2a;--tx:#f3f0f3;--mut:#9aa39a;--dim:#6b726b}
-    *{box-sizing:border-box} body{margin:0;background:#0c0e0c;color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5}
+    :root{--ac:#FF6B30;--bg:#0a0b0c;--surf:#131517;--card:#191c1f;--bd:#262a2e;--tx:#ECEDEE;--mut:#9BA1A6;--dim:#6B7176}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5}
     a{color:var(--ac)} .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
     .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:22px}
     .brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--ac)}
     .h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;margin:0}
     .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut);letter-spacing:1px}
     .btn{margin-left:auto;background:var(--ac);color:#1a0e08;border:none;border-radius:6px;padding:9px 16px;font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;font-weight:700}
-    .x-monthlbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin:24px 0 8px;color:var(--ac)}
+    .x-monthlbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin:24px 0 8px;color:var(--tx)}
     .x-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
     .x-dow{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);text-align:center;letter-spacing:1px;padding-bottom:4px}
     .x-cell{background:var(--surf);border:1px solid var(--bd);border-radius:6px;min-height:84px;padding:6px}
     .x-out{opacity:.35} .x-daynum{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);margin-bottom:5px}
-    .x-chip{display:block;width:100%;text-align:left;background:rgba(255,107,48,.12);color:var(--ac);border:none;border-left:2px solid var(--ac);border-radius:3px;padding:4px 6px;font-size:10px;margin-bottom:4px;cursor:pointer;font-family:inherit;line-height:1.3}
-    .x-chip:hover{background:rgba(255,107,48,.22)}
+    .x-chip{display:block;width:100%;text-align:left;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:4px 6px;font-size:10px;margin-bottom:4px;cursor:pointer;font-family:inherit;line-height:1.3}
+    .x-chip:hover{background:var(--bd)}
     .x-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto}
-    .x-modal{background:#131613;border:1px solid var(--bd);border-radius:12px;max-width:680px;width:100%;padding:22px}
+    .x-modal{background:var(--surf);border:1px solid var(--bd);border-radius:8px;max-width:680px;width:100%;padding:22px}
     .x-close{float:right;background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;line-height:1}
-    .x-detail,.x-card{} .x-card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:14px;break-inside:avoid}
+    .x-detail,.x-card{} .x-card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:18px;margin-bottom:14px;break-inside:avoid}
     .x-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
     .x-thumb{width:74px;height:120px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#222}
     .x-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.5px;line-height:1.1}
@@ -1466,13 +1466,13 @@ function buildCalDoc(printMode) {
     .x-camp{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
     .x-row{margin:10px 0} .x-k{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
     .x-v{white-space:pre-wrap}
-    .x-sec{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--ac);text-transform:uppercase;margin:16px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
+    .x-sec{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;margin:16px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
     .x-block{background:var(--surf);border-radius:6px;padding:10px;margin-bottom:7px}
-    .x-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--ac);margin-bottom:4px}
+    .x-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);margin-bottom:4px}
     .x-note{font-size:12px;color:var(--mut);margin-top:4px}
-    .x-shot{display:flex;gap:10px;margin-bottom:8px} .x-num{font-family:'Space Mono',monospace;color:var(--ac);font-size:12px}
+    .x-shot{display:flex;gap:10px;margin-bottom:8px} .x-num{font-family:'Space Mono',monospace;color:var(--mut);font-size:12px}
     .x-assets{display:flex;flex-direction:column;gap:6px} .x-asset{font-family:'Space Mono',monospace;font-size:12px;text-decoration:none}
-    .x-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .x-tag{background:rgba(255,107,48,.12);color:var(--ac);border-radius:3px;padding:2px 7px;font-family:'Space Mono',monospace;font-size:11px}
+    .x-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .x-tag{background:var(--card);color:var(--mut);border:1px solid var(--bd);border-radius:4px;padding:2px 7px;font-family:'Space Mono',monospace;font-size:11px}
     .x-hide{display:none}
     @media print{ body{background:#fff;color:#111} .btn,.x-ov{display:none!important} .x-cal{display:none} .x-print{display:block!important}
       .x-card{border:1px solid #ccc;background:#fff;page-break-inside:avoid} .x-thumb{background:#eee} .x-title,.x-monthlbl,.x-brand,.brand{color:#c2410c}
@@ -2598,8 +2598,8 @@ function metricsTimeSeriesHTML(entries) {
     const h = Math.round(e.value / max * 100); const last = i === best.length - 1;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;justify-content:flex-end;height:100%">
       <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted)">${fmtNum(e.value)}</div>
-      <div style="background:linear-gradient(180deg,var(--accent),var(--accent-dark));width:100%;height:${h}%;border-radius:4px 4px 0 0;opacity:${last?1:0.55};box-shadow:${last?'0 0 14px var(--glow)':'none'}"></div>
-      <div style="font-family:var(--font-mono);font-size:8px;color:${last?'var(--accent)':'var(--text-dim)'}">${s(e.date).slice(5)}</div>
+      <div style="background:${last?'var(--text)':'var(--muted)'};width:100%;height:${h}%;border-radius:3px 3px 0 0;opacity:${last?1:0.5}"></div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:${last?'var(--text)':'var(--text-dim)'}">${s(e.date).slice(5)}</div>
     </div>`;
   }).join('');
   return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-top:14px">
@@ -3128,7 +3128,7 @@ function renderCampanias() {
     const isEv = l.type === 'evergreen';
     const col = isEv ? (l.color || 'var(--beat)') : 'var(--muted)';
     const st = isEv ? 'always-on' : ((STATUS_MAP[l.status] || {}).word || l.status);
-    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
       <div style="flex:1;min-width:200px">
         <div style="font-size:15px;font-weight:600">${esc(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
