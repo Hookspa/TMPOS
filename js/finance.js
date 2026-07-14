@@ -16,6 +16,50 @@ function financeSummary(l){
 }
 const _signedMoney = n => (n < 0 ? '-' : '') + money(Math.abs(n));
 
+// ── Reparto de ingresos por titular (usa el Royalty Split del Label Copy) ──
+// La inversión se recupera primero (recoupment); el NETO se reparte según el royaltySplit del track.
+// base 'neto' = post-recoupment (default) · 'bruto' = sobre los ingresos totales.
+let _royaltyBase = 'neto';
+function royaltyDistribution(l, base){
+  base = base || _royaltyBase;
+  const fs = financeSummary(l);
+  const ts = (typeof tracksOfLaunch === 'function') ? tracksOfLaunch(l) : [];
+  const withSplit = ts.filter(t => ((t.labelCopy && t.labelCopy.royaltySplit) || []).some(r => r && r.name));
+  const primary = withSplit[0] || ts[0] || null;
+  const split = (primary && primary.labelCopy && primary.labelCopy.royaltySplit) || [];
+  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+  const distributable = base === 'bruto' ? fs.ingresos : Math.max(0, fs.ingresos - fs.inversion);
+  const rows = split.filter(r => r && s(r.name).trim()).map(r => { const pct = num(r.split); return { name: r.name, rol: r.rol, pct, monto: distributable * pct / 100 }; });
+  const totalPct = rows.reduce((a, r) => a + r.pct, 0);
+  return { fs, base, distributable, rows, totalPct, hasSplit: rows.length > 0, primary, multi: withSplit.length > 1, faltaRecoup: Math.max(0, fs.inversion - fs.ingresos) };
+}
+function royaltyPanelHTML(l){
+  const d = royaltyDistribution(l);
+  const head = `<div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Reparto de ingresos</span><span class="ph-sub">por titular · Royalty Split</span>
+    <div class="mtabs" style="margin-left:auto;gap:4px">
+      <div class="mtab ${d.base==='neto'?'active':''}" style="font-size:10px;padding:4px 9px" onclick="setRoyaltyBase('neto')">Neto (post-recoup)</div>
+      <div class="mtab ${d.base==='bruto'?'active':''}" style="font-size:10px;padding:4px 9px" onclick="setRoyaltyBase('bruto')">Bruto</div>
+    </div></div>`;
+  if(!d.hasSplit) return `<div class="panel">${head}<div class="empty-hint">Define el <b>Royalty Split</b> en el Label Copy del track para ver cómo se reparten los ingresos por titular.</div></div>`;
+  if(d.base==='neto' && d.distributable<=0){
+    return `<div class="panel">${head}<div class="empty-hint">En <b>recoupment</b>: faltan <b>${money(d.faltaRecoup)}</b> para recuperar la inversión. Nada que repartir todavía (o cambia a <b>Bruto</b> para ver el reparto sobre ingresos totales).</div></div>`;
+  }
+  const warn = Math.round(d.totalPct) !== 100 ? `<span style="color:var(--accent);font-family:var(--font-mono);font-size:11px" title="El Royalty Split no suma 100%">${icon('warning',11)} split ${d.totalPct%1?d.totalPct.toFixed(2):d.totalPct}%</span>` : '';
+  const rows = d.rows.sort((a,b)=>b.monto-a.monto).map(r => `<tr>
+      <td style="padding:6px 8px">${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${r.pct%1?r.pct.toFixed(2):r.pct}%</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(r.monto)}</td></tr>`).join('');
+  return `<div class="panel">${head}
+    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:8px">
+      Base a repartir: <b style="color:var(--text)">${money(d.distributable)}</b> ${d.base==='neto'?`(ingresos ${money(d.fs.ingresos)} − inversión ${money(d.fs.inversion)})`:`(ingresos brutos)`} ${warn}
+      ${d.multi?`<br>Usa el Royalty Split de <b>${s(d.primary.title)||'la 1ª canción'}</b> (el release tiene varias con reparto).`:''}
+    </div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+      <th style="text-align:left;padding:6px 8px">Titular</th><th style="text-align:right;padding:6px 8px">%</th><th style="text-align:right;padding:6px 8px">Monto</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+function setRoyaltyBase(b){ _royaltyBase = b; if(typeof renderReleaseTab==='function') renderReleaseTab('inversion'); }
+
 function releaseInversionHTML(l){
   if(!canDo('ver_finanzas') && !canDo('editar_finanzas')) return `<div class="empty-hint">No tienes acceso a las finanzas de este release.</div>`;
   const editable = canDo('editar_finanzas');
@@ -77,6 +121,7 @@ function releaseInversionHTML(l){
       <div class="progress-track"><div class="progress-fill" style="width:${fs.recoupPct}%;background:${estadoColor}"></div></div>
       ${editable ? `<div class="field" style="margin-top:12px;max-width:240px"><label>Ingresos acumulados (US$)</label><input class="input" value="${fs.ingresos || ''}" inputmode="decimal" placeholder="0" onchange="setRecoupIngresos(this.value)"></div>` : ''}
     </div>
+    ${royaltyPanelHTML(l)}
     <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chart',18)}</span><span class="ph-title">Plan vs. gasto real</span><span class="ph-sub">por categoría</span></div>
       <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
         <th style="text-align:left;padding:6px 8px">Categoría</th><th style="text-align:right;padding:6px 8px">Plan</th><th style="text-align:right;padding:6px 8px">Real</th><th style="text-align:right;padding:6px 8px">Dif.</th></tr></thead>
