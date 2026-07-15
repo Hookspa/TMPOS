@@ -194,6 +194,7 @@ function releaseLegalHTML(l){
   if(!ts.length) return `${secInfo('Legal y titularidad', 'Estado de titularidad y documentos legales por canción.')}<div class="empty-hint">Este release no tiene canciones todavía. Agrégalas en la pestaña <b>Música</b>.</div>`;
   const canLegal = (typeof canDo==='function') && canDo('editar_legal');
   const cards = ts.map(t=>{
+    if (typeof reconcileLegalConflicts==='function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
     const issues = (typeof labelCopyIssues==='function') ? labelCopyIssues(t) : [];
     const legal = t.legal || [];
     const firmados = legal.filter(d=>d.state==='firmado'||d.state==='aprobado').length;

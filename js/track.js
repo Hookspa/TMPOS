@@ -17,7 +17,7 @@ function backToRelease() {
   renderLaunchDetail();
   if (typeof updateBackBtn === 'function') updateBackBtn();
 }
-function setTrackField(path, val, cap) { if (cap && !requireCan(cap)) return; const t = curTrack(); if (!t) return; setPath(t, path, val); saveTracks(); }
+function setTrackField(path, val, cap) { if (cap && !requireCan(cap)) return; const t = curTrack(); if (!t) return; setPath(t, path, val); saveTracks(); if (/^(credits|labelCopy)/.test(path) && typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); }
 
 function renderTrackDetail() {
   const t = curTrack(), l = launches.find(x => x.id === currentLaunchId);
@@ -188,23 +188,33 @@ function lcSum(arr, key) { return (arr || []).reduce((n, x) => n + (parseFloat(S
 
 // Ruteo legal: conflictos de titularidad derivados del Label Copy de un track (input del estado "Conflicto").
 // level 'red' = bloqueante (split ≠ 100%), 'yellow' = revisar (dato faltante). Lo consume la pestaña Legal + releaseAlerts.
-// Cada issue trae { level, text, key, type }: `key` = idempotencia del ruteo a Legal, `type` = título de la tarea legal.
+// Cada issue trae { level, text, key, type, area }: `key` = idempotencia del ruteo a Legal, `type` = título
+// de la tarea legal, `area` = departamento por defecto (composición/publishing → 'ar'; royalty → 'legal').
 function labelCopyIssues(t) {
   const out = []; if (!t) return out;
   const lc = t.labelCopy || {};
   const writers = (t.credits && t.credits.writers) || [];
   const wSum = lcSum(writers, 'split'), rSum = lcSum(lc.royaltySplit, 'split');
   const slug = x => s(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-  if (writers.length && Math.round(wSum) !== 100) out.push({ level: 'red', key: 'comp-total', type: 'Cuadrar split de composición (100%)', text: `Split de composición suma ${wSum % 1 ? wSum.toFixed(2) : wSum}% (debe ser 100%)` });
+  if (writers.length && Math.round(wSum) !== 100) out.push({ level: 'red', key: 'comp-total', area: 'ar', type: 'Cuadrar split de composición (100%)', text: `Split de composición suma ${wSum % 1 ? wSum.toFixed(2) : wSum}% (debe ser 100%)` });
   writers.forEach(w => {
     if (!s(w.name).trim()) return;
-    if (!s(w.split).trim()) out.push({ level: 'yellow', key: 'w-split-' + slug(w.name), type: `Asignar % de split a ${s(w.name)}`, text: `${s(w.name)}: sin % de split` });
-    if (!s(w.publisher).trim() && !s(w.pro).trim()) out.push({ level: 'yellow', key: 'w-pubpro-' + slug(w.name), type: `Completar publisher/PRO de ${s(w.name)}`, text: `${s(w.name)}: sin publisher ni PRO` });
+    if (!s(w.split).trim()) out.push({ level: 'yellow', key: 'w-split-' + slug(w.name), area: 'ar', type: `Asignar % de split a ${s(w.name)}`, text: `${s(w.name)}: sin % de split` });
+    if (!s(w.publisher).trim() && !s(w.pro).trim()) out.push({ level: 'yellow', key: 'w-pubpro-' + slug(w.name), area: 'ar', type: `Completar publisher/PRO de ${s(w.name)}`, text: `${s(w.name)}: sin publisher ni PRO` });
   });
   const roy = lc.royaltySplit || [];
-  if (roy.length && Math.round(rSum) !== 100) out.push({ level: 'red', key: 'roy-total', type: 'Cuadrar royalty split (100%)', text: `Royalty split suma ${rSum % 1 ? rSum.toFixed(2) : rSum}% (debe ser 100%)` });
-  if (!writers.length) out.push({ level: 'yellow', key: 'no-writers', type: 'Cargar writers en el Label Copy', text: 'Sin writers cargados en el Label Copy' });
+  if (roy.length && Math.round(rSum) !== 100) out.push({ level: 'red', key: 'roy-total', area: 'legal', type: 'Cuadrar royalty split (100%)', text: `Royalty split suma ${rSum % 1 ? rSum.toFixed(2) : rSum}% (debe ser 100%)` });
+  if (!writers.length) out.push({ level: 'yellow', key: 'no-writers', area: 'ar', type: 'Cargar writers en el Label Copy', text: 'Sin writers cargados en el Label Copy' });
   return out;
+}
+// Mapa de área → etiqueta legible + responsable por defecto (empareja un contacto del equipo cuyo nombre
+// mencione el área; si no hay match, deja sin asignar y solo muestra el badge de área sugerida).
+const LEGAL_AREA_LABEL = { ar: 'A&R', legal: 'Legal' };
+function legalDefaultAssignee(area) {
+  const pats = area === 'legal' ? /legal|abogad|lawyer|counsel/i : /a&r|a\s*and\s*r|\banr\b|a\/r/i;
+  const cs = (typeof mentionContacts === 'function') ? mentionContacts() : [];
+  const hit = cs.find(c => pats.test((typeof contactLabel === 'function') ? contactLabel(c) : (c.name || c.email || '')));
+  return hit ? contactLabel(hit) : '';
 }
 // Badge de total: verde si =100, naranja si no
 function lcTotalBadge(sum, label) {
@@ -337,7 +347,7 @@ function lcListField(t, path, fields, label, addLabel, selOpts) {
     </div>`).join('');
   return `<div class="field" style="margin-bottom:12px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
 }
-function lcListSet(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); lcPeopleUpsert(arr[i]); if (fk === 'split') renderTrackTab('labelcopy'); /* refresca el total */ } }
+function lcListSet(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); lcPeopleUpsert(arr[i]); if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); if (fk === 'split') renderTrackTab('labelcopy'); /* refresca el total */ } }
 function lcListName(path, i, val) {
   if (!requireCan('editar_labelcopy')) return;
   const t = curTrack(); const arr = getPath(t, path) || []; if (!arr[i]) return;
@@ -453,10 +463,12 @@ async function labelCopyPDF() {
 // ── Legal (por canción) ──
 const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'var(--accent)', aprobado:'#4ade80' };
 function trackLegalHTML(t) {
+  if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
   const legal = t.legal || [];
   const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value)"`;
+  const areaBadge = d => d.area && LEGAL_AREA_LABEL[d.area] ? `<span style="font-size:9px;font-family:var(--font-mono);color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px">${LEGAL_AREA_LABEL[d.area]}</span>` : '';
   const rows = legal.map((d, i) => `<div class="panel" style="margin-bottom:10px">
-    ${d.source === 'labelcopy' ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy</div>` : ''}
+    ${d.source === 'labelcopy' ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy${areaBadge(d)}${d.autoResolved ? `<span style="color:var(--ok)">${icon('check',10)} auto-cerrada</span>` : ''}</div>` : ''}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
       <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -478,6 +490,7 @@ function setLegalField(i, f, val) {
   if (!requireCan('editar_legal')) return;
   const t = curTrack(); if (!t || !t.legal[i]) return;
   t.legal[i][f] = val; t.legal[i].updatedAt = new Date().toISOString();
+  if (f === 'state') t.legal[i].autoResolved = false; // un cambio manual de estado libera el doc del auto-manejo
   saveTracks(); if (f === 'state' || f === 'fileLink') renderTrackTab('legal');
 }
 async function agregarLegal() {
@@ -488,7 +501,7 @@ async function agregarLegal() {
   t.legal = t.legal || []; t.legal.push({ id: 'lg-' + Date.now(), type: type.trim(), state: 'pendiente', responsable: '', fileLink: '', note: '', updatedAt: new Date().toISOString() });
   saveTracks(); renderTrackTab('legal');
 }
-function setLegalState(i, state) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal[i].state = state; t.legal[i].updatedAt = new Date().toISOString(); saveTracks(); renderTrackTab('legal'); } }
+function setLegalState(i, state) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal[i].state = state; t.legal[i].autoResolved = false; t.legal[i].updatedAt = new Date().toISOString(); saveTracks(); renderTrackTab('legal'); } }
 function quitarLegal(i) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal.splice(i, 1); saveTracks(); renderTrackTab('legal'); } }
 
 // ── Ruteo legal nivel 2: convierte un conflicto del Label Copy en una tarea legal accionable en t.legal ──
@@ -500,7 +513,8 @@ function routeIssueToLegal(trackId, key) {
   const iss = (typeof labelCopyIssues === 'function' ? labelCopyIssues(t) : []).find(x => x.key === key); if (!iss) return; // deriva type/note del key (sin pasarlos por el DOM)
   t.legal = t.legal || [];
   if (t.legal.some(d => d.conflictKey === key)) { if (typeof uiToast === 'function') uiToast('Ese conflicto ya está en Legal'); return; }
-  t.legal.push({ id: 'lg-' + Date.now() + '-' + Math.floor(Math.random() * 999), type: iss.type, state: 'pendiente', responsable: '', fileLink: '', note: iss.text, source: 'labelcopy', conflictKey: key, updatedAt: new Date().toISOString() });
+  const responsable = (typeof legalDefaultAssignee === 'function') ? legalDefaultAssignee(iss.area) : '';
+  t.legal.push({ id: 'lg-' + Date.now() + '-' + Math.floor(Math.random() * 999), type: iss.type, state: 'pendiente', responsable, area: iss.area || '', fileLink: '', note: iss.text, source: 'labelcopy', conflictKey: key, updatedAt: new Date().toISOString() });
   saveTracks();
   if (typeof logActivity === 'function') { try { logActivity('created', `Tarea legal creada desde Label Copy: ${iss.type}`, { trackId: t.id, releaseId: (typeof currentLaunchId !== 'undefined' ? currentLaunchId : null) }); } catch (e) {} }
   // re-render la vista activa (pestaña Legal del release o del track)
@@ -515,6 +529,28 @@ function routeAllIssuesToLegal(trackId) {
   if (!pend.length) return;
   if (!requireCan('editar_legal')) return;
   pend.forEach(iss => routeIssueToLegal(trackId, iss.key, iss.type, iss.text));
+}
+// ── Ruteo legal nivel 3: auto-cierre cuando el conflicto se resuelve (y reapertura si reaparece) ──
+// Reconcilia los docs legales ruteados (source==='labelcopy') contra los conflictos vivos del Label Copy.
+// Solo administra docs que NOSOTROS auto-cerramos (autoResolved); un toque manual del estado libera el doc
+// (setLegalField/State limpian autoResolved). Idempotente; guarda + loguea solo si hubo cambio. Devuelve bool.
+function reconcileLegalConflicts(t) {
+  if (!t || !(t.legal && t.legal.length)) return false;
+  const live = new Set((typeof labelCopyIssues === 'function' ? labelCopyIssues(t) : []).map(i => i.key).filter(Boolean));
+  let changed = false;
+  t.legal.forEach(d => {
+    if (d.source !== 'labelcopy' || !d.conflictKey) return;
+    const stillConflict = live.has(d.conflictKey);
+    if (!stillConflict && d.state !== 'aprobado' && !d.autoResolved) {
+      d.state = 'aprobado'; d.autoResolved = true; d.updatedAt = new Date().toISOString(); changed = true;
+      if (typeof logActivity === 'function') { try { logActivity('status_changed', `Tarea legal auto-cerrada (conflicto del Label Copy resuelto): ${d.type}`, { trackId: t.id }, { estado: 'aprobado' }); } catch (e) {} }
+    } else if (stillConflict && d.autoResolved) {
+      d.state = 'pendiente'; d.autoResolved = false; d.updatedAt = new Date().toISOString(); changed = true;
+      if (typeof logActivity === 'function') { try { logActivity('status_changed', `Tarea legal reabierta (el conflicto del Label Copy reapareció): ${d.type}`, { trackId: t.id }, { estado: 'pendiente' }); } catch (e) {} }
+    }
+  });
+  if (changed && typeof saveTracks === 'function') saveTracks();
+  return changed;
 }
 
 // ── Tareas (del track) ──

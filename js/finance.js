@@ -20,18 +20,37 @@ const _signedMoney = n => (n < 0 ? '-' : '') + money(Math.abs(n));
 // La inversión se recupera primero (recoupment); el NETO se reparte según el royaltySplit del track.
 // base 'neto' = post-recoupment (default) · 'bruto' = sobre los ingresos totales.
 let _royaltyBase = 'neto';
+// Reparto por-track (nivel 3): cada canción con Royalty Split aporta una parte IGUAL del distribuible
+// (no tenemos ingresos por-track, así que se prorratea en partes iguales) y se reparte por su propio split;
+// luego se agrega por titular sumando entre canciones. Para un single reduce exactamente al comportamiento
+// anterior (1 track → su split sobre todo el distribuible).
 function royaltyDistribution(l, base){
   base = base || _royaltyBase;
   const fs = financeSummary(l);
   const ts = (typeof tracksOfLaunch === 'function') ? tracksOfLaunch(l) : [];
-  const withSplit = ts.filter(t => ((t.labelCopy && t.labelCopy.royaltySplit) || []).some(r => r && r.name));
-  const primary = withSplit[0] || ts[0] || null;
-  const split = (primary && primary.labelCopy && primary.labelCopy.royaltySplit) || [];
   const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+  const withSplit = ts.filter(t => ((t.labelCopy && t.labelCopy.royaltySplit) || []).some(r => r && s(r.name).trim()));
   const distributable = base === 'bruto' ? fs.ingresos : Math.max(0, fs.ingresos - fs.inversion);
-  const rows = split.filter(r => r && s(r.name).trim()).map(r => { const pct = num(r.split); return { name: r.name, rol: r.rol, pct, monto: distributable * pct / 100 }; });
+  const nTracks = withSplit.length;
+  const perTrackShare = nTracks > 0 ? distributable / nTracks : 0;
+  const agg = {};      // key = nombre en minúscula → { name, rol, monto, tracks }
+  const perTrack = [];
+  withSplit.forEach(t => {
+    const split = ((t.labelCopy && t.labelCopy.royaltySplit) || []).filter(r => r && s(r.name).trim());
+    const tRows = split.map(r => { const pct = num(r.split); return { name: r.name, rol: r.rol, pct, monto: perTrackShare * pct / 100 }; });
+    perTrack.push({ trackId: t.id, title: t.title, share: perTrackShare, rows: tRows, totalPct: tRows.reduce((a, r) => a + r.pct, 0) });
+    tRows.forEach(r => {
+      const k = s(r.name).trim().toLowerCase();
+      if (!agg[k]) agg[k] = { name: r.name, rol: r.rol || '', monto: 0, tracks: 0 };
+      agg[k].monto += r.monto; agg[k].tracks++; if (!agg[k].rol && r.rol) agg[k].rol = r.rol;
+    });
+  });
+  const rows = Object.values(agg);
+  rows.forEach(r => { r.pct = distributable > 0 ? r.monto / distributable * 100 : 0; }); // % efectivo sobre el total
   const totalPct = rows.reduce((a, r) => a + r.pct, 0);
-  return { fs, base, distributable, rows, totalPct, hasSplit: rows.length > 0, primary, multi: withSplit.length > 1, faltaRecoup: Math.max(0, fs.inversion - fs.ingresos) };
+  const trackOff = perTrack.filter(pt => Math.round(pt.totalPct) !== 100);
+  const primary = withSplit[0] || ts[0] || null;
+  return { fs, base, distributable, rows, totalPct, hasSplit: rows.length > 0, primary, multi: nTracks > 1, nTracks, perTrackShare, perTrack, trackOff, faltaRecoup: Math.max(0, fs.inversion - fs.ingresos) };
 }
 function royaltyPanelHTML(l){
   const d = royaltyDistribution(l);
@@ -46,17 +65,24 @@ function royaltyPanelHTML(l){
   }
   const warn = Math.round(d.totalPct) !== 100 ? `<span style="color:var(--accent);font-family:var(--font-mono);font-size:11px" title="El Royalty Split no suma 100%">${icon('warning',11)} split ${d.totalPct%1?d.totalPct.toFixed(2):d.totalPct}%</span>` : '';
   const rows = d.rows.sort((a,b)=>b.monto-a.monto).map(r => `<tr>
-      <td style="padding:6px 8px">${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''}</td>
+      <td style="padding:6px 8px">${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''}${d.multi&&r.tracks?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${r.tracks} canc.</span>`:''}</td>
       <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${r.pct%1?r.pct.toFixed(2):r.pct}%</td>
       <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(r.monto)}</td></tr>`).join('');
+  const multiNote = d.multi ? `<br>Reparto agregado de <b>${d.nTracks} canciones</b> — cada track aporta una parte igual (<b>${money(d.perTrackShare)}</b>) y se reparte por su propio Royalty Split.` : '';
+  const offNote = d.trackOff.length ? `<br><span style="color:var(--accent)">${icon('warning',11)} ${d.trackOff.length} canción(es) con split ≠ 100%: ${d.trackOff.map(p=>s(p.title)||'(sin título)').join(', ')}</span>` : '';
+  const breakdown = d.multi ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Desglose por canción</summary>
+    <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">${d.perTrack.map(pt=>`<div style="font-size:11px">
+      <div style="font-family:var(--font-mono);color:var(--text-muted)">${s(pt.title)||'(sin título)'} · ${money(pt.share)}${Math.round(pt.totalPct)!==100?` <span style="color:var(--accent)">(split ${pt.totalPct%1?pt.totalPct.toFixed(2):pt.totalPct}%)</span>`:''}</div>
+      ${pt.rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''} <span style="color:var(--text-muted);font-family:var(--font-mono)">${r.pct%1?r.pct.toFixed(2):r.pct}%</span></span><span style="font-family:var(--font-mono)">${money(r.monto)}</span></div>`).join('')}
+    </div>`).join('')}</div></details>` : '';
   return `<div class="panel">${head}
     <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:8px">
       Base a repartir: <b style="color:var(--text)">${money(d.distributable)}</b> ${d.base==='neto'?`(ingresos ${money(d.fs.ingresos)} − inversión ${money(d.fs.inversion)})`:`(ingresos brutos)`} ${warn}
-      ${d.multi?`<br>Usa el Royalty Split de <b>${s(d.primary.title)||'la 1ª canción'}</b> (el release tiene varias con reparto).`:''}
+      ${multiNote}${offNote}
     </div>
     <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
       <th style="text-align:left;padding:6px 8px">Titular</th><th style="text-align:right;padding:6px 8px">%</th><th style="text-align:right;padding:6px 8px">Monto</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <tbody>${rows}</tbody></table>${breakdown}</div>`;
 }
 function setRoyaltyBase(b){ _royaltyBase = b; if(typeof renderReleaseTab==='function') renderReleaseTab('inversion'); }
 
@@ -215,6 +241,13 @@ function buildReleaseSnapshot(l) {
   const gaps = []; for (let i = 1; i < fechas.length; i++) { const d = _b3Days(fechas[i - 1] + 'T00:00:00', fechas[i] + 'T00:00:00'); if (d != null) gaps.push(d); }
   const fin = (typeof financeSummary === 'function') ? financeSummary(l) : { inversion: 0, ingresos: 0, roi: null, recoupPct: 0, estado: 'no_recuperado' };
   const res = _b3ResultWindows(l);
+  // Congela el reparto de ingresos (base neto, post-recoupment) tal como quedó al cierre.
+  const roy = (typeof royaltyDistribution === 'function') ? royaltyDistribution(l, 'neto') : null;
+  const royaltySnap = (roy && roy.hasSplit) ? {
+    base: 'neto', distributable: Math.round(roy.distributable * 100) / 100, total_pct: Math.round(roy.totalPct * 100) / 100,
+    n_tracks: roy.nTracks, per_track: roy.multi,
+    titulares: roy.rows.slice().sort((a, b) => b.monto - a.monto).map(r => ({ name: r.name, rol: r.rol || '', pct: Math.round(r.pct * 100) / 100, monto: Math.round(r.monto * 100) / 100, tracks: r.tracks || 1 })),
+  } : null;
   // etapa de carrera (proxy: nº de releases previos del artista)
   const prev = (typeof launches !== 'undefined') ? launches.filter(x => x.artistId === l.artistId && x.type !== 'evergreen' && (x.createdAt || 0) < (l.createdAt || Date.now())).length : 0;
   const etapa = prev <= 1 ? 'emergente' : (prev <= 4 ? 'en_desarrollo' : 'establecido');
@@ -226,6 +259,7 @@ function buildReleaseSnapshot(l) {
     lead_time_dias: lead, gate_latency_dias: gateLat, espaciado_mediano_dias: _b3Median(gaps), readiness_final_pct: (typeof releaseReady === 'function') ? releaseReady(l).pct : null,
     inversion: fin.inversion, ingresos: fin.ingresos, roi: fin.roi, recoup_pct: fin.recoupPct, recoup_estado: fin.estado,
     resultado_d1: res.d1, resultado_d7: res.d7, resultado_d28: res.d28,
+    royalty_split: royaltySnap,
   };
   // completitud = campos clave no-nulos / esperados (filas parciales son válidas, B3 §6.3)
   const keys = [snap.genero, snap.n_tareas_total, snap.cycle_days_mediana, snap.lead_time_dias, snap.espaciado_mediano_dias, snap.readiness_final_pct, snap.inversion, snap.roi, snap.resultado_d7];
@@ -274,5 +308,7 @@ function snapshotPanelHTML(l) {
     ${stat('Gates medidos', gates)}
   </div>`;
   const meta = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${snap.genero || 's/género'} · ${snap.tipo_release} · ${snap.etapa_carrera} · resultado d7: ${r7} · completitud ${snap.completitud}% · capturado ${new Date(snap.capturedAt).toLocaleString('es')}${snap.cycle_estimadas ? ' · ' + snap.cycle_estimadas + ' cycle estimado(s)' : ''}</div>`;
-  return `<div class="panel">${head}${grid}${meta}</div>`;
+  const rs = snap.royalty_split;
+  const royalty = rs ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Reparto congelado (neto ${money(rs.distributable)}${rs.per_track ? ` · ${rs.n_tracks} canciones` : ''}): ${rs.titulares.slice(0, 4).map(x => `${s(x.name)} ${money(x.monto)}`).join(' · ')}${rs.titulares.length > 4 ? ` +${rs.titulares.length - 4}` : ''}</div>` : '';
+  return `<div class="panel">${head}${grid}${meta}${royalty}</div>`;
 }
