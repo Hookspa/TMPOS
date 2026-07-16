@@ -103,25 +103,59 @@ function _cockpitRisk(l) {
   if (d != null && d >= 0 && d <= 21 && pct < 60) score += Math.round((60 - pct) / 3);
   return { score, d, overdue, blocked, reds, yellows, pct, alerts };
 }
+// ¿La tarea está pospuesta (snooze) y aún vigente? → sale de la cola hasta su fecha.
+function _cockpitSnoozed(t) { return t && t.snoozedUntil && (typeof diasRestantes === 'function') && diasRestantes(t.snoozedUntil) >= 0; }
 // Cola de acción cross-lanzamiento: lo que se cae esta semana en todo el roster.
+// Los ítems basados en tarea llevan `tid` + `kind:'task'` → habilitan recordar/mover/escalar.
 function cockpitActionItems() {
   const out = [];
   cockpitLaunches().forEach(l => {
     const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === l.artistId) : null;
     const an = art ? art.name : '—';
     const ts = _cockpitTasks(l);
-    ts.filter(t => t.estado !== TASK_DONE && t.dueDate && diasRestantes(t.dueDate) < 0).forEach(t =>
-      out.push({ sev: 3, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Tarea vencida: ${s(t.titulo) || 'sin título'} · ${-diasRestantes(t.dueDate)}d`, ord: diasRestantes(t.dueDate) }));
-    ts.filter(t => t.estado === 'bloqueado').forEach(t =>
-      out.push({ sev: 2, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Bloqueada: ${s(t.titulo) || 'sin título'}`, ord: 5000 }));
+    ts.filter(t => t.estado !== TASK_DONE && t.dueDate && diasRestantes(t.dueDate) < 0 && !_cockpitSnoozed(t)).forEach(t =>
+      out.push({ sev: 3, kind: 'task', tid: t.id, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Tarea vencida: ${s(t.titulo) || 'sin título'} · ${-diasRestantes(t.dueDate)}d`, ord: diasRestantes(t.dueDate) }));
+    ts.filter(t => t.estado === 'bloqueado' && !_cockpitSnoozed(t)).forEach(t =>
+      out.push({ sev: 2, kind: 'task', tid: t.id, lid: l.id, tab: 'trabajo', art: an, rel: l.name, text: `Bloqueada: ${s(t.titulo) || 'sin título'}`, ord: 5000 }));
     ((typeof releaseAlerts === 'function') ? releaseAlerts(l) : []).filter(a => a.level === 'red').forEach(a =>
-      out.push({ sev: 3, lid: l.id, tab: 'resumen', art: an, rel: l.name, text: s(a.text), ord: 4000 }));
+      out.push({ sev: 3, kind: 'alert', lid: l.id, tab: 'resumen', art: an, rel: l.name, text: s(a.text), ord: 4000 }));
     const d = (l.date && typeof diasRestantes === 'function') ? diasRestantes(l.date) : null;
     const pct = (typeof releaseReady === 'function') ? releaseReady(l).pct : 0;
-    if (d != null && d >= 0 && d <= 7 && pct < 70) out.push({ sev: 3, lid: l.id, tab: 'resumen', art: an, rel: l.name, text: `Drop en ${d}d con readiness ${pct}%`, ord: d });
+    if (d != null && d >= 0 && d <= 7 && pct < 70) out.push({ sev: 3, kind: 'drop', lid: l.id, tab: 'resumen', art: an, rel: l.name, text: `Drop en ${d}d con readiness ${pct}%`, ord: d });
   });
   out.sort((a, b) => b.sev - a.sev || a.ord - b.ord);
   return out;
+}
+// ── Acciones de la cola (sobre datos propios del equipo) ──
+function _cockpitRerender() {
+  if (typeof renderCockpitPage === 'function' && document.getElementById('page-cockpit') && document.getElementById('page-cockpit').classList.contains('active')) renderCockpitPage();
+  else if (typeof renderCompas === 'function') renderCompas();
+}
+function cockpitSnooze(tid, days) {
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  const t = (typeof taskById === 'function') ? taskById(tid) : null; if (!t) return;
+  const d = new Date(); d.setDate(d.getDate() + (days || 3));
+  if (typeof updateTaskRow === 'function') updateTaskRow(tid, { snoozedUntil: d.toISOString().slice(0, 10) });
+  if (typeof uiToast === 'function') uiToast(`✓ Pospuesta ${days || 3}d`);
+  _cockpitRerender();
+}
+async function cockpitReschedule(tid) {
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  const t = (typeof taskById === 'function') ? taskById(tid) : null; if (!t) return;
+  const val = await uiPrompt('Nueva fecha límite (AAAA-MM-DD):', { title: 'Mover tarea', value: t.dueDate || '' });
+  if (!val) return;
+  if (typeof updateTaskRow === 'function') updateTaskRow(tid, { dueDate: val.trim() });
+  if (typeof uiToast === 'function') uiToast('✓ Fecha movida');
+  _cockpitRerender();
+}
+async function cockpitEscalate(tid) {
+  if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
+  const t = (typeof taskById === 'function') ? taskById(tid) : null; if (!t) return;
+  const who = await uiPrompt('Escalar / reasignar a (nombre o correo del responsable):', { title: 'Escalar tarea', value: t.responsable || '' });
+  if (!who || !who.trim()) return;
+  if (typeof updateTaskRow === 'function') updateTaskRow(tid, { responsable: who.trim() }); // auto-notifica + registra actividad
+  if (typeof uiToast === 'function') uiToast('✓ Escalada a ' + who.trim());
+  _cockpitRerender();
 }
 // Abre el lanzamiento del cockpit (cambia de artista si hace falta + pestaña).
 function cockpitOpen(id, tab) {
@@ -140,11 +174,16 @@ function cockpitBodyHTML() {
   const queue = items.length ? `
     <div class="panel" style="margin:0 0 18px;border-color:rgba(255,77,77,.25)">
       <div class="panel-head"><span class="ph-icon">${icon('warning', 18)}</span><span class="ph-title">Se cae esta semana</span><span class="ph-sub">${items.length} cosa${items.length === 1 ? '' : 's'} que necesitan acción</span></div>
-      ${items.map(it => `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer" onclick="cockpitOpen('${it.lid}','${it.tab}')">
+      ${items.map(it => {
+        const taskActs = (it.kind === 'task' && it.tid) ? `
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Posponer 3 días" onclick="event.stopPropagation();cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Mover fecha límite" onclick="event.stopPropagation();cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Escalar / reasignar" onclick="event.stopPropagation();cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer;flex-wrap:wrap" onclick="cockpitOpen('${it.lid}','${it.tab}')">
         <span class="dot ${it.sev >= 3 ? 'dot--red' : 'dot--yellow'}"></span>
-        <div style="flex:1;min-width:0"><div style="font-size:13px">${esc(it.text)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
-        <span class="chip" style="cursor:pointer">Abrir →</span>
-      </div>`).join('')}
+        <div style="flex:1;min-width:140px"><div style="font-size:13px">${esc(it.text)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${taskActs}<span class="chip" style="cursor:pointer">Abrir →</span></div>
+      </div>`; }).join('')}
     </div>` : `<div class="panel" style="margin:0 0 18px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="dot dot--green"></span> Nada urgente esta semana. Todo bajo control.</div></div>`;
   // ── Tabla de lanzamientos (una fila c/u, ordenada por riesgo) ──
   const rowsHTML = rows.map(({ l, r }) => {
@@ -233,6 +272,53 @@ function cockpitBoardHTML() {
   // El silencio como recompensa: si nada está bloqueado ni en riesgo, el cockpit es una sola línea.
   if (!cols.blocked.items.length && !cols.risk.items.length && typeof allClearHTML === 'function') return line + allClearHTML();
   return line + `<div style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px">${['blocked', 'risk', 'ok', 'post'].map(colHTML).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// COCKPIT — PÁGINA DEDICADA (promovido a primera clase para el discovery de BK)
+// Reusa cockpitBodyHTML / cockpitBoardHTML + un panel de BENCHMARKS MOCKEADO.
+// ⚠️ EL PANEL DE BENCHMARKS ES UNA PRUEBA (Wizard of Oz) — datos SIMULADOS. Ver HANDOFF: QUITAR.
+// ══════════════════════════════════════════
+let _cockpitPageView = 'tabla'; // 'tabla' | 'tablero'
+function setCockpitPageView(v) { _cockpitPageView = v; renderCockpitPage(); }
+// Panel de benchmarks SIMULADO — deja crudo que es una prueba. El lado "tuyo" usa tu snapshot real
+// si existe; la comparación (mediana/p75) es INVENTADA para el discovery. NO es dato real.
+function cockpitBenchmarkMockHTML() {
+  const snaps = (typeof loadReleaseSnapshots === 'function') ? loadReleaseSnapshots() : [];
+  const mine = snaps.slice().sort((a, b) => (b.capturedAt || '').localeCompare(a.capturedAt || ''))[0] || null;
+  const myD7 = mine && mine.resultado_d7 && mine.resultado_d7.streams != null ? mine.resultado_d7.streams : null;
+  const myCycle = mine ? mine.cycle_days_mediana : null;
+  const myReady = mine ? mine.readiness_final_pct : null;
+  const fmtN = n => n == null ? '—' : Number(n).toLocaleString('es');
+  const row = (metric, mineV, med, p75, suffix) => `<tr>
+    <td style="padding:6px 8px">${metric}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-weight:600">${mineV == null ? '—' : fmtN(mineV) + (suffix || '')}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${fmtN(med) + (suffix || '')}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${fmtN(p75) + (suffix || '')}</td></tr>`;
+  const banner = `<div style="display:flex;align-items:center;gap:8px;border:1px dashed var(--risk);border-radius:var(--radius-md);padding:8px 12px;margin-bottom:12px;background:rgba(232,163,61,.06)">
+    <span style="color:var(--risk)">${icon('warning', 15)}</span>
+    <div style="font-size:11px;font-family:var(--font-mono);color:var(--risk);letter-spacing:.5px">PRUEBA · DATOS SIMULADOS — demo de discovery, NO son dato real. Quitar antes de producción.</div></div>`;
+  const src = mine ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">"Tu lanzamiento" = snapshot real de <b>${s(mine.releaseName) || 'tu último release'}</b>. Mediana y p75 = <b>simulados</b> (aún no hay pipeline de benchmarks).</div>`
+    : `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">Aún sin snapshot propio: cierra un release para poblar "Tu lanzamiento". Mediana y p75 = <b>simulados</b>.</div>`;
+  return `<div class="panel" style="margin-top:18px">
+    <div class="panel-head"><span class="ph-icon">${icon('chart', 18)}</span><span class="ph-title">Benchmarks del lanzamiento</span><span class="ph-sub">tu drop vs. el mercado</span></div>
+    ${banner}
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+      <th style="text-align:left;padding:6px 8px">Métrica</th><th style="text-align:right;padding:6px 8px">Tu lanzamiento</th><th style="text-align:right;padding:6px 8px">Mediana*</th><th style="text-align:right;padding:6px 8px">p75*</th></tr></thead>
+      <tbody>
+        ${row('Streams d7', myD7, 18000, 34000, '')}
+        ${row('Cycle time (mediana)', myCycle, 9, 6, 'd')}
+        ${row('Readiness al drop', myReady, 72, 88, '%')}
+      </tbody></table>
+    ${src}
+    <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:6px">* simulado</div></div>`;
+}
+function renderCockpitPage() {
+  const tb = document.getElementById('cockpit-toolbar'); const body = document.getElementById('cockpit-body'); if (!body) return;
+  const seg = (active, opts, fn) => `<div class="view-toggle">${opts.map(o => `<button class="${active === o[0] ? 'active' : ''}" onclick="${fn}('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
+  if (tb) tb.innerHTML = seg(_cockpitPageView, [['tabla', 'Tabla'], ['tablero', 'Tablero']], 'setCockpitPageView');
+  body.innerHTML = (_cockpitPageView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML()) + cockpitBenchmarkMockHTML();
+  if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }
 
 // ══════════════════════════════════════════

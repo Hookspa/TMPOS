@@ -40,6 +40,7 @@ function normalizeTaskRow(t) {
   t.priority = t.priority || 'media';
   t.startDate = t.startDate || '';
   t.dueDate = t.dueDate || '';
+  t.snoozedUntil = t.snoozedUntil || ''; // cockpit: pospuesta hasta esta fecha (sale de la cola de acción hasta entonces)
   t.recurrence = t.recurrence || ''; // '' | 'weekly' | 'monthly'
   t.etiquetas = Array.isArray(t.etiquetas) ? t.etiquetas : [];
   t.checklistInterno = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
