@@ -506,7 +506,7 @@ function showPage(id, skipRecord) {
   const TAB_FOR_PAGE = { compas: 'dashboard', dashboard: 'dashboard', lanzamientos: 'lanzamientos', launch: 'lanzamientos', tareas: 'tareas' };
   const activeTab = TAB_FOR_PAGE[id] || 'mas';
   document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tabPage === activeTab));
-  const titles = {dashboard:'Dashboard',compas:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',compas:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',plananual:'Plan Anual',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   let _ttl = titles[id] || id;
   if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
   document.getElementById('page-title-text').textContent = up(_ttl);
@@ -535,6 +535,7 @@ function showPage(id, skipRecord) {
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
   if (id === 'compas')       renderCompas();
+  if (id === 'plananual')    renderAnnualPlan();
   if (id === 'tareas')       renderTareas();
   if (id === 'campanias')    renderCampanias();
   if (id === 'dashboard')    renderDashboard();
@@ -2959,6 +2960,8 @@ function normalizeArtist(a) {
   a.screenshots = Array.isArray(a.screenshots) ? a.screenshots : [];
   a.bio = (a.bio && typeof a.bio === 'object') ? a.bio : {oneLine:'',short:'',long:''};
   if (typeof a.keywords !== 'string') a.keywords = '';
+  a.plan = (a.plan && typeof a.plan === 'object') ? a.plan : {};                        // plan anual: canciones tentativas del año
+  a.plan.tentatives = Array.isArray(a.plan.tentatives) ? a.plan.tentatives : [];
   return a;
 }
 const SEED_ARTISTS = [
@@ -3209,6 +3212,7 @@ function normalizeTrack(t) {
   t.labelCopy.businessSplit= Array.isArray(t.labelCopy.businessSplit) ? t.labelCopy.businessSplit : [];     // % invitados (socios × madre/aporte/final)
   t.labelCopy.filing       = t.labelCopy.filing || {};                                                      // metadata de filing (video ISRC, P&C, provisto por, O/R + fecha/nombre)
   t.legal = Array.isArray(t.legal) ? t.legal : [];
+  t.marketingPlan = (t.marketingPlan && typeof t.marketingPlan === 'object') ? t.marketingPlan : {}; // plan de marketing en PDF (Supabase Storage): {path,name,size,uploadedAt,uploadedBy}
   t.checklist = t.checklist || {};
   t.checklist.audio   = t.checklist.audio   || {};
   t.checklist.legal   = t.checklist.legal   || {};

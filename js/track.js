@@ -24,7 +24,7 @@ function renderTrackDetail() {
   const host = document.getElementById('launch-detail'); if (!t || !host) return;
   const rd = trackReady(t), pct = rd.total ? Math.round(rd.done / rd.total * 100) : 0;
   const phase = trackPhase(t);
-  const TABS = [['checklist','Checklist'],['audio','Audio'],['labelcopy','Label Copy'],['legal','Legal'],['tareas','Tareas']];
+  const TABS = [['checklist','Checklist'],['audio','Audio'],['labelcopy','Label Copy'],['legal','Legal'],['marketing','Marketing'],['tareas','Tareas']];
   host.innerHTML = `
     <div style="margin-bottom:16px"><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer" onclick="backToRelease()">← ${s(l ? l.name : 'Release')}</span></div>
     <div class="panel" style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
@@ -46,6 +46,7 @@ function renderTrackTab(name) {
   else if (name === 'audio') host.innerHTML = trackAudioHTML(t);
   else if (name === 'labelcopy') host.innerHTML = trackLabelCopyHTML(t);
   else if (name === 'legal') host.innerHTML = trackLegalHTML(t);
+  else if (name === 'marketing') { host.innerHTML = trackMarketingHTML(t); if (t.marketingPlan && t.marketingPlan.path) setTimeout(() => mktLoadViewer(t.id), 0); }
   else if (name === 'tareas') host.innerHTML = trackTareasHTML(t);
 }
 
@@ -551,6 +552,103 @@ function reconcileLegalConflicts(t) {
   });
   if (changed && typeof saveTracks === 'function') saveTracks();
   return changed;
+}
+
+// ══════════════════════════════════════════
+// PLAN DE MARKETING (PDF por canción) — upload real a Supabase Storage + visor embebido
+// Bucket privado 'marketing-plans'; se sirve por signed URL. Degrada limpio si el bucket
+// no existe o no hay nube (muestra el setup). Gated por ver_marketing / editar_marketing.
+// ══════════════════════════════════════════
+const MKT_BUCKET = 'marketing-plans';
+const MKT_MAX_BYTES = 25 * 1024 * 1024;
+function _mktSize(n) { if (!n) return ''; const kb = n / 1024; return kb < 1024 ? Math.round(kb) + ' KB' : (kb / 1024).toFixed(1) + ' MB'; }
+function trackMarketingHTML(t) {
+  const canView = (typeof canDo !== 'function') || canDo('ver_marketing') || canDo('editar_marketing');
+  if (!canView) return `<div class="empty-hint">No tienes acceso al plan de marketing de esta canción.</div>`;
+  const canEdit = (typeof canDo === 'function') && canDo('editar_marketing');
+  const mp = t.marketingPlan || {};
+  const cloud = (typeof authed === 'function') && authed();
+  const fileInput = canEdit ? `<input type="file" id="mkt-file" accept="application/pdf" style="display:none" onchange="uploadMarketingPlan(this)">` : '';
+  const intro = `<div class="empty-hint" style="margin-bottom:12px">Sube el plan de marketing de esta canción en PDF y preséntalo desde Tempo. El archivo vive en tu nube (bucket privado del equipo).</div>`;
+  if (!mp.path) {
+    const zone = canEdit
+      ? (cloud
+        ? `<button class="btn btn-primary" onclick="document.getElementById('mkt-file').click()">${icon('file',14)} Subir PDF</button>
+           <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">PDF · máx 25 MB</div>`
+        : `<div class="empty-hint">Conéctate a la nube (inicia sesión con tu equipo) para subir el plan de marketing.</div>`)
+      : `<div class="empty-hint">Aún no hay plan de marketing cargado.</div>`;
+    return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)||icon('report',18)}</span><span class="ph-title">Plan de Marketing</span><span class="ph-sub">PDF presentable</span></div>${intro}${zone}</div>`;
+  }
+  const meta = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(mp.name)||'plan.pdf'}${mp.size?` · ${_mktSize(mp.size)}`:''}${mp.uploadedAt?` · subido ${new Date(mp.uploadedAt).toLocaleDateString('es-MX')}`:''}${mp.uploadedBy?` · ${s(mp.uploadedBy)}`:''}</div>`;
+  const actions = `<div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm" onclick="openMarketingPlan('${t.id}')">${icon('link',12)} Abrir en pestaña</button>
+    ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="document.getElementById('mkt-file').click()">${icon('refresh',12)} Reemplazar</button>`:''}
+    ${canEdit?`<button class="goal-btn reject" title="Quitar" onclick="removeMarketingPlan('${t.id}')">${icon('close',12)}</button>`:''}</div>`;
+  const viewer = `<div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface2)">
+    <div id="mkt-viewer-status" style="padding:10px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Cargando visor…</div>
+    <iframe id="mkt-frame" title="Plan de marketing" style="display:none;width:100%;height:640px;border:0;background:#fff"></iframe></div>`;
+  return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)||icon('report',18)}</span><span class="ph-title">Plan de Marketing</span>${actions}</div>${meta}${viewer}</div>`;
+}
+async function mktLoadViewer(trackId) {
+  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null;
+  if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
+  const frame = document.getElementById('mkt-frame'); const st = document.getElementById('mkt-viewer-status'); if (!frame) return;
+  try {
+    const sb = (typeof getSb === 'function') ? await getSb() : null;
+    if (!sb) { if (st) st.textContent = 'Conéctate a la nube para ver el PDF.'; return; }
+    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(t.marketingPlan.path, 3600);
+    if (error || !data || !data.signedUrl) { if (st) st.textContent = 'No se pudo cargar el PDF (revisa que el bucket "marketing-plans" exista en Supabase).'; return; }
+    frame.src = data.signedUrl; frame.style.display = 'block'; if (st) st.style.display = 'none';
+  } catch (e) { if (st) st.textContent = 'No se pudo cargar el PDF.'; }
+}
+async function openMarketingPlan(trackId) {
+  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null;
+  if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
+  const w = window.open('', '_blank'); // abrir sync (evita bloqueo de popups) y luego setear la URL firmada
+  try {
+    const sb = (typeof getSb === 'function') ? await getSb() : null; if (!sb) { if (w) w.close(); return; }
+    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(t.marketingPlan.path, 3600);
+    if (error || !data) { if (w) w.close(); if (typeof uiAlert === 'function') uiAlert('No se pudo abrir el PDF.'); return; }
+    if (w) w.location = data.signedUrl;
+  } catch (e) { if (w) w.close(); }
+}
+async function uploadMarketingPlan(input) {
+  if (!requireCan('editar_marketing')) return;
+  const file = input && input.files && input.files[0]; if (!file) return;
+  input.value = ''; // permite re-subir el mismo archivo luego
+  const t = curTrack(); if (!t) return;
+  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { uiAlert('El plan de marketing debe ser un PDF.'); return; }
+  if (file.size > MKT_MAX_BYTES) { uiAlert('El PDF supera el máximo de 25 MB.'); return; }
+  const sb = (typeof getSb === 'function') ? await getSb() : null;
+  if (!sb || !(typeof authed === 'function' && authed())) { uiAlert('Conéctate a la nube (inicia sesión con tu equipo) para subir el plan.'); return; }
+  if (typeof uiToast === 'function') uiToast('Subiendo plan…');
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-80);
+  const teamId = (typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'local';
+  const path = `${teamId}/${t.id}/${Date.now()}-${safe}`;
+  try {
+    const { error } = await sb.storage.from(MKT_BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: true });
+    if (error) {
+      if (/bucket|not found|does not exist/i.test(error.message || '')) uiAlert('Falta crear el bucket "marketing-plans" en Supabase (Storage). Corre supabase/sql/marketing_plans_storage.sql o créalo en el panel.');
+      else uiAlert('No se pudo subir: ' + (error.message || 'error'));
+      return;
+    }
+    const old = t.marketingPlan && t.marketingPlan.path;
+    t.marketingPlan = { path, name: file.name, size: file.size, uploadedAt: new Date().toISOString(), uploadedBy: (typeof _user !== 'undefined' && _user && _user.email) || '' };
+    saveTracks();
+    if (old && old !== path) { try { await sb.storage.from(MKT_BUCKET).remove([old]); } catch (e) {} } // limpia el anterior
+    renderTrackTab('marketing');
+    if (typeof uiToast === 'function') uiToast('✓ Plan de marketing subido');
+    if (typeof logActivity === 'function') { try { logActivity('created', `Plan de marketing subido: ${s(t.title) || 'canción'}`, { trackId: t.id, releaseId: (typeof currentLaunchId !== 'undefined' ? currentLaunchId : null) }); } catch (e) {} }
+  } catch (e) { uiAlert('No se pudo subir el plan: ' + (e.message || e)); }
+}
+async function removeMarketingPlan(trackId) {
+  if (!requireCan('editar_marketing')) return;
+  const t = curTrack(); if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
+  if (typeof uiConfirm === 'function' && !(await uiConfirm('¿Quitar el plan de marketing de esta canción?'))) return;
+  const path = t.marketingPlan.path;
+  t.marketingPlan = {}; saveTracks(); renderTrackTab('marketing');
+  try { const sb = (typeof getSb === 'function') ? await getSb() : null; if (sb) await sb.storage.from(MKT_BUCKET).remove([path]); } catch (e) {}
+  if (typeof uiToast === 'function') uiToast('✓ Plan de marketing quitado');
 }
 
 // ── Tareas (del track) ──

@@ -304,7 +304,7 @@ function renderCompas() {
   const tb = document.getElementById('compas-toolbar'); const body = document.getElementById('compas-body'); if (!body) return;
   const seg = (active, opts, fn) => `<div class="view-toggle">${opts.map(o => `<button class="${active === o[0] ? 'active' : ''}" onclick="${fn}('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
   if (tb) tb.innerHTML = seg(compasView, [['roster', 'Roster'], ['artista', 'Artista']], 'setCompasView')
-    + (compasView === 'roster' ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRosterTab, [['riesgo', 'Riesgo de lanzamientos'], ['salud', 'Salud del roster']], 'setCompasRosterTab')}</div>` : '')
+    + (compasView === 'roster' ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRosterTab, [['riesgo', 'Riesgo de lanzamientos'], ['salud', 'Salud del roster'], ['plan', 'Plan anual']], 'setCompasRosterTab')}</div>` : '')
     + ((compasView === 'roster' && compasRosterTab === 'riesgo') ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRiskView, [['tabla', 'Tabla'], ['tablero', 'Tablero']], 'setCompasRiskView')}</div>` : '');
   if (compasView === 'artista') {
     if (!_compasEmbedded) {
@@ -316,6 +316,8 @@ function renderCompas() {
     return;
   }
   compasRestore(); // si veníamos de Artista, devuelve el dashboard a su sitio
-  body.innerHTML = (compasRosterTab === 'salud') ? rosterHealthHTML() : (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML());
+  body.innerHTML = (compasRosterTab === 'plan' && typeof annualRosterHTML === 'function') ? annualRosterHTML()
+    : (compasRosterTab === 'salud') ? rosterHealthHTML()
+    : (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML());
   if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }
