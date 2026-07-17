@@ -506,7 +506,7 @@ function showPage(id, skipRecord) {
   const TAB_FOR_PAGE = { compas: 'dashboard', dashboard: 'dashboard', lanzamientos: 'lanzamientos', launch: 'lanzamientos', tareas: 'tareas' };
   const activeTab = TAB_FOR_PAGE[id] || 'mas';
   document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tabPage === activeTab));
-  const titles = {dashboard:'Dashboard',compas:'Dashboard',cockpit:'Cockpit',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',plananual:'Plan Anual',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
+  const titles = {dashboard:'Dashboard',compas:'Dashboard',lanzamientos:'Lanzamientos',tareas:'Tareas',campanias:'Campañas activas',plananual:'Plan Anual',label:'Dashboard del Label',perfil:'Perfil del Artista',adn:'ADN Artístico',banco:'Banco de Referencias',ideas:'Generador de Ideas',calendario:'Calendario',objetivos:'Objetivos SMART',metricas:'Métricas',aprendizajes:'Aprendizajes',ia:'IA Estratégica'};
   let _ttl = titles[id] || id;
   if (id === 'launch') { const _l = (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; if (_l) _ttl = _l.name; }
   document.getElementById('page-title-text').textContent = up(_ttl);
@@ -523,7 +523,7 @@ function showPage(id, skipRecord) {
   // "+ Nuevo Lanzamiento" only makes sense where creating a release is the relevant action.
   // Elsewhere (Tareas, Perfil, release detail w/ its own header actions, etc.) it's a dead CTA.
   const _ctaBtn = document.getElementById('btn-global-cta');
-  if (_ctaBtn) _ctaBtn.style.display = (id === 'compas' || id === 'dashboard' || id === 'cockpit' || id === 'lanzamientos') ? '' : 'none';
+  if (_ctaBtn) _ctaBtn.style.display = (id === 'compas' || id === 'dashboard' || id === 'lanzamientos') ? '' : 'none';
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
   if (id === 'banco')      { bancoCargado ? (renderFiltros(), renderBanco()) : iniciarBanco(); }
   if (id === 'calendario') renderCalendar();
@@ -535,7 +535,6 @@ function showPage(id, skipRecord) {
   if (id === 'ia')           renderIA();
   if (id === 'lanzamientos') renderLaunches();
   if (id === 'compas')       renderCompas();
-  if (id === 'cockpit')      renderCockpitPage();
   if (id === 'plananual')    renderAnnualPlan();
   if (id === 'tareas')       renderTareas();
   if (id === 'campanias')    renderCampanias();

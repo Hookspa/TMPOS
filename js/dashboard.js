@@ -127,10 +127,7 @@ function cockpitActionItems() {
   return out;
 }
 // ── Acciones de la cola (sobre datos propios del equipo) ──
-function _cockpitRerender() {
-  if (typeof renderCockpitPage === 'function' && document.getElementById('page-cockpit') && document.getElementById('page-cockpit').classList.contains('active')) renderCockpitPage();
-  else if (typeof renderCompas === 'function') renderCompas();
-}
+function _cockpitRerender() { if (typeof renderCompas === 'function') renderCompas(); } // el cockpit vive dentro del Dashboard (Roster→Riesgo)
 function cockpitSnooze(tid, days) {
   if (typeof requireCan === 'function' && !requireCan('gestionar_tareas')) return;
   const t = (typeof taskById === 'function') ? taskById(tid) : null; if (!t) return;
@@ -275,12 +272,9 @@ function cockpitBoardHTML() {
 }
 
 // ══════════════════════════════════════════
-// COCKPIT — PÁGINA DEDICADA (promovido a primera clase para el discovery de BK)
-// Reusa cockpitBodyHTML / cockpitBoardHTML + un panel de BENCHMARKS MOCKEADO.
-// ⚠️ EL PANEL DE BENCHMARKS ES UNA PRUEBA (Wizard of Oz) — datos SIMULADOS. Ver HANDOFF: QUITAR.
+// COCKPIT — panel de BENCHMARKS MOCKEADO (vive dentro del Dashboard → Roster → Riesgo).
+// ⚠️ ES UNA PRUEBA (Wizard of Oz) — datos SIMULADOS. Ver HANDOFF: QUITAR.
 // ══════════════════════════════════════════
-let _cockpitPageView = 'tabla'; // 'tabla' | 'tablero'
-function setCockpitPageView(v) { _cockpitPageView = v; renderCockpitPage(); }
 // Panel de benchmarks SIMULADO — deja crudo que es una prueba. El lado "tuyo" usa tu snapshot real
 // si existe; la comparación (mediana/p75) es INVENTADA para el discovery. NO es dato real.
 function cockpitBenchmarkMockHTML() {
@@ -312,13 +306,6 @@ function cockpitBenchmarkMockHTML() {
       </tbody></table>
     ${src}
     <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:6px">* simulado</div></div>`;
-}
-function renderCockpitPage() {
-  const tb = document.getElementById('cockpit-toolbar'); const body = document.getElementById('cockpit-body'); if (!body) return;
-  const seg = (active, opts, fn) => `<div class="view-toggle">${opts.map(o => `<button class="${active === o[0] ? 'active' : ''}" onclick="${fn}('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
-  if (tb) tb.innerHTML = seg(_cockpitPageView, [['tabla', 'Tabla'], ['tablero', 'Tablero']], 'setCockpitPageView');
-  body.innerHTML = (_cockpitPageView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML()) + cockpitBenchmarkMockHTML();
-  if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }
 
 // ══════════════════════════════════════════
@@ -402,8 +389,10 @@ function renderCompas() {
     return;
   }
   compasRestore(); // si veníamos de Artista, devuelve el dashboard a su sitio
-  body.innerHTML = (compasRosterTab === 'plan' && typeof annualRosterHTML === 'function') ? annualRosterHTML()
-    : (compasRosterTab === 'salud') ? rosterHealthHTML()
-    : (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML());
+  let inner;
+  if (compasRosterTab === 'plan' && typeof annualRosterHTML === 'function') inner = annualRosterHTML();
+  else if (compasRosterTab === 'salud') inner = rosterHealthHTML();
+  else inner = (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML()) + (typeof cockpitBenchmarkMockHTML === 'function' ? cockpitBenchmarkMockHTML() : ''); // el cockpit vive aquí (una sola ventana)
+  body.innerHTML = inner;
   if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }
