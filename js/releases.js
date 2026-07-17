@@ -684,7 +684,7 @@ function renderIdeas() {
         <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()">${(ideas.length >= 12 ? [6,8,10,12,16,20,24] : [6,8,10,12]).map(n => `<option ${n===8?'selected':''}>${n}</option>`).join('')}</select>
         ${ideas.length >= 12 ? `<span style="font-size:10px;color:#4ade80;font-family:var(--font-mono)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">Selecciona 12+ referencias para generar hasta 24</span>`}
         <button class="btn btn-primary" onclick="generarIdeasPlantilla()">${icon('zap',13)} Generar (plantillas)</button>
-        <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:rgba(255,107,48,0.35);color:var(--accent)">${icon('ai',13)} Generar con IA</button>
+        <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)">${icon('ai',13)} Generar con IA</button>
       </div>
       <div id="gen-cost" style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);line-height:1.6"></div>
     </div>
@@ -1651,7 +1651,7 @@ function awPanelHTML(step) {
     <div class="wiz-field"><textarea class="textarea" style="min-height:150px" oninput="awData.fan=this.value" placeholder="Edad, qué siente, qué escucha, dónde vive, qué le mueve…">${s(awData.fan)}</textarea></div>`;
   // step 6
   return `<h2>REVISIÓN IA</h2><div class="sub">La IA toma tus respuestas y genera tu bio, tono, narrativa y keywords. Esto se vuelve el "system prompt base" de todos los generadores.</div>
-    <div style="margin-bottom:6px"><button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="awGenerar()">${icon('ai',13)} ${awData.generated?'Regenerar':'Generar'} ADN con IA</button></div>
+    <div style="margin-bottom:6px"><button class="btn btn-ghost" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)" onclick="awGenerar()">${icon('ai',13)} ${awData.generated?'Regenerar':'Generar'} ADN con IA</button></div>
     ${aiHintHTML(buildADNPrompt(), 800)}
     <div id="aw-result" style="margin-top:14px">${awData.generated ? awResultHTML(awData.generated) : '<div class="empty-hint">Genera el ADN para revisarlo. (También puedes crear el artista sin IA y completar el ADN luego en su perfil.)</div>'}</div>`;
 }

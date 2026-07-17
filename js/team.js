@@ -614,7 +614,7 @@ function renderTeamModal() {
   // Selector de equipos (si hay más de uno) + crear nuevo
   const teamsList = _teams.map(t => {
     const active = t.id === _teamId;
-    return `<div onclick="switchTeam('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;background:${active?'rgba(255,107,48,0.06)':'transparent'}">
+    return `<div onclick="switchTeam('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;background:${active?'color-mix(in srgb, var(--accent) 6%, transparent)':'transparent'}">
       <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(t.name||'?').slice(0,1)}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:500">${s(t.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(t.role)}</div></div>
       ${active?'<span style="color:var(--accent);font-size:12px">● activo</span>':'<span style="font-size:11px;color:var(--text-dim)">cambiar →</span>'}

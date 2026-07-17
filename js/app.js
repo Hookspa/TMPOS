@@ -653,7 +653,7 @@ function renderBanco() {
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.custom ? customBadgeHTML(r) : ''}
-        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid rgba(255,107,48,0.2);z-index:2">↗ VER</a>` : ''}
+        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
         <div class="ref-page-title">${s(trText(r.title))}</div>
@@ -672,7 +672,7 @@ function renderBanco() {
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 4px 0;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">Cargar de a</span>
-        ${[10,25,50].map(n => `<button onclick="cambiarPorPagina(${n})" style="padding:4px 9px;border-radius:3px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border:1px solid ${porPagina===n?'var(--accent)':'var(--border)'};background:${porPagina===n?'rgba(255,107,48,0.1)':'transparent'};color:${porPagina===n?'var(--accent)':'var(--text-muted)'}">${n}</button>`).join('')}
+        ${[10,25,50].map(n => `<button onclick="cambiarPorPagina(${n})" style="padding:4px 9px;border-radius:3px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border:1px solid ${porPagina===n?'var(--accent)':'var(--border)'};background:${porPagina===n?'color-mix(in srgb, var(--accent) 10%, transparent)':'transparent'};color:${porPagina===n?'var(--accent)':'var(--text-muted)'}">${n}</button>`).join('')}
       </div>
       <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">${shown} de ${filtered.length}</span>
       <div style="display:flex;align-items:center;gap:6px">
@@ -905,11 +905,11 @@ function openRefBoxdrop(idx) {
   const selLabel = a ? `Seleccionar para ${s(a.name)}` : 'Seleccionar idea';
   document.getElementById('bd-actions').innerHTML = `
     <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'rgba(255,107,48,0.3)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'color-mix(in srgb, var(--accent) 30%, transparent)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
     <button onclick="generarContenidoBanco(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.35);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
-      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,107,48,0.3);background:rgba(255,107,48,0.06);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
+      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
     ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
     ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
     <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
@@ -1235,7 +1235,7 @@ function renderCalGrid() {
     const div = document.createElement('div');
     div.className = 'cal-day' + (isToday ? ' today' : '') + (outMonth ? '' : ' addable');
     if (calRange === '1m') div.style.minHeight = '78px';
-    if (isDrop) div.style.borderColor = 'rgba(255,107,48,0.5)';
+    if (isDrop) div.style.borderColor = 'color-mix(in srgb, var(--accent) 50%, transparent)';
     if (outMonth) div.style.opacity = '0.38';
     div.innerHTML = `<div class="cal-day-num">${day.getDate()}</div>${dropBadge}${itemsHTML}`;
     // Click en el día (zona vacía) = crear post directo en el calendario, sin tocar el banco.
@@ -1441,7 +1441,7 @@ function buildCalDoc(printMode) {
   const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p.id}">${_pieceDetailHTML(p)}</div>`).join('');
   const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
   const CSS = `
-    :root{--ac:#FF6B30;--bg:#0a0b0c;--surf:#131517;--card:#191c1f;--bd:#262a2e;--tx:#ECEDEE;--mut:#9BA1A6;--dim:#6B7176}
+    :root{--ac:#FF6B35;--bg:#0d0d0f;--surf:#1a1a1a;--card:#232326;--bd:#38383a;--tx:#FFFFFF;--mut:#98989D;--dim:#78787d}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5}
     a{color:var(--ac)} .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
     .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:22px}
@@ -1824,7 +1824,7 @@ function prodContentHTML(ci, p) {
   const promptStr = buildContentPrompt(ci);
   return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
+      <button class="btn btn-ghost" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
       ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
@@ -2020,7 +2020,7 @@ function renderPOW() {
       <h4>${icon('ideas',14)} Recomendación IA</h4>
       <div id="pow-rec">${powRecommendation
         ? `<div class="ai-field">${s(powRecommendation)}</div>`
-        : `<button class="btn btn-ghost" style="border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
+        : `<button class="btn btn-ghost" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)" onclick="generarPOWRecomendacion()">${icon('ai',13)} Generar recomendación</button>${aiHintHTML(powRecPrompt(d), 300)}`}</div>
     </div>`;
 }
 async function generarPOWRecomendacion() {
@@ -2350,7 +2350,7 @@ function guardarMetaManual() {
 const PLAT_ICON = { spotify:['headphones','rgba(74,222,128,0.12)'], tiktok:['phone','rgba(255,0,80,0.12)'], instagram:['camera','rgba(225,48,108,0.12)'], youtube:['play','rgba(255,0,0,0.12)'], apple:['apple','rgba(255,255,255,0.08)'] };
 function platIcon(p) {
   const key = Object.keys(PLAT_ICON).find(k => s(p).toLowerCase().includes(k));
-  return PLAT_ICON[key] || ['goals','rgba(255,107,48,0.12)'];
+  return PLAT_ICON[key] || ['goals','color-mix(in srgb, var(--accent) 12%, transparent)'];
 }
 function buildGoalsPrompt(a) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
@@ -2502,7 +2502,7 @@ function renderIA() {
   host.innerHTML = `
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('ai',18)}</span><span class="ph-title">Recomendaciones para ${esc(art.name)}</span>
-        <button class="btn btn-ghost" style="margin-left:auto;border-color:rgba(255,107,48,0.35);color:var(--accent)" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
+        <button class="btn btn-ghost" style="margin-left:auto;border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)" onclick="generarEstrategiaIA()">${icon('ai',13)} Generar recomendaciones</button>
       </div>
       ${aiHintHTML(promptStr, 900)}
     </div>
@@ -3498,6 +3498,8 @@ async function renderDashTrend(art, ls) {
   const line = (css.getPropertyValue('--text-muted').trim()) || '#9BA1A6';
   const grid = (css.getPropertyValue('--border').trim()) || 'rgba(255,255,255,.08)';
   const txt = (css.getPropertyValue('--text-muted').trim()) || '#8a8a8a';
+  const surf = (css.getPropertyValue('--surface').trim()) || '#1a1a1a';   // tooltip theme-aware (antes era verde-negro hardcodeado)
+  const txtStrong = (css.getPropertyValue('--text').trim()) || '#FFFFFF';
   const ctx = cv.getContext('2d');
   if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} }
   _dashChart = new Chart(ctx, {
@@ -3505,7 +3507,7 @@ async function renderDashTrend(art, ls) {
     data: { labels: series.dates.map(fmtDateShort), datasets: [{ data: series.values, borderColor: line, backgroundColor: 'transparent', fill: false, tension: 0.32, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: line, pointBorderColor: line }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,12,10,.92)', borderColor: grid, borderWidth: 1, padding: 10, displayColors: false, callbacks: { label: c => fmtNum(c.parsed.y) } } },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: surf, titleColor: txtStrong, bodyColor: txtStrong, borderColor: grid, borderWidth: 1, padding: 10, displayColors: false, callbacks: { label: c => fmtNum(c.parsed.y) } } },
       scales: { x: { grid: { display: false }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 }, callback: v => fmtNum(v) }, beginAtZero: false } }
     }
   });
