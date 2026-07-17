@@ -52,8 +52,9 @@ function _planBarHTML(bar, y) {
   const col = planStatusColor(bar.status, bar.tentative);
   const dropInYear = dropMs >= start && dropMs < end;
   const dash = bar.tentative ? 'border:1px dashed var(--border);' : '';
-  const campSeg = R > C ? `<div style="position:absolute;left:${C}%;width:${R - C}%;top:6px;height:8px;background:var(--raise);border-radius:var(--radius-sm) 0 0 var(--radius-sm);${dash}"></div>` : '';
-  const postSeg = P > R ? `<div style="position:absolute;left:${R}%;width:${P - R}%;top:8px;height:4px;background:var(--surface2);border:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0"></div>` : '';
+  // campaña = gris tenue visible en ambos modos (antes usaba --raise = blanco en claro → invisible).
+  const campSeg = R > C ? `<div style="position:absolute;left:${C}%;width:${R - C}%;top:6px;height:8px;background:color-mix(in srgb, var(--muted) 30%, transparent);border-radius:var(--radius-sm) 0 0 var(--radius-sm);${dash}"></div>` : '';
+  const postSeg = P > R ? `<div style="position:absolute;left:${R}%;width:${P - R}%;top:8px;height:4px;background:color-mix(in srgb, var(--muted) 12%, transparent);border:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0"></div>` : '';
   const drop = dropInYear ? `<div title="Estreno ${s(bar.date)}" style="position:absolute;left:${R}%;top:2px;width:8px;height:16px;margin-left:-4px;background:${col};border-radius:2px"></div>` : '';
   return `<div class="pl-track" style="position:relative;flex:1;min-width:0;height:20px;background:repeating-linear-gradient(90deg,var(--hairline),var(--hairline) 1px,transparent 1px,transparent 8.3333%)">${campSeg}${postSeg}${drop}</div>`;
 }
@@ -96,7 +97,7 @@ function _planGanttForArtist(artistId, y) {
 function planLegendHTML() {
   const sw = (col, lbl) => `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:${col}"></span>${lbl}</span>`;
   return `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:10px">
-    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:20px;height:6px;background:var(--raise);border-radius:2px"></span>Campaña</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:20px;height:6px;background:color-mix(in srgb, var(--muted) 30%, transparent);border-radius:2px"></span>Campaña</span>
     <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:20px;height:3px;background:var(--surface2);border:1px solid var(--border);border-radius:2px"></span>Post-lanzamiento</span>
     ${sw('var(--ok)', 'En campaña')} ${sw('var(--risk)', 'En análisis')} ${sw('var(--blocked)', 'Bloqueado')} ${sw('var(--muted)', 'Planeando')} ${sw('var(--done)', 'Lanzado')} ${sw('var(--dim)', 'Tentativa')}</div>`;
 }

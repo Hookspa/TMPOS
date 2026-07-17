@@ -600,7 +600,7 @@ function catBadgeHTML(cats, small) {
 function forBadgeHTML(fors, small) {
   const sz = small ? '9px' : '10px';
   return (fors || []).filter(Boolean).map(f =>
-    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
+    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
   ).join('');
 }
 function renderBancoContext() {
