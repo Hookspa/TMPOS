@@ -119,9 +119,9 @@ function infoTip(text){ _infoTipStyles(); return `<span class="info-tip" tabinde
 function secInfo(label, text){ return `<div class="sec-label">${esc(label)}${text ? infoTip(text) : ''}</div>`; }
 // Sub-pestañas: [id, etiqueta, ícono]. id 'reportes'/'actividad' = panel HTML; el resto = página global embebida.
 const TAB_GROUPS = {
-  campana:    [['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar']],
+  campana:    [['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar'],['marketing','Plan de marketing','megaphone']],
   resultados: [['metricas','Métricas','metrics'],['aprendizajes','Aprendizajes','learnings'],['ia','IA estratégica','ai'],['reportes','Reportes','report']],
-  trabajo:    [['tareas','Tareas','checklist'],['actividad','Actividad','activity']],
+  trabajo:    [['tareas','Tareas','checklist'],['checklists','Checklists','checklist'],['actividad','Actividad','activity']],
 };
 // Funciones de render de cada página global embebible.
 const EMBED_RENDER = { objetivos:'renderObjetivos', ideas:'renderIdeas', calendario:'renderCalendar', metricas:'renderMetricas', aprendizajes:'renderAprendizajes', ia:'renderIA' };
@@ -150,7 +150,7 @@ const LEGACY_TAB = {
   marketing:['campana','objetivos'], contenido:['campana','ideas'], data:['resultados','metricas'],
   objetivos:['campana','objetivos'], ideas:['campana','ideas'], calendario:['campana','calendario'],
   metricas:['resultados','metricas'], aprendizajes:['resultados','aprendizajes'], ia:['resultados','ia'], reportes:['resultados','reportes'],
-  tareas:['trabajo','tareas'], actividad:['trabajo','actividad'],
+  tareas:['trabajo','tareas'], actividad:['trabajo','actividad'], checklists:['trabajo','checklists'],
 };
 function setReleaseTab(name){ _releaseTab = name; document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name)); renderReleaseTab(name); document.querySelector('.content').scrollTop = 0; }
 function setReleaseSubTab(group, sub){ _releaseSubTab[group]=sub; renderReleaseTab(group); }
@@ -185,6 +185,8 @@ function renderReleaseGroup(group, l){
   const body = document.getElementById('release-sub-body');
   if(sub==='reportes'){ releaseRestorePages(); body.innerHTML = releaseReportesHTML(l); }
   else if(sub==='tareas'){ releaseRestorePages(); body.innerHTML = tareasPanelHTML('release'); }
+  else if(sub==='checklists'){ releaseRestorePages(); body.innerHTML = (typeof releaseChecklistsHTML==='function') ? releaseChecklistsHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(body); }
+  else if(sub==='marketing'){ releaseRestorePages(); body.innerHTML = (typeof releaseMarketingHTML==='function') ? releaseMarketingHTML(l) : ''; if(l.marketingPlan && l.marketingPlan.path && typeof mktLoadViewer==='function') setTimeout(()=>mktLoadViewer(),0); if(typeof hydrateIcons==='function') hydrateIcons(body); }
   else if(sub==='actividad'){ releaseRestorePages(); body.innerHTML = (typeof releaseActividadHTML==='function') ? releaseActividadHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(body); }
   else embedPageInto(body, sub); // objetivos/ideas/calendario/metricas/aprendizajes/ia
 }
@@ -216,9 +218,12 @@ function releaseLegalHTML(l){
     const issuesHTML = issues.length
       ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${issues.map(issueRow).join('')}</div>`
       : `<div style="margin-top:8px;font-size:12px;color:var(--ok)">${icon('check',12)} Titularidad completa — splits al 100%, writers con publisher/PRO.</div>`;
-    const docsHTML = legal.length
-      ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${legal.map(d=>`${d.source==='labelcopy'?icon('flag',10)+' ':''}${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
-      : `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Sin documentos legales cargados.</div>`;
+    // Documentos legales EDITABLES inline (antes había que entrar a la canción). Si no puede editar, resumen de solo lectura.
+    const docsHTML = canLegal
+      ? `<div style="margin-top:10px">${(typeof trackLegalHTML==='function') ? trackLegalHTML(t) : ''}</div>`
+      : (legal.length
+        ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${legal.map(d=>`${d.source==='labelcopy'?icon('flag',10)+' ':''}${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
+        : `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Sin documentos legales cargados.</div>`);
     const bulkBtn = (canLegal && unrouted.length>1) ? `<button class="btn btn-ghost btn-sm" onclick="routeAllIssuesToLegal('${t.id}')">${icon('plus',12)} Rutear ${unrouted.length} a Legal</button>` : '';
     return `<div class="panel" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -227,7 +232,6 @@ function releaseLegalHTML(l){
         ${stateChip}
         ${bulkBtn}
         <button class="btn btn-ghost btn-sm" onclick="openTrack('${t.id}','labelcopy')">${icon('file',13)} Label Copy</button>
-        <button class="btn btn-ghost btn-sm" onclick="openTrack('${t.id}','legal')">${icon('signature',13)} Documentos</button>
       </div>
       ${issuesHTML}
       ${docsHTML}

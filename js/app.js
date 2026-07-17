@@ -3073,6 +3073,7 @@ function normalizeLaunch(l) {
   // CRM (Sprint 4): finanzas
   l.expenses = Array.isArray(l.expenses) ? l.expenses : []; // [{id, monto, categoria, proveedor, fecha, metodo, reciboLink, note}]
   l.recoup = (l.recoup && typeof l.recoup === 'object') ? l.recoup : {}; // {ingresos, inversionTotal?}
+  l.marketingPlan = (l.marketingPlan && typeof l.marketingPlan === 'object') ? l.marketingPlan : {}; // plan de marketing en PDF (Supabase Storage): {path,name,size,uploadedAt,uploadedBy}
   return l;
 }
 // Lanzamientos REALES del artista (excluye campañas evergreen, que son launches type:'evergreen').

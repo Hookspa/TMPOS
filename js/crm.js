@@ -91,9 +91,10 @@ function _taskScope(kind){
 }
 function _taskList(kind){
   if(kind==='track'){ const t=(typeof curTrack==='function')?curTrack():null; return t?tasksOfTrack(t.id):[]; }
-  return tasksOfRelease(currentLaunchId);
+  // Release: incluye las tareas de nivel release Y las de sus canciones (centralización — la canción ya no tiene pestaña Tareas).
+  return (typeof tasks!=='undefined') ? tasks.filter(t=>t.releaseId===currentLaunchId) : [];
 }
-function _taskRerender(kind){ if(kind==='track') renderTrackTab('tareas'); else renderReleaseTab('tareas'); }
+function _taskRerender(kind){ if(typeof renderReleaseTab==='function' && document.getElementById('release-tab-body')) renderReleaseTab('tareas'); else if(typeof renderTareas==='function') renderTareas(); } // tareas (release+canción) viven en Trabajo del release
 function tareasPanelHTML(kind){
   const arr=_taskList(kind); const editable=canDo('gestionar_tareas');
   const rows=arr.map(tk=>{ const done=tk.estado===TASK_DONE; const overdue=tk.dueDate && !done && new Date(tk.dueDate+'T00:00:00')<new Date(new Date().toDateString());
@@ -127,7 +128,7 @@ function releaseAlerts(l){
   const rc = l.releaseChecklist||{};
   if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:''), action:{label:'Archivos →', fn:`setReleaseTab('archivos')`}});
   ts.forEach(t=>{ const lg=(t.checklist&&t.checklist.legal)||{}; const a=(t.checklist&&t.checklist.audio)||{};
-    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`openTrack('${t.id}','legal')`}});
+    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Checklist →', fn:`setReleaseTab('checklists')`}});
     if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}','audio')`}});
     // Ruteo legal: conflicto de titularidad del Label Copy (split ≠ 100%) → salta a la pestaña Legal del release
     const iss=(typeof labelCopyIssues==='function')?labelCopyIssues(t):[];

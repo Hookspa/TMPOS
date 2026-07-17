@@ -1,11 +1,11 @@
 // ══════════════════════════════════════════
 // FICHA DE TRACK (dentro del release — pestañas) — Sprint 1
 // ══════════════════════════════════════════
-let currentTrackId = null, _trackTab = 'checklist';
+let currentTrackId = null, _trackTab = 'audio';
 function curTrack() { return tracks.find(x => x.id === currentTrackId); }
 function openTrack(id, tab) {
   if (typeof navRecord === 'function') navRecord(); // graba la vista del release antes de entrar al track
-  currentTrackId = id; _trackTab = tab || 'checklist'; // tab opcional: saltar directo a labelcopy/legal/audio…
+  currentTrackId = id; _trackTab = (tab === 'labelcopy' || tab === 'audio') ? tab : 'audio'; // la canción solo tiene Audio · Label Copy
   if (typeof _viewingTrack !== 'undefined') _viewingTrack = true;
   renderTrackDetail();
   const c = document.querySelector('.content'); if (c) c.scrollTop = 0;
@@ -24,7 +24,7 @@ function renderTrackDetail() {
   const host = document.getElementById('launch-detail'); if (!t || !host) return;
   const rd = trackReady(t), pct = rd.total ? Math.round(rd.done / rd.total * 100) : 0;
   const phase = trackPhase(t);
-  const TABS = [['checklist','Checklist'],['audio','Audio'],['labelcopy','Label Copy'],['legal','Legal'],['marketing','Marketing'],['tareas','Tareas']];
+  const TABS = [['audio','Audio'],['labelcopy','Label Copy']];
   host.innerHTML = `
     <div style="margin-bottom:16px"><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer" onclick="backToRelease()">← ${s(l ? l.name : 'Release')}</span></div>
     <div class="panel" style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
@@ -42,17 +42,26 @@ function renderTrackDetail() {
 function setTrackTab(name) { _trackTab = name; document.querySelectorAll('#track-tabbar .mtab').forEach(b => b.classList.toggle('active', b.dataset.ttab === name)); renderTrackTab(name); }
 function renderTrackTab(name) {
   const t = curTrack(); const host = document.getElementById('track-tab-body'); if (!t || !host) return;
-  if (name === 'checklist') host.innerHTML = trackChecklistHTML(t);
-  else if (name === 'audio') host.innerHTML = trackAudioHTML(t);
-  else if (name === 'labelcopy') host.innerHTML = trackLabelCopyHTML(t);
-  else if (name === 'legal') host.innerHTML = trackLegalHTML(t);
-  else if (name === 'marketing') { host.innerHTML = trackMarketingHTML(t); if (t.marketingPlan && t.marketingPlan.path) setTimeout(() => mktLoadViewer(t.id), 0); }
-  else if (name === 'tareas') host.innerHTML = trackTareasHTML(t);
+  // La canción solo tiene Audio · Label Copy. Checklist/Legal/Tareas/Marketing se centralizaron
+  // en el release (Trabajo · Legal · Campaña) y en la página global Tareas.
+  if (name === 'labelcopy') host.innerHTML = trackLabelCopyHTML(t);
+  else host.innerHTML = trackAudioHTML(t);
 }
 
 // ── Checklist (editable + templates propios) ──
 const CHECKLIST_GROUP_ORDER = ['audio', 'legal', 'distrib', 'otros'];
+// ── Contexto de track para checklist/legal renderizados FUERA de la ficha del track ──
+// (el checklist vive en Trabajo del release y el legal en la pestaña Legal; ambos por-canción).
+// Los handlers reciben un trackId explícito; _ctxTrack cae a ese contexto o al track activo.
+let _checklistCtx = null;
+function _ctxTrack(tid) { const id = tid || _checklistCtx || (typeof currentTrackId !== 'undefined' ? currentTrackId : null); return id ? (tracks.find(x => x.id === id) || null) : null; }
+// Re-render tras editar: si estamos en una pestaña del release, re-render esa pestaña; si no, la ficha del track.
+function _rerenderReleaseCtx() {
+  if (typeof _releaseTab !== 'undefined' && typeof renderReleaseTab === 'function' && document.getElementById('release-tab-body')) renderReleaseTab(_releaseTab);
+  else if (typeof renderTrackDetail === 'function') renderTrackDetail();
+}
 function trackChecklistHTML(t) {
+  _checklistCtx = t.id;
   const def = trackChecklistDef(t), c = t.checklist || {};
   const editable = canDo('editar_crm');
   const custom = !!t.checklistDef;
@@ -60,63 +69,63 @@ function trackChecklistHTML(t) {
   // toolbar de templates
   const toolbar = `<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Plantilla:</span>
-    <select class="input" style="width:auto;padding:5px 8px;font-size:12px" onchange="if(this.value)applyChecklistTemplate(this.value)">
+    <select class="input" style="width:auto;padding:5px 8px;font-size:12px" onchange="if(this.value)applyChecklistTemplate(this.value,'${t.id}')">
       <option value="">${custom ? 'Personalizada' : 'Por defecto'}…</option>
       <option value="__default">↺ Restablecer al default</option>
       ${tpls.map(tp => `<option value="${tp.id}">${s(tp.name)}</option>`).join('')}
     </select>
-    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate()">${icon('save',13)} Guardar como plantilla…</button>` : ''}
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel()">${icon('checklist',13)} Gestionar</button>
+    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate('${t.id}')">${icon('save',13)} Guardar como plantilla…</button>` : ''}
+    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel('${t.id}')">${icon('checklist',13)} Gestionar</button>
     <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
   </div>`;
   const groups = CHECKLIST_GROUP_ORDER.filter(g => def[g] && def[g].length).map(g => `
-    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g] || g}</span>${editable ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:3px 9px" onclick="addChecklistItem('${g}')">+ ítem</button>` : ''}</div>
+    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g] || g}</span>${editable ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:3px 9px" onclick="addChecklistItem('${g}','${t.id}')">+ ítem</button>` : ''}</div>
       <div style="display:flex;flex-direction:column">
         ${def[g].map(([k, label]) => { const on = !!(c[g] && c[g][k]); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}')"> ${s(label)}</label>
-          ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}')">${icon('close',12)}</button>` : ''}
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}','${t.id}')"> ${s(label)}</label>
+          ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}','${t.id}')">${icon('close',12)}</button>` : ''}
         </div>`; }).join('')}
       </div></div>`).join('');
-  const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:12px" onclick="addChecklistItem('otros')">+ Otra tarea</button>` : '';
+  const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:12px" onclick="addChecklistItem('otros','${t.id}')">+ Otra tarea</button>` : '';
   return toolbar + groups + addGroup;
 }
-function toggleTrackCheck(g, k) {
+function toggleTrackCheck(g, k, tid) {
   if (!requireCan('editar_crm')) return;
-  const t = curTrack(); if (!t) return;
+  const t = _ctxTrack(tid); if (!t) return;
   t.checklist = t.checklist || {}; t.checklist[g] = t.checklist[g] || {};
   t.checklist[g][k] = !t.checklist[g][k];
-  saveTracks(); renderTrackDetail(); // recalcula fase + barra
+  saveTracks(); _rerenderReleaseCtx(); // recalcula fase + barra
   if (typeof runAutomations === 'function') runAutomations(); // legal completo → desbloquear distribución
 }
 // Materializa la definición propia del track (para editar sin tocar la default)
 function ensureTrackDef(t) { if (!t.checklistDef) t.checklistDef = cloneDef(trackChecklistDef(t)); t.checklistDef.otros = t.checklistDef.otros || []; return t.checklistDef; }
-async function addChecklistItem(group) {
+async function addChecklistItem(group, tid) {
   if (!requireCan('editar_crm')) return;
-  const t = curTrack(); if (!t) return;
+  const t = _ctxTrack(tid); if (!t) return;
   const label = (await uiPrompt('Nombre de la tarea/ítem del checklist:', { title: 'Nuevo ítem de checklist' }) || '').trim();
   if (!label) return;
   const def = ensureTrackDef(t); def[group] = def[group] || [];
   def[group].push([checklistSlug(label), label]);
-  saveTracks(); renderTrackTab('checklist');
+  saveTracks(); _rerenderReleaseCtx();
 }
-function removeChecklistItem(group, key) {
+function removeChecklistItem(group, key, tid) {
   if (!requireCan('editar_crm')) return;
-  const t = curTrack(); if (!t) return;
+  const t = _ctxTrack(tid); if (!t) return;
   const def = ensureTrackDef(t);
   if (def[group]) def[group] = def[group].filter(it => it[0] !== key);
   if (t.checklist && t.checklist[group]) delete t.checklist[group][key]; // limpiar estado
-  saveTracks(); renderTrackDetail();
+  saveTracks(); _rerenderReleaseCtx();
 }
-function applyChecklistTemplate(id) {
-  const t = curTrack(); if (!t) return;
+function applyChecklistTemplate(id, tid) {
+  const t = _ctxTrack(tid); if (!t) return;
   if (!requireCan('editar_crm')) return;
-  if (id === '__default') { t.checklistDef = null; saveTracks(); renderTrackDetail(); return; }
+  if (id === '__default') { t.checklistDef = null; saveTracks(); _rerenderReleaseCtx(); return; }
   const tp = getChecklistTemplates().find(x => x.id === id);
-  if (tp) { t.checklistDef = cloneDef(tp.def); saveTracks(); renderTrackDetail(); uiToast('✓ Plantilla aplicada'); }
+  if (tp) { t.checklistDef = cloneDef(tp.def); saveTracks(); _rerenderReleaseCtx(); uiToast('✓ Plantilla aplicada'); }
 }
-async function saveChecklistAsTemplate() {
+async function saveChecklistAsTemplate(tid) {
   if (!requireCan('editar_crm')) return;
-  const t = curTrack(); if (!t) return;
+  const t = _ctxTrack(tid); if (!t) return;
   const name = (await uiPrompt('Nombre de la plantilla (para reusarla en otros lanzamientos):', { title: 'Guardar plantilla' }) || '').trim();
   if (!name) return;
   const tpls = getChecklistTemplates();
@@ -124,15 +133,30 @@ async function saveChecklistAsTemplate() {
   const def = cloneDef(trackChecklistDef(t));
   if (existing) existing.def = def; else tpls.push({ id: 'tpl-' + Date.now(), name, def });
   setChecklistTemplates(tpls);
-  renderTrackTab('checklist'); uiToast('✓ Plantilla guardada · disponible para tu equipo');
+  _rerenderReleaseCtx(); uiToast('✓ Plantilla guardada · disponible para tu equipo');
+}
+// Checklists de lanzamiento (Trabajo del release): el checklist "Listo para lanzar" de cada canción.
+function releaseChecklistsHTML(l) {
+  const ts = (typeof tracksOfLaunch === 'function') ? tracksOfLaunch(l) : [];
+  if (!ts.length) return `${(typeof secInfo === 'function') ? secInfo('Checklists de lanzamiento', 'El checklist "Listo para lanzar" de cada canción. Alimenta la barra de readiness del track y del release.') : ''}<div class="empty-hint">Este lanzamiento no tiene canciones. Agrégalas en la pestaña <b>Música</b>.</div>`;
+  const blocks = ts.map(t => {
+    const rd = (typeof trackReady === 'function') ? trackReady(t) : { done: 0, total: 0 };
+    const pct = rd.total ? Math.round(rd.done / rd.total * 100) : 0;
+    return `<div style="margin:18px 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-family:var(--font-display);font-size:20px;letter-spacing:.5px">${s(t.title) || '(sin título)'}</div>
+        <div style="flex:1;min-width:140px;max-width:280px">${(typeof readyBarHTML === 'function') ? readyBarHTML(pct, 'LISTO PARA LANZAR') : ''}</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${rd.done}/${rd.total}</div></div>
+      ${trackChecklistHTML(t)}`;
+  }).join('');
+  return `${(typeof secInfo === 'function') ? secInfo('Checklists de lanzamiento', 'El checklist "Listo para lanzar" de cada canción. Alimenta la barra de readiness del track y del release.') : ''}${blocks}`;
 }
 // ── Panel de gestión de plantillas (aplicar · duplicar · renombrar · eliminar) ──
-function abrirTemplatesPanel() { renderTemplatesPanel(); document.getElementById('modal-templates').classList.add('open'); }
+function abrirTemplatesPanel(tid) { if (tid) _checklistCtx = tid; renderTemplatesPanel(); document.getElementById('modal-templates').classList.add('open'); }
 function cerrarTemplates(e) { if (!e || e.target === document.getElementById('modal-templates')) document.getElementById('modal-templates').classList.remove('open'); }
 function _tplItemCount(def) { return Object.keys(def || {}).reduce((a, g) => a + ((def[g] || []).length), 0); }
 function renderTemplatesPanel() {
   const tpls = getChecklistTemplates();
-  const hasTrack = !!curTrack();
+  const hasTrack = !!_ctxTrack(null);
   const rows = tpls.map(tp => `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
       <div style="flex:1;min-width:140px"><div style="font-size:13px;font-weight:600">${s(tp.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${_tplItemCount(tp.def)} ítems</div></div>
       ${hasTrack ? `<button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="aplicarTemplateDesdePanel('${tp.id}')">Aplicar</button>` : ''}
@@ -466,14 +490,14 @@ const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', f
 function trackLegalHTML(t) {
   if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
   const legal = t.legal || [];
-  const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value)"`;
+  const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value,'${t.id}')"`;
   const areaBadge = d => d.area && LEGAL_AREA_LABEL[d.area] ? `<span style="font-size:9px;font-family:var(--font-mono);color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px">${LEGAL_AREA_LABEL[d.area]}</span>` : '';
   const rows = legal.map((d, i) => `<div class="panel" style="margin-bottom:10px">
     ${d.source === 'labelcopy' ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy${areaBadge(d)}${d.autoResolved ? `<span style="color:var(--ok)">${icon('check',10)} auto-cerrada</span>` : ''}</div>` : ''}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
-      <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value)">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-      <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i})">${icon('close',12)}</button>
+      <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value,'${t.id}')">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i},'${t.id}')">${icon('close',12)}</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${assigneeSelectHTML(d.responsable, setF(i,'responsable'), 'flex:1;min-width:120px;padding:5px 8px;font-size:12px')}
@@ -485,25 +509,25 @@ function trackLegalHTML(t) {
   </div>`).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Documentos legales de esta canción (split sheets, producer agreements, autorizaciones de feature/sample) — con estado, responsable, link y nota.</div>
     ${rows || '<div class="empty-hint">Sin documentos.</div>'}
-    <button class="btn btn-ghost" style="margin-top:10px" onclick="agregarLegal()">+ Documento legal</button>`;
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="agregarLegal('${t.id}')">+ Documento legal</button>`;
 }
-function setLegalField(i, f, val) {
+function setLegalField(i, f, val, tid) {
   if (!requireCan('editar_legal')) return;
-  const t = curTrack(); if (!t || !t.legal[i]) return;
+  const t = _ctxTrack(tid); if (!t || !t.legal[i]) return;
   t.legal[i][f] = val; t.legal[i].updatedAt = new Date().toISOString();
   if (f === 'state') t.legal[i].autoResolved = false; // un cambio manual de estado libera el doc del auto-manejo
-  saveTracks(); if (f === 'state' || f === 'fileLink') renderTrackTab('legal');
+  saveTracks(); if (f === 'state' || f === 'fileLink') _rerenderReleaseCtx();
 }
-async function agregarLegal() {
+async function agregarLegal(tid) {
   if (!requireCan('editar_legal')) return;
-  const t = curTrack(); if (!t) return;
+  const t = _ctxTrack(tid); if (!t) return;
   const type = await uiPrompt('Tipo (split_sheet / producer_agreement / feature_clearance / sample_clearance / other):', { title: 'Nuevo documento legal' });
   if (!type) return;
   t.legal = t.legal || []; t.legal.push({ id: 'lg-' + Date.now(), type: type.trim(), state: 'pendiente', responsable: '', fileLink: '', note: '', updatedAt: new Date().toISOString() });
-  saveTracks(); renderTrackTab('legal');
+  saveTracks(); _rerenderReleaseCtx();
 }
-function setLegalState(i, state) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal[i].state = state; t.legal[i].autoResolved = false; t.legal[i].updatedAt = new Date().toISOString(); saveTracks(); renderTrackTab('legal'); } }
-function quitarLegal(i) { if (!requireCan('editar_legal')) return; const t = curTrack(); if (t && t.legal[i]) { t.legal.splice(i, 1); saveTracks(); renderTrackTab('legal'); } }
+function setLegalState(i, state, tid) { if (!requireCan('editar_legal')) return; const t = _ctxTrack(tid); if (t && t.legal[i]) { t.legal[i].state = state; t.legal[i].autoResolved = false; t.legal[i].updatedAt = new Date().toISOString(); saveTracks(); _rerenderReleaseCtx(); } }
+function quitarLegal(i, tid) { if (!requireCan('editar_legal')) return; const t = _ctxTrack(tid); if (t && t.legal[i]) { t.legal.splice(i, 1); saveTracks(); _rerenderReleaseCtx(); } }
 
 // ── Ruteo legal nivel 2: convierte un conflicto del Label Copy en una tarea legal accionable en t.legal ──
 // Idempotente por conflictKey (no duplica). Por trackId → funciona desde la pestaña Legal del release (track no activo).
@@ -555,21 +579,22 @@ function reconcileLegalConflicts(t) {
 }
 
 // ══════════════════════════════════════════
-// PLAN DE MARKETING (PDF por canción) — upload real a Supabase Storage + visor embebido
-// Bucket privado 'marketing-plans'; se sirve por signed URL. Degrada limpio si el bucket
-// no existe o no hay nube (muestra el setup). Gated por ver_marketing / editar_marketing.
+// PLAN DE MARKETING (PDF por LANZAMIENTO) — upload real a Supabase Storage + visor embebido
+// Vive en la pestaña Campaña del release (un plan por lanzamiento). Bucket privado 'marketing-plans';
+// se sirve por signed URL. Degrada limpio si el bucket no existe o no hay nube. Gated ver/editar_marketing.
 // ══════════════════════════════════════════
 const MKT_BUCKET = 'marketing-plans';
 const MKT_MAX_BYTES = 25 * 1024 * 1024;
 function _mktSize(n) { if (!n) return ''; const kb = n / 1024; return kb < 1024 ? Math.round(kb) + ' KB' : (kb / 1024).toFixed(1) + ' MB'; }
-function trackMarketingHTML(t) {
+function _curLaunch() { return (typeof launches !== 'undefined') ? launches.find(x => x.id === currentLaunchId) : null; }
+function releaseMarketingHTML(l) {
   const canView = (typeof canDo !== 'function') || canDo('ver_marketing') || canDo('editar_marketing');
-  if (!canView) return `<div class="empty-hint">No tienes acceso al plan de marketing de esta canción.</div>`;
+  if (!canView) return `<div class="empty-hint">No tienes acceso al plan de marketing de este lanzamiento.</div>`;
   const canEdit = (typeof canDo === 'function') && canDo('editar_marketing');
-  const mp = t.marketingPlan || {};
+  const mp = l.marketingPlan || {};
   const cloud = (typeof authed === 'function') && authed();
   const fileInput = canEdit ? `<input type="file" id="mkt-file" accept="application/pdf" style="display:none" onchange="uploadMarketingPlan(this)">` : '';
-  const intro = `<div class="empty-hint" style="margin-bottom:12px">Sube el plan de marketing de esta canción en PDF y preséntalo desde Tempo. El archivo vive en tu nube (bucket privado del equipo).</div>`;
+  const intro = `<div class="empty-hint" style="margin-bottom:12px">Sube el plan de marketing del lanzamiento en PDF y preséntalo desde Tempo. El archivo vive en tu nube (bucket privado del equipo).</div>`;
   if (!mp.path) {
     const zone = canEdit
       ? (cloud
@@ -577,37 +602,35 @@ function trackMarketingHTML(t) {
            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">PDF · máx 25 MB</div>`
         : `<div class="empty-hint">Conéctate a la nube (inicia sesión con tu equipo) para subir el plan de marketing.</div>`)
       : `<div class="empty-hint">Aún no hay plan de marketing cargado.</div>`;
-    return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)||icon('report',18)}</span><span class="ph-title">Plan de Marketing</span><span class="ph-sub">PDF presentable</span></div>${intro}${zone}</div>`;
+    return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)}</span><span class="ph-title">Plan de Marketing</span><span class="ph-sub">PDF presentable</span></div>${intro}${zone}</div>`;
   }
   const meta = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(mp.name)||'plan.pdf'}${mp.size?` · ${_mktSize(mp.size)}`:''}${mp.uploadedAt?` · subido ${new Date(mp.uploadedAt).toLocaleDateString('es-MX')}`:''}${mp.uploadedBy?` · ${s(mp.uploadedBy)}`:''}</div>`;
   const actions = `<div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm" onclick="openMarketingPlan('${t.id}')">${icon('link',12)} Abrir en pestaña</button>
+    <button class="btn btn-ghost btn-sm" onclick="openMarketingPlan()">${icon('link',12)} Abrir en pestaña</button>
     ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="document.getElementById('mkt-file').click()">${icon('refresh',12)} Reemplazar</button>`:''}
-    ${canEdit?`<button class="goal-btn reject" title="Quitar" onclick="removeMarketingPlan('${t.id}')">${icon('close',12)}</button>`:''}</div>`;
+    ${canEdit?`<button class="goal-btn reject" title="Quitar" onclick="removeMarketingPlan()">${icon('close',12)}</button>`:''}</div>`;
   const viewer = `<div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface2)">
     <div id="mkt-viewer-status" style="padding:10px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Cargando visor…</div>
     <iframe id="mkt-frame" title="Plan de marketing" style="display:none;width:100%;height:640px;border:0;background:#fff"></iframe></div>`;
-  return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)||icon('report',18)}</span><span class="ph-title">Plan de Marketing</span>${actions}</div>${meta}${viewer}</div>`;
+  return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)}</span><span class="ph-title">Plan de Marketing</span>${actions}</div>${meta}${viewer}</div>`;
 }
-async function mktLoadViewer(trackId) {
-  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null;
-  if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
+async function mktLoadViewer() {
+  const l = _curLaunch(); if (!l || !l.marketingPlan || !l.marketingPlan.path) return;
   const frame = document.getElementById('mkt-frame'); const st = document.getElementById('mkt-viewer-status'); if (!frame) return;
   try {
     const sb = (typeof getSb === 'function') ? await getSb() : null;
     if (!sb) { if (st) st.textContent = 'Conéctate a la nube para ver el PDF.'; return; }
-    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(t.marketingPlan.path, 3600);
+    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(l.marketingPlan.path, 3600);
     if (error || !data || !data.signedUrl) { if (st) st.textContent = 'No se pudo cargar el PDF (revisa que el bucket "marketing-plans" exista en Supabase).'; return; }
     frame.src = data.signedUrl; frame.style.display = 'block'; if (st) st.style.display = 'none';
   } catch (e) { if (st) st.textContent = 'No se pudo cargar el PDF.'; }
 }
-async function openMarketingPlan(trackId) {
-  const t = (typeof tracks !== 'undefined') ? tracks.find(x => x.id === trackId) : null;
-  if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
+async function openMarketingPlan() {
+  const l = _curLaunch(); if (!l || !l.marketingPlan || !l.marketingPlan.path) return;
   const w = window.open('', '_blank'); // abrir sync (evita bloqueo de popups) y luego setear la URL firmada
   try {
     const sb = (typeof getSb === 'function') ? await getSb() : null; if (!sb) { if (w) w.close(); return; }
-    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(t.marketingPlan.path, 3600);
+    const { data, error } = await sb.storage.from(MKT_BUCKET).createSignedUrl(l.marketingPlan.path, 3600);
     if (error || !data) { if (w) w.close(); if (typeof uiAlert === 'function') uiAlert('No se pudo abrir el PDF.'); return; }
     if (w) w.location = data.signedUrl;
   } catch (e) { if (w) w.close(); }
@@ -616,7 +639,7 @@ async function uploadMarketingPlan(input) {
   if (!requireCan('editar_marketing')) return;
   const file = input && input.files && input.files[0]; if (!file) return;
   input.value = ''; // permite re-subir el mismo archivo luego
-  const t = curTrack(); if (!t) return;
+  const l = _curLaunch(); if (!l) return;
   if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { uiAlert('El plan de marketing debe ser un PDF.'); return; }
   if (file.size > MKT_MAX_BYTES) { uiAlert('El PDF supera el máximo de 25 MB.'); return; }
   const sb = (typeof getSb === 'function') ? await getSb() : null;
@@ -624,7 +647,7 @@ async function uploadMarketingPlan(input) {
   if (typeof uiToast === 'function') uiToast('Subiendo plan…');
   const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-80);
   const teamId = (typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'local';
-  const path = `${teamId}/${t.id}/${Date.now()}-${safe}`;
+  const path = `${teamId}/${l.id}/${Date.now()}-${safe}`;
   try {
     const { error } = await sb.storage.from(MKT_BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: true });
     if (error) {
@@ -632,24 +655,21 @@ async function uploadMarketingPlan(input) {
       else uiAlert('No se pudo subir: ' + (error.message || 'error'));
       return;
     }
-    const old = t.marketingPlan && t.marketingPlan.path;
-    t.marketingPlan = { path, name: file.name, size: file.size, uploadedAt: new Date().toISOString(), uploadedBy: (typeof _user !== 'undefined' && _user && _user.email) || '' };
-    saveTracks();
+    const old = l.marketingPlan && l.marketingPlan.path;
+    l.marketingPlan = { path, name: file.name, size: file.size, uploadedAt: new Date().toISOString(), uploadedBy: (typeof _user !== 'undefined' && _user && _user.email) || '' };
+    saveLaunches();
     if (old && old !== path) { try { await sb.storage.from(MKT_BUCKET).remove([old]); } catch (e) {} } // limpia el anterior
-    renderTrackTab('marketing');
+    if (typeof renderReleaseTab === 'function') renderReleaseTab('campana');
     if (typeof uiToast === 'function') uiToast('✓ Plan de marketing subido');
-    if (typeof logActivity === 'function') { try { logActivity('created', `Plan de marketing subido: ${s(t.title) || 'canción'}`, { trackId: t.id, releaseId: (typeof currentLaunchId !== 'undefined' ? currentLaunchId : null) }); } catch (e) {} }
+    if (typeof logActivity === 'function') { try { logActivity('created', `Plan de marketing subido: ${s(l.name) || 'lanzamiento'}`, { releaseId: l.id, artistId: l.artistId }); } catch (e) {} }
   } catch (e) { uiAlert('No se pudo subir el plan: ' + (e.message || e)); }
 }
-async function removeMarketingPlan(trackId) {
+async function removeMarketingPlan() {
   if (!requireCan('editar_marketing')) return;
-  const t = curTrack(); if (!t || !t.marketingPlan || !t.marketingPlan.path) return;
-  if (typeof uiConfirm === 'function' && !(await uiConfirm('¿Quitar el plan de marketing de esta canción?'))) return;
-  const path = t.marketingPlan.path;
-  t.marketingPlan = {}; saveTracks(); renderTrackTab('marketing');
+  const l = _curLaunch(); if (!l || !l.marketingPlan || !l.marketingPlan.path) return;
+  if (typeof uiConfirm === 'function' && !(await uiConfirm('¿Quitar el plan de marketing de este lanzamiento?'))) return;
+  const path = l.marketingPlan.path;
+  l.marketingPlan = {}; saveLaunches(); if (typeof renderReleaseTab === 'function') renderReleaseTab('campana');
   try { const sb = (typeof getSb === 'function') ? await getSb() : null; if (sb) await sb.storage.from(MKT_BUCKET).remove([path]); } catch (e) {}
   if (typeof uiToast === 'function') uiToast('✓ Plan de marketing quitado');
 }
-
-// ── Tareas (del track) ──
-function trackTareasHTML(t) { return tareasPanelHTML('track'); } // motor compartido (crm.js)

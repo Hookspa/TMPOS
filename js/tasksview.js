@@ -53,10 +53,8 @@ function openTaskContext(id) {
   }
   if (!t.releaseId) return;
   if (typeof openLaunch === 'function') openLaunch(t.releaseId);
-  setTimeout(() => {
-    if (t.trackId && typeof openTrack === 'function') { openTrack(t.trackId); if (typeof setTrackTab === 'function') setTrackTab('tareas'); }
-    else if (typeof setReleaseTab === 'function') setReleaseTab('tareas');
-  }, 60);
+  // Las tareas (de release y de canción) viven en la pestaña Trabajo del release.
+  setTimeout(() => { if (typeof setReleaseTab === 'function') setReleaseTab('tareas'); }, 60);
 }
 
 // ── Filtrado ──
@@ -168,8 +166,8 @@ function setTaskRespInline(id, val) {
   updateTaskRow(id, { responsable: val });
   // refresca el panel del release/track si está abierto en esa tarea
   const t = taskById(id);
-  if (t && typeof currentLaunchId !== 'undefined' && currentLaunchId === t.releaseId && typeof renderReleaseTab === 'function') {
-    if (t.trackId && typeof renderTrackTab === 'function') renderTrackTab('tareas'); else renderReleaseTab('tareas');
+  if (t && typeof currentLaunchId !== 'undefined' && currentLaunchId === t.releaseId && typeof renderReleaseTab === 'function' && document.getElementById('release-tab-body')) {
+    renderReleaseTab('tareas'); // tareas de release + canción viven en Trabajo del release
   }
   tvRenderBody();
 }
