@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="js/icons.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;0,800;1,300&display=swap" rel="stylesheet">
 <style>
 :root{
   /* Paleta TEMPO */
@@ -17,7 +17,8 @@
   --accent:#FF6B30;--beat:#FFAA00;
   /* colores por plataforma (funcionales en las gráficas) */
   --gads:#FF6B30;--yt:#ff0000;--meta:#4dc9ff;--spotify:#1db954;--organic:#FFAA00;--insight:#a78bfa;
-  --serif:'Bebas Neue',sans-serif;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+  /* --mono: Space Mono retirado (de-slop 2026-07); ahora = --sans. Token conservado por compat. */
+  --serif:'Bebas Neue',sans-serif;--mono:'DM Sans',sans-serif;--sans:'DM Sans',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh;

@@ -1315,7 +1315,7 @@ function donutSVG(segments, size, thickness, centerLabel, centerSub) {
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${thickness}"></circle>
     ${arcs}
     ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Bebas Neue" font-size="${size*0.28}">${centerLabel}</text>` : ''}
-    ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Space Mono" font-size="${size*0.08}">${centerSub}</text>` : ''}
+    ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Inter, sans-serif" font-size="${size*0.08}">${centerSub}</text>` : ''}
   </svg>`;
 }
 function kanbanCardHTML(launchId, ci) {
@@ -1442,18 +1442,18 @@ function buildCalDoc(printMode) {
   const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
   const CSS = `
     :root{--ac:#FF6B35;--bg:#0d0d0f;--surf:#1a1a1a;--card:#232326;--bd:#38383a;--tx:#FFFFFF;--mut:#98989D;--dim:#78787d}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5;font-variant-numeric:tabular-nums}
     a{color:var(--ac)} .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
     .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:22px}
     .brand{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--ac)}
     .h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;margin:0}
-    .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut);letter-spacing:1px}
-    .btn{margin-left:auto;background:var(--ac);color:#1a0e08;border:none;border-radius:6px;padding:9px 16px;font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;font-weight:700}
+    .sub{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--mut);letter-spacing:1px}
+    .btn{margin-left:auto;background:var(--ac);color:#1a0e08;border:none;border-radius:6px;padding:9px 16px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;font-weight:600}
     .x-monthlbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin:24px 0 8px;color:var(--tx)}
     .x-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-    .x-dow{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);text-align:center;letter-spacing:1px;padding-bottom:4px}
+    .x-dow{font-family:'DM Sans',sans-serif;font-size:9px;color:var(--dim);text-align:center;letter-spacing:1px;padding-bottom:4px}
     .x-cell{background:var(--surf);border:1px solid var(--bd);border-radius:6px;min-height:84px;padding:6px}
-    .x-out{opacity:.35} .x-daynum{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);margin-bottom:5px}
+    .x-out{opacity:.35} .x-daynum{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--mut);margin-bottom:5px}
     .x-chip{display:block;width:100%;text-align:left;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:4px 6px;font-size:10px;margin-bottom:4px;cursor:pointer;font-family:inherit;line-height:1.3}
     .x-chip:hover{background:var(--bd)}
     .x-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto}
@@ -1463,17 +1463,17 @@ function buildCalDoc(printMode) {
     .x-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
     .x-thumb{width:74px;height:120px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#222}
     .x-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.5px;line-height:1.1}
-    .x-meta{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut);margin-top:5px}
-    .x-camp{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
-    .x-row{margin:10px 0} .x-k{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+    .x-meta{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--mut);margin-top:5px}
+    .x-camp{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--dim);margin-top:3px}
+    .x-row{margin:10px 0} .x-k{display:block;font-family:'DM Sans',sans-serif;font-size:9px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
     .x-v{white-space:pre-wrap}
-    .x-sec{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;margin:16px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
+    .x-sec{font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;margin:16px 0 8px;border-top:1px solid var(--bd);padding-top:12px}
     .x-block{background:var(--surf);border-radius:6px;padding:10px;margin-bottom:7px}
-    .x-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);margin-bottom:4px}
+    .x-time{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--mut);margin-bottom:4px}
     .x-note{font-size:12px;color:var(--mut);margin-top:4px}
-    .x-shot{display:flex;gap:10px;margin-bottom:8px} .x-num{font-family:'Space Mono',monospace;color:var(--mut);font-size:12px}
-    .x-assets{display:flex;flex-direction:column;gap:6px} .x-asset{font-family:'Space Mono',monospace;font-size:12px;text-decoration:none}
-    .x-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .x-tag{background:var(--card);color:var(--mut);border:1px solid var(--bd);border-radius:4px;padding:2px 7px;font-family:'Space Mono',monospace;font-size:11px}
+    .x-shot{display:flex;gap:10px;margin-bottom:8px} .x-num{font-family:'DM Sans',sans-serif;color:var(--mut);font-size:12px}
+    .x-assets{display:flex;flex-direction:column;gap:6px} .x-asset{font-family:'DM Sans',sans-serif;font-size:12px;text-decoration:none}
+    .x-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .x-tag{background:var(--card);color:var(--mut);border:1px solid var(--bd);border-radius:4px;padding:2px 7px;font-family:'DM Sans',sans-serif;font-size:11px}
     .x-hide{display:none}
     @media print{ body{background:#fff;color:#111} .btn,.x-ov{display:none!important} .x-cal{display:none} .x-print{display:block!important}
       .x-card{border:1px solid #ccc;background:#fff;page-break-inside:avoid} .x-thumb{background:#eee} .x-title,.x-monthlbl,.x-brand,.brand{color:#c2410c}
@@ -1501,7 +1501,7 @@ function buildCalDoc(printMode) {
     <\/script>`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${_esc(title)} · Plan de contenido</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>${CSS}</style></head><body>${body}</body></html>`;
 }
 function _calDocFilename(ext) {
@@ -3403,7 +3403,7 @@ function diasRestantes(iso) {
   const d = new Date(iso + 'T00:00:00');
   return Math.round((d - today) / 86400000);
 }
-// Momento firma 01 (DESIGN.md v2): countdown como instrumento. T−NN en Space Mono tabular +
+// Momento firma 01 (DESIGN.md v2): countdown como instrumento. T−NN en Inter tabular-nums +
 // regla de ticks; a T−3 o menos, numeral+ticks en naranja (único acento de la tarjeta).
 function dropClockHTML(l, large) {
   const d = (l && l.date) ? diasRestantes(l.date) : null;

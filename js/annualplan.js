@@ -4,7 +4,7 @@
 // post = fecha+postDays), cero doble captura. Además, "canciones tentativas" viven en
 // a.plan.tentatives para bosquejar el año antes de crear el lanzamiento.
 // Diseño (DESIGN.md): barras neutras grafito, el drop usa color=ESTADO (no naranja),
-// fechas en Space Mono tabular, grilla hairline de 12 meses, radios ≤8px.
+// fechas en Inter tabular-nums, grilla hairline de 12 meses, radios ≤8px.
 // ══════════════════════════════════════════
 let _planYear = new Date().getFullYear();
 let planView = 'artista';          // 'artista' | 'roster'
