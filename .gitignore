@@ -28,5 +28,8 @@ CHANGELOG.md
 DESIGN.md
 CLAUDE.md
 
+# Entregables internos (posicionamiento, plan MCP, etc.) - uso interno
+docs/
+
 # Scripts one-off de dev (rehost de miniaturas, downloader IG) - no runtime
 tools/
