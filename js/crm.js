@@ -73,8 +73,8 @@ function readyBarHTML(pct, label) {
   const col = readyColor(pct);
   return `<div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-      <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px">${label || 'LISTO PARA LANZAR'}</span>
-      <span style="font-family:var(--font-display);font-size:20px;color:${col}">${pct}%</span>
+      <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);letter-spacing:var(--track-caps)">${label || 'LISTO PARA LANZAR'}</span>
+      <span style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-lg);color:${col}">${pct}%</span>
     </div>
     <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div>
   </div>`;
@@ -102,11 +102,11 @@ function tareasPanelHTML(kind){
     const depsCount=(tk.deps||[]).length;
     return `<div class="panel" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       ${blocked?`<span title="${(typeof blockedReason==='function')?blockedReason(tk):'Bloqueada'}" style="color:var(--accent2);display:flex">${icon('lock',13)}</span>`:''}
-      <input class="input" style="flex:1;min-width:140px;font-size:13px;padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
-      ${assigneeSelectHTML(tk.responsable, `onchange="setTaskField('${kind}','${tk.id}','responsable',this.value)"`, 'width:auto;min-width:130px;padding:6px 9px;font-size:12px')}
-      <select class="input" style="width:auto;padding:6px 8px;font-size:11px" title="Prioridad" onchange="setTaskField('${kind}','${tk.id}','priority',this.value)">${TASK_PRIORITIES.map(x=>`<option value="${x[0]}" ${tk.priority===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
-      <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:12px;${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}','${tk.id}','dueDate',this.value)">
-      <select class="input" style="width:auto;padding:6px 8px;font-size:11px" onchange="setTaskField('${kind}','${tk.id}','estado',this.value)">${TASK_ESTADOS.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+      <input class="input" style="flex:1;min-width:140px;font-size:var(--text-base);padding:6px 9px;${done?'text-decoration:line-through;color:var(--text-muted)':''}" value="${s(tk.titulo)}" placeholder="Tarea" onchange="setTaskField('${kind}','${tk.id}','titulo',this.value)">
+      ${assigneeSelectHTML(tk.responsable, `onchange="setTaskField('${kind}','${tk.id}','responsable',this.value)"`, 'width:auto;min-width:130px;padding:6px 9px;font-size:var(--text-sm)')}
+      <select class="input" style="width:auto;padding:6px 8px;font-size:var(--text-xs)" title="Prioridad" onchange="setTaskField('${kind}','${tk.id}','priority',this.value)">${TASK_PRIORITIES.map(x=>`<option value="${x[0]}" ${tk.priority===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+      <input class="input" type="date" style="width:auto;padding:6px 9px;font-size:var(--text-sm);${overdue?'border-color:var(--accent2);color:var(--accent2)':''}" value="${s(tk.dueDate)}" onchange="setTaskField('${kind}','${tk.id}','dueDate',this.value)">
+      <select class="input" style="width:auto;padding:6px 8px;font-size:var(--text-xs)" onchange="setTaskField('${kind}','${tk.id}','estado',this.value)">${TASK_ESTADOS.map(x=>`<option value="${x[0]}" ${tk.estado===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
       ${editable?`<button class="goal-btn" title="Dependencias${depsCount?' ('+depsCount+')':''}" style="${depsCount?'color:var(--accent)':''}" onclick="openDepsPicker('${tk.id}')">${icon('link',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}','${tk.id}')">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
@@ -143,7 +143,7 @@ function releaseAlerts(l){
 function alertsHTML(l){
   const a = releaseAlerts(l);
   if(!a.length) return '';
-  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost btn-sm" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
+  return `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${x.text}</span>${x.action?`<button class="btn btn-ghost btn-sm" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`).join('')}</div>`;
 }
 
 // ══════════════════════════════════════════
@@ -182,7 +182,7 @@ function releaseSpacingWarnings(l){
 function spacingHTML(l){
   const a=releaseSpacingWarnings(l);
   if(!a.length) return '';
-  return `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span style="display:inline-flex;color:${x.level==='red'?'var(--accent2)':'var(--beat)'}">${icon('calendar',13)}</span><span style="flex:1">${x.text}</span></div>`).join('')}</div>`;
+  return `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${a.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:7px 10px;border-radius:8px;background:${x.level==='red'?'rgba(255,77,77,.08)':'rgba(255,170,0,.08)'}"><span style="display:inline-flex;color:${x.level==='red'?'var(--accent2)':'var(--beat)'}">${icon('calendar',13)}</span><span style="flex:1">${x.text}</span></div>`).join('')}</div>`;
 }
 
 // ══════════════════════════════════════════
@@ -205,6 +205,6 @@ function whatsMissingHTML(l){
   if(!items.length) return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span></div><div class="empty-hint" style="color:#4ade80;border-color:rgba(74,222,128,.3)">${icon('check',13)} Todo listo para lanzar</div></div>`;
   const byArea={}; items.forEach(it=>{ (byArea[it.area]=byArea[it.area]||[]).push(it); });
   const blocking=items.filter(it=>it.blocking).length;
-  const rows=Object.keys(byArea).map(area=>`<div style="margin-bottom:10px"><div class="brief-label" style="margin-bottom:4px">${esc(area)} <span style="color:var(--text-dim)">· ${byArea[area].length}</span></div>${byArea[area].slice(0,8).map(it=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span class="dot ${it.blocking?'dot--red':'dot--yellow'}"></span><span style="flex:1">${esc(it.label)}</span></div>`).join('')}${byArea[area].length>8?`<div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:4px">+${byArea[area].length-8} más</div>`:''}</div>`).join('');
+  const rows=Object.keys(byArea).map(area=>`<div style="margin-bottom:10px"><div class="brief-label" style="margin-bottom:4px">${esc(area)} <span style="color:var(--text-dim)">· ${byArea[area].length}</span></div>${byArea[area].slice(0,8).map(it=>`<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:5px 0;border-bottom:1px solid var(--border)"><span class="dot ${it.blocking?'dot--red':'dot--yellow'}"></span><span style="flex:1">${esc(it.label)}</span></div>`).join('')}${byArea[area].length>8?`<div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:4px">+${byArea[area].length-8} más</div>`:''}</div>`).join('');
   return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span><span class="ph-sub">${items.length} pendientes${blocking?` · ${blocking} bloqueantes`:''}</span></div>${rows}</div>`;
 }

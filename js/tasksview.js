@@ -42,7 +42,7 @@ function _subMeta(t) {
   const a = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
   if (!a.length) return '';
   const d = a.filter(x => x && x.done).length;
-  return ` · <span style="font-family:var(--font-mono);color:${d === a.length ? '#4ade80' : 'var(--text-dim)'}">${icon('checklist', 10)} ${d}/${a.length}</span>`;
+  return ` · <span style="font-family:var(--font-ui);color:${d === a.length ? '#4ade80' : 'var(--text-dim)'}">${icon('checklist', 10)} ${d}/${a.length}</span>`;
 }
 
 // ── Navegar al contexto de la tarea (release / track + pestaña Tareas) ──
@@ -147,12 +147,12 @@ async function tvBulkDelete() {
 function _tvBulkBar() {
   if (!_tvSel.size) return '';
   return `<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:12px">
-    <span style="font-size:12px;font-weight:600;color:var(--accent)">${_tvSel.size} seleccionada(s)</span>
-    <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('estado',this.value);this.value=''"><option value="">Estado…</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
-    <select class="input" style="width:auto;font-size:12px;padding:5px 8px" onchange="tvBulkSet('priority',this.value);this.value=''"><option value="">Prioridad…</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
-    ${(typeof assigneeSelectHTML === 'function') ? `<span onchange="tvBulkSet('responsable',event.target.value)">${assigneeSelectHTML('', '', 'width:auto;font-size:12px;padding:5px 8px')}</span>` : ''}
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;color:var(--accent2)" onclick="tvBulkDelete()">${icon('trash', 12)} Eliminar</button>
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;margin-left:auto" onclick="tvClearSel()">Limpiar</button>
+    <span style="font-size:var(--text-sm);font-weight:600;color:var(--accent)">${_tvSel.size} seleccionada(s)</span>
+    <select class="input" style="width:auto;font-size:var(--text-sm);padding:5px 8px" onchange="tvBulkSet('estado',this.value);this.value=''"><option value="">Estado…</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+    <select class="input" style="width:auto;font-size:var(--text-sm);padding:5px 8px" onchange="tvBulkSet('priority',this.value);this.value=''"><option value="">Prioridad…</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+    ${(typeof assigneeSelectHTML === 'function') ? `<span onchange="tvBulkSet('responsable',event.target.value)">${assigneeSelectHTML('', '', 'width:auto;font-size:var(--text-sm);padding:5px 8px')}</span>` : ''}
+    <button class="btn btn-ghost" style="font-size:var(--text-sm);padding:5px 10px;color:var(--accent2)" onclick="tvBulkDelete()">${icon('trash', 12)} Eliminar</button>
+    <button class="btn btn-ghost" style="font-size:var(--text-sm);padding:5px 10px;margin-left:auto" onclick="tvClearSel()">Limpiar</button>
   </div>`;
 }
 function tvScope(mine) { _tv.mine = mine; renderTareas(); }
@@ -218,8 +218,8 @@ function renderTareas() {
         ${_tv.view === 'list' ? `<select title="Agrupar por" onchange="tvFilter('groupBy',this.value)">${Object.keys(_GROUP_LABELS).map(k => `<option value="${k}" ${_tv.groupBy === k ? 'selected' : ''}>Agrupar: ${_GROUP_LABELS[k]}</option>`).join('')}</select>` : ''}
         ${(_tv.view === 'list' || _tv.view === 'kanban' || _tv.view === 'assignee' || _tv.view === 'timeline') ? `<select title="Ordenar por" onchange="tvFilter('sortBy',this.value)">${Object.keys(_SORT_LABELS).map(k => `<option value="${k}" ${_tv.sortBy === k ? 'selected' : ''}>Ordenar: ${_SORT_LABELS[k]}</option>`).join('')}</select>` : ''}
         <select id="tv-saved" onchange="if(this.value)tvApplyView(this.value)"><option value="">Vistas guardadas…</option>${saved.map(v => `<option value="${s(v.name)}">${s(v.name)}</option>`).join('')}</select>
-        <button class="btn btn-ghost" style="padding:6px 10px;font-size:11px" onclick="tvSaveView()">${icon('save', 13)} Guardar</button>
-        ${saved.length ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:11px" onclick="tvDeleteView()">${icon('trash', 13)}</button>` : ''}
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:var(--text-xs)" onclick="tvSaveView()">${icon('save', 13)} Guardar</button>
+        ${saved.length ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:var(--text-xs)" onclick="tvDeleteView()">${icon('trash', 13)}</button>` : ''}
       </div>`}
     </div>`;
   tvRenderBody();
@@ -335,8 +335,8 @@ function _taskCardHTML(t, selectable) {
     <div class="tk-right" onclick="event.stopPropagation()">
       ${priChip(t.priority)}
       ${du.label ? `<span class="tk-due ${du.cls}">${du.label}</span>` : ''}
-      ${(typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="setTaskRespInline('${t.id}',this.value)"`, 'padding:5px 7px;font-size:11px;width:auto;max-width:130px') : ''}
-      <select class="input" style="padding:5px 7px;font-size:11px;width:auto" onchange="setTaskEstadoInline('${t.id}',this.value)">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
+      ${(typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="setTaskRespInline('${t.id}',this.value)"`, 'padding:5px 7px;font-size:var(--text-xs);width:auto;max-width:130px') : ''}
+      <select class="input" style="padding:5px 7px;font-size:var(--text-xs);width:auto" onchange="setTaskEstadoInline('${t.id}',this.value)">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
     </div>
   </div>`;
 }
@@ -374,7 +374,7 @@ function tvKanban(list) {
     const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')">
         <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
         <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span>${_subMeta(t)}</div>
-      </div>`).join('') || `<div style="font-size:11px;color:var(--text-dim);padding:6px 2px">—</div>`;
+      </div>`).join('') || `<div style="font-size:var(--text-xs);color:var(--text-dim);padding:6px 2px">—</div>`;
     return `<div class="tk-col" data-est="${est}" ondragover="tvDragOver(event,this)" ondragleave="this.classList.remove('drop')" ondrop="tvDrop(event,this,'${est}')">
       <div class="tk-col-head"><span class="dot" style="width:8px;height:8px;background:${c}"></span>${lbl}<span class="cnt">${arr.length}</span></div>${cards}</div>`;
   }).join('');
@@ -400,14 +400,14 @@ function tvCalendar(list) {
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const arr = byDay[d] || [];
-    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<div class="pill" style="background:${c}22;color:${c}" onclick="openTaskDetail('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</div>`; }).join('') + (arr.length > 3 ? `<div style="font-size:9px;color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
+    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<div class="pill" style="background:${c}22;color:${c}" onclick="openTaskDetail('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</div>`; }).join('') + (arr.length > 3 ? `<div style="font-size:var(--text-2xs);color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
     cells += `<div class="cell ${iso === todayISO2 ? 'today' : ''}"><div class="dnum">${d}</div>${pills}</div>`;
   }
   return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <button class="btn btn-ghost" style="padding:5px 10px" onclick="tvCalNav(-1)">←</button>
-      <div style="font-family:var(--font-display);font-size:18px;letter-spacing:1px">${MESES_CAL[month]} ${year}</div>
+      <div style="font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps)">${MESES_CAL[month]} ${year}</div>
       <button class="btn btn-ghost" style="padding:5px 10px" onclick="tvCalNav(1)">→</button>
-      ${noDate ? `<span style="margin-left:auto;font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${noDate} sin fecha</span>` : ''}
+      ${noDate ? `<span style="margin-left:auto;font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">${noDate} sin fecha</span>` : ''}
     </div><div class="tk-cal">${cells}</div>`;
 }
 
@@ -449,7 +449,7 @@ function tvTimeline(list) {
     arrows += `<path d="M${x1.toFixed(1)} ${y1} C ${(x1 + 16).toFixed(1)} ${y1}, ${(x2 - 16).toFixed(1)} ${y2}, ${x2.toFixed(1)} ${y2}" fill="none" stroke="var(--text-dim)" stroke-width="1.2" marker-end="url(#gantt-arrow)" opacity="0.7"/>`;
   }); });
   const todayLine = todayX != null ? `<line x1="${todayX.toFixed(1)}" y1="${top - 6}" x2="${todayX.toFixed(1)}" y2="${H - 6}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/><text x="${(todayX + 3).toFixed(1)}" y="${top - 9}" font-size="9" fill="var(--accent)">hoy</text>` : '';
-  return `<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:10px">Gantt · barra = inicio→fin · flechas = dependencias${noDate ? ` · ${noDate} sin fecha` : ''}</div>
+  return `<div style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui);margin-bottom:10px">Gantt · barra = inicio→fin · flechas = dependencias${noDate ? ` · ${noDate} sin fecha` : ''}</div>
     <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:680px" xmlns="http://www.w3.org/2000/svg">
       <defs><marker id="gantt-arrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/></marker></defs>
       <line x1="${LBL}" y1="${top - 6}" x2="${LBL}" y2="${H - 6}" stroke="var(--border)" stroke-width="1"/>
@@ -468,7 +468,7 @@ function tvQueFalta() {
     const blocked = tasks.filter(t => t.releaseId === l.id && t.estado === 'bloqueado');
     if (!alerts.length && !overdue.length && !blocked.length) return '';
     const items = [
-      ...alerts.map(a => `<div class="qf-item"><span class="dot ${a.level === 'red' ? 'dot--red' : 'dot--yellow'}"></span><span style="flex:1">${a.text}</span>${a.action ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();${a.action.fn}">${a.action.label}</button>` : ''}</div>`),
+      ...alerts.map(a => `<div class="qf-item"><span class="dot ${a.level === 'red' ? 'dot--red' : 'dot--yellow'}"></span><span style="flex:1">${a.text}</span>${a.action ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:var(--text-xs)" onclick="event.stopPropagation();${a.action.fn}">${a.action.label}</button>` : ''}</div>`),
       ...overdue.map(t => `<div class="qf-item"><span class="dot dot--red"></span><span style="flex:1">Tarea vencida: ${s(t.titulo)}</span><span class="tk-due over">${_dueInfo(t).label}</span></div>`),
       ...blocked.map(t => `<div class="qf-item">${icon('lock', 13)}<span style="flex:1">Bloqueada: ${s(t.titulo)}</span></div>`),
     ].join('');
@@ -476,9 +476,9 @@ function tvQueFalta() {
     return `<div class="qf-rel">
       <div class="qf-rel-h" onclick="openLaunch('${l.id}')">
         <span class="dot" style="width:9px;height:9px;background:${(typeof phaseColor === 'function') ? phaseColor(ph) : 'var(--accent)'}"></span>
-        <strong style="font-size:15px">${s(l.name)}</strong>
-        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${_artNameOf({ artistId: l.artistId })} · ${ph}${l.date ? ' · ' + (diasRestantes(l.date) >= 0 ? 'en ' + diasRestantes(l.date) + 'd' : 'ya salió') : ''}</span>
-        <span style="margin-left:auto;font-size:11px;color:var(--accent)">Abrir ${icon('link', 11)}</span>
+        <strong style="font-size:var(--text-md)">${s(l.name)}</strong>
+        <span style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">${_artNameOf({ artistId: l.artistId })} · ${ph}${l.date ? ' · ' + (diasRestantes(l.date) >= 0 ? 'en ' + diasRestantes(l.date) + 'd' : 'ya salió') : ''}</span>
+        <span style="margin-left:auto;font-size:var(--text-xs);color:var(--accent)">Abrir ${icon('link', 11)}</span>
       </div>${items}</div>`;
   }).filter(Boolean).join('');
   if (!blocks) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Nada pendiente accionable. Todos los releases en orden.</div></div>`;
@@ -497,10 +497,10 @@ function _treeInjectStyles() {
   st.textContent = `
   .tree-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
   .tree-row:hover{background:var(--surface2)}
-  .tree-caret{width:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:11px;flex:0 0 auto}
-  .tree-name{flex:1;cursor:pointer;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tree-caret{width:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:var(--text-xs);flex:0 0 auto}
+  .tree-name{flex:1;cursor:pointer;font-size:var(--text-base);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tree-name:hover{color:var(--accent)}
-  .tree-badge{font-size:10px;font-family:var(--font-mono);background:var(--surface2);color:var(--text-muted);border-radius:8px;padding:1px 7px;flex:0 0 auto}`;
+  .tree-badge{font-size:var(--text-2xs);font-family:var(--font-ui);background:var(--surface2);color:var(--text-muted);border-radius:8px;padding:1px 7px;flex:0 0 auto}`;
   document.head.appendChild(st);
 }
 function _treeOpenCount(arr) { return (arr || []).filter(t => t.estado !== TASK_DONE).length; }
@@ -515,7 +515,7 @@ function tvTree() {
     return `<div>
       <div class="tree-row" style="font-weight:600">
         <span class="tree-caret" onclick="tvTreeToggle('a:${a.id}')">${rels.length ? (aOpen ? '▾' : '▸') : '·'}</span>
-        <span class="artist-avatar" style="width:22px;height:22px;font-size:10px;flex:0 0 auto">${up(a.name).slice(0, 1)}</span>
+        <span class="artist-avatar" style="width:22px;height:22px;font-size:var(--text-2xs);flex:0 0 auto">${up(a.name).slice(0, 1)}</span>
         <span class="tree-name" onclick="setActiveArtist('${a.id}');showPage('lanzamientos')">${esc(a.name)}</span>
         ${aTasks ? `<span class="tree-badge">${aTasks}</span>` : ''}
       </div>
@@ -529,7 +529,7 @@ function tvTree() {
             <span class="tree-caret" onclick="tvTreeToggle('r:${l.id}')">${trks.length ? (rOpen ? '▾' : '▸') : '·'}</span>
             <span class="dot" style="width:8px;height:8px;flex:0 0 auto;background:${(typeof phaseColor === 'function') ? phaseColor(ph) : 'var(--accent)'}"></span>
             <span class="tree-name" onclick="openLaunch('${l.id}')">${esc(l.name)}</span>
-            <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);flex:0 0 auto">${ph}</span>
+            <span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);flex:0 0 auto">${ph}</span>
             ${rTasks ? `<span class="tree-badge">${rTasks}</span>` : ''}
           </div>
           ${rOpen ? trks.map(tr => {
@@ -569,17 +569,17 @@ function tvWorkload() {
   }).sort((a, b) => b.total - a.total);
   const loadColor = n => n >= 4 ? 'var(--accent2)' : n >= 2 ? 'var(--beat)' : n >= 1 ? '#4ade80' : 'var(--surface2)';
   const cols = `160px repeat(${N},1fr) 70px`;
-  const header = `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:6px;font-size:9px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:.5px"><div>RESPONSABLE</div>${weeks.map(w => `<div style="text-align:center">${w.label}</div>`).join('')}<div style="text-align:center">SIN FECHA</div></div>`;
+  const header = `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:6px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);letter-spacing:var(--track-caps-sm)"><div>RESPONSABLE</div>${weeks.map(w => `<div style="text-align:center">${w.label}</div>`).join('')}<div style="text-align:center">SIN FECHA</div></div>`;
   const body = rows.map(r => {
     const label = (r.k === '(sin asignar)') ? r.k : ((typeof _memberLabel === 'function') ? _memberLabel(r.k) : r.k);
     return `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:4px;align-items:center">
-      <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)} <span style="color:var(--text-dim);font-weight:400;font-family:var(--font-mono);font-size:10px">${r.total}</span></div>
-      ${r.perWeek.map(n => `<div style="text-align:center;font-family:var(--font-display);font-size:15px;border-radius:6px;padding:5px 0;background:${loadColor(n)};${n >= 2 ? 'color:#1a1a1a' : 'color:var(--text-muted)'}">${n || ''}</div>`).join('')}
-      <div style="text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">${r.noDate || ''}</div>
+      <div style="font-size:var(--text-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)} <span style="color:var(--text-dim);font-weight:400;font-family:var(--font-ui);font-size:var(--text-2xs)">${r.total}</span></div>
+      ${r.perWeek.map(n => `<div style="text-align:center;font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-md);border-radius:6px;padding:5px 0;background:${loadColor(n)};${n >= 2 ? 'color:#1a1a1a' : 'color:var(--text-muted)'}">${n || ''}</div>`).join('')}
+      <div style="text-align:center;font-family:var(--font-ui);font-size:var(--text-sm);color:var(--text-dim)">${r.noDate || ''}</div>
     </div>`;
   }).join('');
   const overloaded = rows.some(r => r.perWeek.some(n => n >= 4));
-  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:12px"><span class="dot dot--red"></span><span>Alguien tiene 4+ tareas en una semana — revisa la distribución de carga.</span></div>` : '';
+  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:12px"><span class="dot dot--red"></span><span>Alguien tiene 4+ tareas en una semana — revisa la distribución de carga.</span></div>` : '';
   return `<div class="empty-hint" style="margin-bottom:12px">Carga por responsable — tareas abiertas por semana (próximas ${N}). Color = saturación.</div>${banner}<div style="overflow-x:auto"><div style="min-width:640px">${header}${body}</div></div>`;
 }
 
@@ -598,12 +598,12 @@ function _tdInjectStyles() {
   .td-main{padding:20px 22px;border-right:1px solid var(--border)}
   .td-side{padding:16px 20px}
   .td-block{margin-bottom:20px}
-  .td-label{font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-  .td-title-input{flex:1;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-family:var(--font-display);font-size:18px;letter-spacing:.5px;padding:6px 8px}
+  .td-label{font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);letter-spacing:var(--track-caps);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .td-title-input{flex:1;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps-sm);padding:6px 8px}
   .td-title-input:hover{border-color:var(--border)} .td-title-input:focus{border-color:var(--accent);outline:none;background:var(--surface2)}
-  .td-desc{min-height:78px;width:100%;font-size:13px;line-height:1.55}
+  .td-desc{min-height:78px;width:100%;font-size:var(--text-base);line-height:1.55}
   .td-sub{display:flex;align-items:center;gap:9px;padding:4px 0}
-  .td-sub-text{flex:1;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--text);font-size:13px;padding:4px 6px}
+  .td-sub-text{flex:1;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--text);font-size:var(--text-base);padding:4px 6px}
   .td-sub-text:hover{border-color:var(--border)} .td-sub-text:focus{border-color:var(--accent);outline:none}
   .td-sub-text.done{text-decoration:line-through;color:var(--text-muted)}
   .td-prog{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:8px}
@@ -611,15 +611,15 @@ function _tdInjectStyles() {
   .td-prog-n{margin-left:auto;color:var(--text-dim);font-weight:400}
   .td-cmt{padding:8px 0;border-bottom:1px solid var(--border)}
   .td-cmt-h{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
-  .td-cmt-author{font-size:12px;font-weight:600}
-  .td-cmt-ago{font-size:10px;font-family:var(--font-mono);color:var(--text-dim)}
-  .td-cmt-body{font-size:13px;line-height:1.5;color:var(--text-muted);white-space:pre-wrap}
-  .td-act-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;color:var(--text-muted)}
+  .td-cmt-author{font-size:var(--text-sm);font-weight:600}
+  .td-cmt-ago{font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)}
+  .td-cmt-body{font-size:var(--text-base);line-height:1.5;color:var(--text-muted);white-space:pre-wrap}
+  .td-act-row{display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:5px 0;color:var(--text-muted)}
   .td-prop{padding:9px 0;border-bottom:1px solid var(--border)}
-  .td-prop-l{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
+  .td-prop-l{font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);letter-spacing:var(--track-caps);text-transform:uppercase;margin-bottom:5px}
   .td-tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-  .td-tag-add{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:1px dashed var(--border);border-radius:8px;padding:2px 8px}
-  .td-att{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0}
+  .td-tag-add{font-size:var(--text-xs);color:var(--accent);cursor:pointer;background:none;border:1px dashed var(--border);border-radius:8px;padding:2px 8px}
+  .td-att{display:flex;align-items:center;gap:6px;font-size:var(--text-sm);padding:3px 0}
   .td-att a{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   @media(max-width:720px){.td-grid{grid-template-columns:1fr}.td-main{border-right:0;border-bottom:1px solid var(--border)}}`;
   document.head.appendChild(st);
@@ -657,7 +657,7 @@ function tdRender() {
   ov.innerHTML = `<div class="boxdrop" style="width:880px" onclick="event.stopPropagation()">
     <div class="boxdrop-header">
       <input class="td-title-input" value="${esc(t.titulo)}" placeholder="Título de la tarea" ${editable ? '' : 'disabled'} onchange="tdPatch({titulo:this.value})">
-      <select class="input" style="width:auto;padding:6px 9px;font-size:12px" ${editable ? '' : 'disabled'} onchange="tdPatch({estado:this.value})">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
+      <select class="input" style="width:auto;padding:6px 9px;font-size:var(--text-sm)" ${editable ? '' : 'disabled'} onchange="tdPatch({estado:this.value})">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
       <button class="boxdrop-close" onclick="closeTaskDetail()">${icon('close', 16)}</button>
     </div>
     <div class="boxdrop-body" style="padding:0">
@@ -680,7 +680,7 @@ function tdMain(t, editable) {
       <div class="td-label">${icon('checklist', 13)} Subtareas ${subs.length ? `<span class="td-prog-n">${done}/${subs.length}</span>` : ''}</div>
       ${subs.length ? `<div class="td-prog"><div class="td-prog-fill" style="width:${pct}%"></div></div>` : ''}
       ${subsHTML}
-      ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;margin-top:6px" onclick="tdAddSub()">+ Subtarea</button>` : ''}
+      ${editable ? `<button class="btn btn-ghost" style="font-size:var(--text-sm);padding:5px 10px;margin-top:6px" onclick="tdAddSub()">+ Subtarea</button>` : ''}
     </div>
     <div class="td-block">
       <div class="boxdrop-tabs" style="padding:0;margin-bottom:12px">
@@ -693,7 +693,7 @@ function tdMain(t, editable) {
 function tdComments(t, editable) {
   const cs = (typeof commentsOf === 'function') ? commentsOf({ taskId: t.id }) : [];
   const list = cs.length ? cs.map(c => `<div class="td-cmt"><div class="td-cmt-h"><span class="td-cmt-author">${esc((typeof _memberLabel === 'function') ? _memberLabel(c.author) : c.author)}</span><span class="td-cmt-ago">${(typeof _ago === 'function') ? _ago(c.createdAt) : ''}</span></div><div class="td-cmt-body">${esc(c.body)}</div></div>`).join('') : `<div class="empty-hint" style="margin:0 0 10px">Sin comentarios todavía.</div>`;
-  return `${list}${editable ? `<div style="margin-top:12px"><textarea class="textarea" id="td-cmt-input" placeholder="Escribe un comentario…" style="min-height:54px;font-size:13px"></textarea><button class="btn btn-primary" style="margin-top:6px;font-size:12px;padding:6px 12px" onclick="tdAddComment()">Comentar</button></div>` : ''}`;
+  return `${list}${editable ? `<div style="margin-top:12px"><textarea class="textarea" id="td-cmt-input" placeholder="Escribe un comentario…" style="min-height:54px;font-size:var(--text-base)"></textarea><button class="btn btn-primary" style="margin-top:6px;font-size:var(--text-sm);padding:6px 12px" onclick="tdAddComment()">Comentar</button></div>` : ''}`;
 }
 function tdActivity(t) {
   const a = (typeof activityOf === 'function') ? activityOf({ taskId: t.id }) : [];
@@ -708,20 +708,20 @@ function tdSide(t, editable) {
   const _url = u => (typeof safeUrl === 'function') ? safeUrl(u) : esc(u);
   const row = (label, ctrl) => `<div class="td-prop"><div class="td-prop-l">${label}</div><div>${ctrl}</div></div>`;
   return `
-    ${row('Responsable', (typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="tdPatch({responsable:this.value})"`, 'width:100%;font-size:12px;padding:6px 8px') : '—')}
-    ${row('Prioridad', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({priority:this.value})">${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${t.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
-    ${row('Departamento', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({departamento:this.value})"><option value="">—</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${t.departamento === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
-    ${row('Fecha inicio', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.startDate)}" ${dis} onchange="tdPatch({startDate:this.value})">`)}
-    ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:12px;padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
-    ${row('Recurrencia', `<select class="input" style="width:100%;font-size:12px;padding:6px 8px" ${dis} onchange="tdPatch({recurrence:this.value})"><option value="" ${!t.recurrence ? 'selected' : ''}>Ninguna</option><option value="weekly" ${t.recurrence === 'weekly' ? 'selected' : ''}>Semanal</option><option value="monthly" ${t.recurrence === 'monthly' ? 'selected' : ''}>Mensual</option></select>${t.recurrence ? `<div style="font-size:10px;color:var(--text-dim);margin-top:3px">Al completarla se crea la siguiente.</div>` : ''}`)}
+    ${row('Responsable', (typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="tdPatch({responsable:this.value})"`, 'width:100%;font-size:var(--text-sm);padding:6px 8px') : '—')}
+    ${row('Prioridad', `<select class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" ${dis} onchange="tdPatch({priority:this.value})">${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${t.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
+    ${row('Departamento', `<select class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" ${dis} onchange="tdPatch({departamento:this.value})"><option value="">—</option>${TASK_DEPTS.map(x => `<option value="${x[0]}" ${t.departamento === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>`)}
+    ${row('Fecha inicio', `<input type="date" class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" value="${s(t.startDate)}" ${dis} onchange="tdPatch({startDate:this.value})">`)}
+    ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
+    ${row('Recurrencia', `<select class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" ${dis} onchange="tdPatch({recurrence:this.value})"><option value="" ${!t.recurrence ? 'selected' : ''}>Ninguna</option><option value="weekly" ${t.recurrence === 'weekly' ? 'selected' : ''}>Semanal</option><option value="monthly" ${t.recurrence === 'monthly' ? 'selected' : ''}>Mensual</option></select>${t.recurrence ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);margin-top:3px">Al completarla se crea la siguiente.</div>` : ''}`)}
     ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <span style="cursor:pointer;opacity:.6" onclick="tdDelTag(${i})">×</span>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
-    ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
+    ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:var(--text-sm);padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
     ${row('Adjuntos', `<div>${atts.map((a, i) => `<div class="td-att"><a href="${_url((a && a.url) || '#')}" target="_blank" rel="noopener">${esc((a && a.name) || 'archivo')}</a>${editable ? `<span style="cursor:pointer;opacity:.6" onclick="tdDelAtt(${i})">×</span>` : ''}</div>`).join('')}${editable ? `<button class="td-tag-add" style="margin-top:4px" onclick="tdAddAtt()">+ adjunto</button>` : ''}</div>`)}
     <div class="td-prop" style="border:0;margin-top:4px">
       <div class="td-prop-l">Contexto</div>
-      <div style="font-size:12px;line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en release ${icon('link', 11)}</button>` : ''}</div>
+      <div style="font-size:var(--text-sm);line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en release ${icon('link', 11)}</button>` : ''}</div>
     </div>
-    ${editable ? `<button class="btn btn-ghost" style="width:100%;font-size:11px;padding:6px 8px;margin-top:10px" onclick="tdSaveAsTemplate()">${icon('checklist', 12)} Guardar como plantilla</button>` : ''}`;
+    ${editable ? `<button class="btn btn-ghost" style="width:100%;font-size:var(--text-xs);padding:6px 8px;margin-top:10px" onclick="tdSaveAsTemplate()">${icon('checklist', 12)} Guardar como plantilla</button>` : ''}`;
 }
 // ── Plantillas de tarea (reusables por equipo) ──
 function _taskTplKey() { return 'ao_task_templates_' + ((typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'local'); }

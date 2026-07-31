@@ -27,6 +27,10 @@ HANDOFF.md
 CHANGELOG.md
 DESIGN.md
 CLAUDE.md
+PRODUCT.md
+
+# Contexto de /impeccable (config local de live mode)
+.impeccable/
 
 # Scripts one-off de dev (rehost de miniaturas, downloader IG) - no runtime
 tools/

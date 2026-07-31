@@ -110,7 +110,7 @@ function _autoModal(title, bodyHTML, footHTML) {
   ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px';
   ov.onclick = e => { if (e.target === ov) closeAutoModal(); };
   ov.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 20px 60px var(--shadow)">
-    <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-display);font-size:18px;letter-spacing:.5px;flex:1">${title}</span><button class="boxdrop-close" onclick="closeAutoModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted)">${icon('close',16)}</button></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps-sm);flex:1">${title}</span><button class="boxdrop-close" onclick="closeAutoModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted)">${icon('close',16)}</button></div>
     <div style="padding:18px">${bodyHTML}</div>
     ${footHTML ? `<div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">${footHTML}</div>` : ''}
   </div>`;
@@ -123,12 +123,12 @@ function openTemplatePicker(launchId) {
   if (!requireCan('gestionar_tareas')) return;
   const l = launches.find(x => x.id === launchId); if (!l) return;
   const cards = PROJECT_TEMPLATES.map(t => `<label style="display:block;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
-      <div style="display:flex;align-items:center;gap:10px"><input type="radio" name="tpl" value="${t.id}" ${t.id === (l.type || 'single') ? 'checked' : ''}><strong style="font-size:14px">${t.name}</strong><span style="margin-left:auto;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${t.tasks.length} tareas · ${t.calendar.length} piezas</span></div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:5px;margin-left:24px">${t.desc}</div>
+      <div style="display:flex;align-items:center;gap:10px"><input type="radio" name="tpl" value="${t.id}" ${t.id === (l.type || 'single') ? 'checked' : ''}><strong style="font-size:var(--text-base)">${t.name}</strong><span style="margin-left:auto;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${t.tasks.length} tareas · ${t.calendar.length} piezas</span></div>
+      <div style="font-size:var(--text-sm);color:var(--text-muted);margin-top:5px;margin-left:24px">${t.desc}</div>
     </label>`).join('');
   const warn = l.templateApplied ? `<div class="empty-hint" style="margin-bottom:12px;border-color:var(--beat);color:var(--text-muted)">${icon('warning',13)} Ya aplicaste una plantilla a este release. Aplicar otra <b>agrega</b> tareas/piezas (no reemplaza).</div>` : '';
   const noDate = !l.date ? `<div class="empty-hint" style="margin-bottom:12px">Sin fecha de lanzamiento: las tareas se crean sin fecha límite (puedes editarlas luego).</div>` : '';
-  _autoModal('Aplicar plantilla de proyecto', `${warn}${noDate}<div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Genera tareas por área (con fechas relativas al drop) + un esqueleto de calendario de contenido.</div>${cards}`,
+  _autoModal('Aplicar plantilla de proyecto', `${warn}${noDate}<div style="margin-bottom:6px;font-size:var(--text-sm);color:var(--text-muted)">Genera tareas por área (con fechas relativas al drop) + un esqueleto de calendario de contenido.</div>${cards}`,
     `<button class="btn btn-ghost" onclick="closeAutoModal()">Cancelar</button><button class="btn btn-primary" onclick="confirmApplyTemplate('${launchId}')">Aplicar plantilla</button>`);
 }
 function confirmApplyTemplate(launchId) {
@@ -159,10 +159,10 @@ function openDepsPicker(taskId) {
   if (!sibs.length) { if (typeof uiAlert === 'function') uiAlert('No hay otras tareas en este release para depender de ellas.'); return; }
   const rows = sibs.map(x => `<label style="display:flex;align-items:center;gap:9px;padding:8px 4px;border-bottom:1px solid var(--hairline);cursor:pointer">
       <input type="checkbox" value="${x.id}" ${(t.deps || []).includes(x.id) ? 'checked' : ''}>
-      <span style="flex:1;font-size:13px">${s(x.titulo)}</span>
-      <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${x.estado}</span>
+      <span style="flex:1;font-size:var(--text-base)">${s(x.titulo)}</span>
+      <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${x.estado}</span>
     </label>`).join('');
-  _autoModal('Dependencias de: ' + s(t.titulo), `<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted)">Esta tarea queda <b>bloqueada</b> hasta que se completen las que marques. Se desbloquea sola cuando todas estén listas.</div>${rows}`,
+  _autoModal('Dependencias de: ' + s(t.titulo), `<div style="margin-bottom:8px;font-size:var(--text-sm);color:var(--text-muted)">Esta tarea queda <b>bloqueada</b> hasta que se completen las que marques. Se desbloquea sola cuando todas estén listas.</div>${rows}`,
     `<button class="btn btn-ghost" onclick="closeAutoModal()">Cancelar</button><button class="btn btn-primary" onclick="saveDepsPicker('${taskId}')">Guardar</button>`);
 }
 function saveDepsPicker(taskId) {

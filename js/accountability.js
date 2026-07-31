@@ -52,7 +52,7 @@ function renderNotifPanel() {
       <div class="notif-ic">${icon(ICONS[n.type] || 'info', 15)}</div>
       <div style="flex:1;min-width:0"><div class="nt">${s(n.title)}</div>${n.body ? `<div class="nb">${s(n.body)}</div>` : ''}<div class="ntime">${_ago(n.createdAt)}</div></div>
     </div>`).join('') : `<div class="notif-empty">${icon('bell', 26)}<div style="margin-top:8px">Sin notificaciones</div></div>`;
-  p.innerHTML = `<div class="notif-head"><span>Notificaciones</span>${unread ? `<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();markAllNotifsRead()">Marcar leídas</button>` : ''}</div>${rows}`;
+  p.innerHTML = `<div class="notif-head"><span>Notificaciones</span>${unread ? `<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:var(--text-2xs)" onclick="event.stopPropagation();markAllNotifsRead()">Marcar leídas</button>` : ''}</div>${rows}`;
   if (typeof hydrateIcons === 'function') hydrateIcons(p);
 }
 function openNotif(id) {
@@ -150,7 +150,7 @@ function commentsPanelHTML(scope) {
   const composer = canDo('gestionar_tareas') ? `<div class="cmt-compose">
       <textarea class="textarea" id="cmt-input" placeholder="Escribe un comentario… escribe @ para mencionar" style="min-height:60px" oninput="cmtInput()" onkeydown="cmtKeydown(event)" onblur="setTimeout(cmtCloseMention,150)"></textarea>
       <div class="mention-pop" id="mention-pop" style="display:none"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">@ para mencionar (por nombre o correo)</span><button class="btn btn-primary" style="margin-left:auto" onclick="sendComment()">${icon('chat', 13)} Comentar${_cmtCanal === 'interno-privado' ? ' (privado)' : ''}</button></div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">@ para mencionar (por nombre o correo)</span><button class="btn btn-primary" style="margin-left:auto" onclick="sendComment()">${icon('chat', 13)} Comentar${_cmtCanal === 'interno-privado' ? ' (privado)' : ''}</button></div>
     </div>` : '';
   return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chat', 18)}</span><span class="ph-title">Comentarios</span><span class="ph-sub">canales por área + @menciones</span></div>
     <div class="cmt-tabs">${tabs}</div>${thread}${composer}</div>`;
@@ -255,9 +255,9 @@ function approvalsPanelHTML(l) {
     const st = a ? a.estado : null;
     const stHTML = a ? `<span class="apr-st" style="background:${APR_ST_COLOR[st]}1f;color:${APR_ST_COLOR[st]}">${st.replace('_', ' ')}</span>` : `<span class="apr-st" style="background:var(--surface2);color:var(--text-dim)">sin solicitar</span>`;
     let actions = '';
-    if (a && (st === 'pendiente' || st === 'en_revision') && canDec) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:11px;color:#4ade80;border-color:rgba(74,222,128,.35)" onclick="decideApprovalUI('${a.id}','aprobado')">Aprobar</button><button class="btn btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent2)" onclick="decideApprovalUI('${a.id}','rechazado')">Rechazar</button>`;
-    else if (!a && canReq) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:11px" onclick="requestApproval('${l.id}','${g}')">Solicitar</button>`;
-    else if (a && (st === 'aprobado' || st === 'rechazado')) actions = `<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${a.decidedBy ? 'por ' + _memberLabel(a.decidedBy) : ''} ${_ago(a.decidedAt)}</span>${canReq ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:10px" onclick="requestApproval('${l.id}','${g}')" title="Volver a solicitar">${icon('refresh', 11)}</button>` : ''}`;
+    if (a && (st === 'pendiente' || st === 'en_revision') && canDec) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:#4ade80;border-color:rgba(74,222,128,.35)" onclick="decideApprovalUI('${a.id}','aprobado')">Aprobar</button><button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:var(--accent2)" onclick="decideApprovalUI('${a.id}','rechazado')">Rechazar</button>`;
+    else if (!a && canReq) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs)" onclick="requestApproval('${l.id}','${g}')">Solicitar</button>`;
+    else if (a && (st === 'aprobado' || st === 'rechazado')) actions = `<span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">${a.decidedBy ? 'por ' + _memberLabel(a.decidedBy) : ''} ${_ago(a.decidedAt)}</span>${canReq ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:var(--text-2xs)" onclick="requestApproval('${l.id}','${g}')" title="Volver a solicitar">${icon('refresh', 11)}</button>` : ''}`;
     return `<div class="apr-row"><span class="apr-gate">${lbl}</span>${stHTML}<span style="margin-left:auto;display:flex;gap:6px;align-items:center">${actions}</span></div>`;
   }).join('');
   return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('check', 18)}</span><span class="ph-title">Aprobaciones</span><span class="ph-sub">propone → revisa → aprueba</span></div>${rows}</div>`;

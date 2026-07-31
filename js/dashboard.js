@@ -63,20 +63,20 @@ function rosterHeatmapHTML(){
   // Tira tipo heatmap: una celda por semana, coloreada por carga.
   const cells = weeks.map(w => { const n = w.releases.length; const col = rosterLoadColor(n);
     return `<div title="${fmt(w.start)}–${fmt(w.end)} · ${n} release${n!==1?'s':''}" style="flex:1;min-width:52px;border-radius:8px;border:1px solid var(--border);background:${col};${n>=2?'color:#1a1a1a':'color:var(--text-muted)'};padding:8px 6px;text-align:center">
-      <div style="font-size:9px;font-family:var(--font-mono);opacity:.85">${fmt(w.start)}</div>
-      <div style="font-family:var(--font-display);font-size:20px;line-height:1.15">${n}</div>
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);opacity:.85">${fmt(w.start)}</div>
+      <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-lg);line-height:var(--lh-tight)">${n}</div>
     </div>`; }).join('');
   // Detalle: semanas con releases, con chips clicables y aviso de sobrecarga.
   const detail = weeks.filter(w => w.releases.length).map(w => { const n = w.releases.length; const col = rosterLoadColor(n);
     const chips = w.releases.map(r => { const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === r.artistId) : null;
       return `<span class="chip" style="cursor:pointer" onclick="openLaunch('${r.id}')">${art ? esc(art.name) + ' · ' : ''}${esc(r.name)}</span>`; }).join(' ');
-    const warn = n >= 3 ? `<span style="color:var(--accent2);font-size:11px;font-family:var(--font-mono)">sobrecargada · máx 2–3</span>`
-              : (n === 2 ? `<span style="color:var(--beat);font-size:11px;font-family:var(--font-mono)">al límite</span>` : '');
+    const warn = n >= 3 ? `<span style="color:var(--accent2);font-size:var(--text-xs);font-family:var(--font-ui)">sobrecargada · máx 2–3</span>`
+              : (n === 2 ? `<span style="color:var(--beat);font-size:var(--text-xs);font-family:var(--font-ui)">al límite</span>` : '');
     return `<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:8px;padding:12px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'6px':'0'};flex-wrap:wrap"><span style="font-size:13px;font-weight:600">${fmt(w.start)} – ${fmt(w.end)}</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${n} release${n!==1?'s':''}</span>${warn}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'6px':'0'};flex-wrap:wrap"><span style="font-size:var(--text-base);font-weight:600">${fmt(w.start)} – ${fmt(w.end)}</span><span style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">${n} release${n!==1?'s':''}</span>${warn}</div>
       ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>` : ''}
     </div>`; }).join('') || `<div class="empty-hint">No hay releases con fecha en las próximas ${N} semanas.</div>`;
-  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:14px"><span class="dot dot--red"></span><span>${overloaded} semana${overloaded>1?'s':''} con 3+ releases — riesgo de auto-canibalización y carga del equipo.</span></div>` : '';
+  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:14px"><span class="dot dot--red"></span><span>${overloaded} semana${overloaded>1?'s':''} con 3+ releases — riesgo de auto-canibalización y carga del equipo.</span></div>` : '';
   return banner + `<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">${cells}</div>` + detail;
 }
 
@@ -165,7 +165,7 @@ function cockpitBodyHTML() {
   const rows = cockpitLaunches().map(l => ({ l, r: _cockpitRisk(l) }))
     .sort((a, b) => b.r.score - a.r.score || ((a.r.d == null ? 9999 : a.r.d) - (b.r.d == null ? 9999 : b.r.d)));
   if (!rows.length) return '<div class="empty-hint">No hay lanzamientos activos. Crea uno para verlo aquí.</div>';
-  const countLine = `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:14px">${rows.length} lanzamiento${rows.length === 1 ? '' : 's'} activo${rows.length === 1 ? '' : 's'} · ordenados por riesgo</div>`;
+  const countLine = `<div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-bottom:14px">${rows.length} lanzamiento${rows.length === 1 ? '' : 's'} activo${rows.length === 1 ? '' : 's'} · ordenados por riesgo</div>`;
   // ── Cola de acción ──
   const items = cockpitActionItems().slice(0, 6);
   const queue = items.length ? `
@@ -173,15 +173,15 @@ function cockpitBodyHTML() {
       <div class="panel-head"><span class="ph-icon">${icon('warning', 18)}</span><span class="ph-title">Se cae esta semana</span><span class="ph-sub">${items.length} cosa${items.length === 1 ? '' : 's'} que necesitan acción</span></div>
       ${items.map(it => {
         const taskActs = (it.kind === 'task' && it.tid) ? `
-          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Posponer 3 días" onclick="event.stopPropagation();cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Mover fecha límite" onclick="event.stopPropagation();cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" title="Escalar / reasignar" onclick="event.stopPropagation();cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
+          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Posponer 3 días" onclick="event.stopPropagation();cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Mover fecha límite" onclick="event.stopPropagation();cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Escalar / reasignar" onclick="event.stopPropagation();cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer;flex-wrap:wrap" onclick="cockpitOpen('${it.lid}','${it.tab}')">
         <span class="dot ${it.sev >= 3 ? 'dot--red' : 'dot--yellow'}"></span>
-        <div style="flex:1;min-width:140px"><div style="font-size:13px">${esc(it.text)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
+        <div style="flex:1;min-width:140px"><div style="font-size:var(--text-base)">${esc(it.text)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${taskActs}<span class="chip" style="cursor:pointer">Abrir →</span></div>
       </div>`; }).join('')}
-    </div>` : `<div class="panel" style="margin:0 0 18px"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="dot dot--green"></span> Nada urgente esta semana. Todo bajo control.</div></div>`;
+    </div>` : `<div class="panel" style="margin:0 0 18px"><div style="display:flex;align-items:center;gap:8px;font-size:var(--text-base)"><span class="dot dot--green"></span> Nada urgente esta semana. Todo bajo control.</div></div>`;
   // ── Tabla de lanzamientos (una fila c/u, ordenada por riesgo) ──
   const rowsHTML = rows.map(({ l, r }) => {
     const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === l.artistId) : null;
@@ -197,14 +197,14 @@ function cockpitBodyHTML() {
     ].filter(Boolean).join('');
     return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="flex:1.4;min-width:190px">
-        <div style="font-size:15px;font-weight:600">${esc(l.name)}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
+        <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)}</div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
       </div>
       <div style="flex:0 0 auto"><span class="chip" style="cursor:default;color:${pcol};border-color:${pcol}55">${esc(phase)}</span></div>
       <div style="flex:1;min-width:130px">
-        <div style="display:flex;justify-content:space-between;font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:3px"><span>LISTO</span><span style="color:${rcol}">${r.pct}%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:3px"><span>LISTO</span><span style="color:${rcol}">${r.pct}%</span></div>
         <div class="progress-track" style="height:5px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
-        ${topAlert ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(topAlert.text)}"><span class="dot ${topAlert.level === 'red' ? 'dot--red' : 'dot--yellow'}" style="margin-right:4px"></span>${esc(topAlert.text)}</div>` : ''}
+        ${topAlert ? `<div style="font-size:var(--text-2xs);color:var(--text-muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(topAlert.text)}"><span class="dot ${topAlert.level === 'red' ? 'dot--red' : 'dot--yellow'}" style="margin-right:4px"></span>${esc(topAlert.text)}</div>` : ''}
       </div>
       <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
       <div style="flex:0 0 auto;min-width:130px;display:flex;justify-content:flex-end">${(typeof dropClockHTML === 'function') ? dropClockHTML(l) : ''}</div>
@@ -246,26 +246,26 @@ function cockpitBoardHTML() {
     const topAlert = r.alerts.find(a => a.level === 'red') || r.alerts.find(a => a.level === 'yellow');
     const dLabel = r.d == null ? 's/f' : (r.d < 0 ? 'live' : r.d);
     const dCol = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? 'var(--done)' : (r.d <= 7 ? 'var(--blocked)' : (r.d <= 21 ? 'var(--risk)' : 'var(--text)')));
-    const act = (showAct && topAlert) ? `<button class="btn btn-primary" style="width:100%;margin-top:9px;font-size:11px;padding:6px 8px" onclick="event.stopPropagation();cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : '';
+    const act = (showAct && topAlert) ? `<button class="btn btn-primary" style="width:100%;margin-top:9px;font-size:var(--text-xs);padding:6px 8px" onclick="event.stopPropagation();cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : '';
     return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
-      <div style="font-size:13px;font-weight:600">${esc(l.name)}</div>
-      <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);text-transform:uppercase;margin:1px 0 8px">${esc(art ? art.name : '—')}</div>
+      <div style="font-size:var(--text-base);font-weight:600">${esc(l.name)}</div>
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);text-transform:uppercase;margin:1px 0 8px">${esc(art ? art.name : '—')}</div>
       <div class="progress-track" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px">
-        <div style="font-size:11px;color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topAlert ? esc(topAlert.text) : esc(phase)}">${topAlert ? esc(topAlert.text) : esc(phase)}</div>
-        <div style="font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:18px;line-height:.9;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topAlert ? esc(topAlert.text) : esc(phase)}">${topAlert ? esc(topAlert.text) : esc(phase)}</div>
+        <div style="font-family:var(--font-ui);font-weight:700;font-variant-numeric:tabular-nums;font-size:var(--text-lg);line-height:.9;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
       </div>${act}</div>`;
   };
   const colHTML = (key) => {
     const c = cols[key];
-    const empty = (key === 'blocked' && typeof silenceBlockHTML === 'function') ? silenceBlockHTML() : '<div style="font-size:11px;color:var(--text-dim);padding:6px 4px">—</div>';
+    const empty = (key === 'blocked' && typeof silenceBlockHTML === 'function') ? silenceBlockHTML() : '<div style="font-size:var(--text-xs);color:var(--text-dim);padding:6px 4px">—</div>';
     return `<div style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:${c.color};padding:2px 4px 10px;border-bottom:1px solid var(--border);margin-bottom:10px"><span>${c.label}</span><span>${c.items.length}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--font-ui);font-size:var(--text-2xs);letter-spacing:var(--track-caps);text-transform:uppercase;color:${c.color};padding:2px 4px 10px;border-bottom:1px solid var(--border);margin-bottom:10px"><span>${c.label}</span><span>${c.items.length}</span></div>
       ${c.items.map(x => card(x, key === 'blocked')).join('') || empty}
     </div>`;
   };
   const count = list.length;
-  const line = `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:14px">${count} lanzamiento${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} · por estado de riesgo</div>`;
+  const line = `<div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-bottom:14px">${count} lanzamiento${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} · por estado de riesgo</div>`;
   // El silencio como recompensa: si nada está bloqueado ni en riesgo, el cockpit es una sola línea.
   if (!cols.blocked.items.length && !cols.risk.items.length && typeof allClearHTML === 'function') return line + allClearHTML();
   return line + `<div style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px">${['blocked', 'risk', 'ok', 'post'].map(colHTML).join('')}</div>`;
@@ -286,18 +286,18 @@ function cockpitBenchmarkMockHTML() {
   const fmtN = n => n == null ? '—' : Number(n).toLocaleString('es');
   const row = (metric, mineV, med, p75, suffix) => `<tr>
     <td style="padding:6px 8px">${metric}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-weight:600">${mineV == null ? '—' : fmtN(mineV) + (suffix || '')}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${fmtN(med) + (suffix || '')}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${fmtN(p75) + (suffix || '')}</td></tr>`;
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);font-weight:600">${mineV == null ? '—' : fmtN(mineV) + (suffix || '')}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:var(--text-muted)">${fmtN(med) + (suffix || '')}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:var(--text-muted)">${fmtN(p75) + (suffix || '')}</td></tr>`;
   const banner = `<div style="display:flex;align-items:center;gap:8px;border:1px dashed var(--risk);border-radius:var(--radius-md);padding:8px 12px;margin-bottom:12px;background:rgba(232,163,61,.06)">
     <span style="color:var(--risk)">${icon('warning', 15)}</span>
-    <div style="font-size:11px;font-family:var(--font-mono);color:var(--risk);letter-spacing:.5px">PRUEBA · DATOS SIMULADOS — demo de discovery, NO son dato real. Quitar antes de producción.</div></div>`;
-  const src = mine ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">"Tu lanzamiento" = snapshot real de <b>${s(mine.releaseName) || 'tu último release'}</b>. Mediana y p75 = <b>simulados</b> (aún no hay pipeline de benchmarks).</div>`
-    : `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">Aún sin snapshot propio: cierra un release para poblar "Tu lanzamiento". Mediana y p75 = <b>simulados</b>.</div>`;
+    <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--risk);letter-spacing:var(--track-caps-sm)">PRUEBA · DATOS SIMULADOS — demo de discovery, NO son dato real. Quitar antes de producción.</div></div>`;
+  const src = mine ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">"Tu lanzamiento" = snapshot real de <b>${s(mine.releaseName) || 'tu último release'}</b>. Mediana y p75 = <b>simulados</b> (aún no hay pipeline de benchmarks).</div>`
+    : `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">Aún sin snapshot propio: cierra un release para poblar "Tu lanzamiento". Mediana y p75 = <b>simulados</b>.</div>`;
   return `<div class="panel" style="margin-top:18px">
     <div class="panel-head"><span class="ph-icon">${icon('chart', 18)}</span><span class="ph-title">Benchmarks del lanzamiento</span><span class="ph-sub">tu drop vs. el mercado</span></div>
     ${banner}
-    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase">
       <th style="text-align:left;padding:6px 8px">Métrica</th><th style="text-align:right;padding:6px 8px">Tu lanzamiento</th><th style="text-align:right;padding:6px 8px">Mediana*</th><th style="text-align:right;padding:6px 8px">p75*</th></tr></thead>
       <tbody>
         ${row('Streams d7', myD7, 18000, 34000, '')}
@@ -305,7 +305,7 @@ function cockpitBenchmarkMockHTML() {
         ${row('Readiness al drop', myReady, 72, 88, '%')}
       </tbody></table>
     ${src}
-    <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:6px">* simulado</div></div>`;
+    <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:6px">* simulado</div></div>`;
 }
 
 // ══════════════════════════════════════════
@@ -339,16 +339,16 @@ function rosterHealthHTML() {
       next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
     ].filter(Boolean).join(' ');
     return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <div class="artist-avatar" style="width:40px;height:40px;font-size:15px">${up(art.name).slice(0, 1)}</div>
+      <div class="artist-avatar" style="width:40px;height:40px;font-size:var(--text-md)">${up(art.name).slice(0, 1)}</div>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
+        <div style="font-size:var(--text-md);font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${launchInfo} · cierre ${cierre}</div>
         ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chips}</div>` : ''}
         ${bar}
       </div>
       <div style="text-align:right">
-        <div style="font-family:var(--font-display);font-size:26px;color:${col}">${p.avg != null ? p.avg + '%' : '—'}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(p.label)}${p.totalGoals ? ` · ${p.met}/${p.totalGoals} metas` : ''}</div>
+        <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-2xl);letter-spacing:var(--track-tight);color:${col}">${p.avg != null ? p.avg + '%' : '—'}</div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(p.label)}${p.totalGoals ? ` · ${p.met}/${p.totalGoals} metas` : ''}</div>
       </div>
     </div>`;
   }).join('');

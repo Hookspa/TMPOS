@@ -383,14 +383,14 @@ async function renderModeracion() {
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500">${s(d.title) || '(sin título)'} ${hidden ? `<span style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);border:1px solid var(--accent2);border-radius:3px;padding:1px 5px;margin-left:4px">OCULTA</span>` : ''}</div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${reps.length} reporte(s)${ref.author ? ' · por ' + s(ref.author) : ''}</div>
+            <div style="font-size:var(--text-base);font-weight:500">${s(d.title) || '(sin título)'} ${hidden ? `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent2);border:1px solid var(--accent2);border-radius:3px;padding:1px 5px;margin-left:4px">OCULTA</span>` : ''}</div>
+            <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${reps.length} reporte(s)${ref.author ? ' · por ' + s(ref.author) : ''}</div>
           </div>
           ${hidden
-            ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px" onclick="moderationSetStatus('${id}','active')">Restaurar</button>`
-            : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="moderationSetStatus('${id}','hidden')">${icon('eyeOff',12)} Ocultar</button>`}
+            ? `<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:5px 11px" onclick="moderationSetStatus('${id}','active')">Restaurar</button>`
+            : `<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="moderationSetStatus('${id}','hidden')">${icon('eyeOff',12)} Ocultar</button>`}
         </div>
-        ${reasons ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${reasons}</div>` : ''}
+        ${reasons ? `<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:8px;line-height:1.5">${reasons}</div>` : ''}
       </div>`;
     }).join('');
     if (typeof hydrateIcons === 'function') hydrateIcons(host);
@@ -593,14 +593,14 @@ function setCatFilter(btn, val) {
 function catBadgeHTML(cats, small) {
   return (cats || []).filter(Boolean).map(c => {
     const col = catColor(c);
-    const sz = small ? '9px' : '10px';
-    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${up(trTag(c,'cat'))}</span>`;
+    const sz = 'var(--text-2xs)';
+    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${up(trTag(c,'cat'))}</span>`;
   }).join('');
 }
 function forBadgeHTML(fors, small) {
-  const sz = small ? '9px' : '10px';
+  const sz = 'var(--text-2xs)';
   return (fors || []).filter(Boolean).map(f =>
-    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-mono);margin:1px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
+    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
   ).join('');
 }
 function renderBancoContext() {
@@ -608,7 +608,7 @@ function renderBancoContext() {
   const a = activeLaunch();
   const n = a ? a.ideas.length : 0;
   host.innerHTML = launchContextHTML()
-    + `<div style="margin:-10px 0 18px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.5px;display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
+    + `<div style="margin:-10px 0 18px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps-sm);display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
 }
 function renderBanco() {
   renderBancoContext();
@@ -633,7 +633,7 @@ function renderBanco() {
   if (bancoRandom) filtered = shuffleSeeded(filtered.slice(), _shuffleKey);
   if (!filtered.length) {
     grid.style.gridTemplateColumns = '1fr';
-    grid.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px">SIN REFERENCIAS CON ESTOS FILTROS</div></div>`;
+    grid.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-family:var(--font-ui);font-size:var(--text-xs);letter-spacing:var(--track-caps-wide)">SIN REFERENCIAS CON ESTOS FILTROS</div></div>`;
     return;
   }
   grid.style.gridTemplateColumns = '';
@@ -653,33 +653,33 @@ function renderBanco() {
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.custom ? customBadgeHTML(r) : ''}
-        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:9px;font-family:var(--font-mono);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
+        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:var(--text-2xs);font-family:var(--font-ui);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
         <div class="ref-page-title">${s(trText(r.title))}</div>
-        ${r.hook ? `<div style="font-size:10px;color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(trText(r.hook))}"</div>` : ''}
-        <div style="margin-bottom:3px;display:flex;flex-wrap:wrap">${catBadgeHTML(r.cat, true) || '<span style="font-size:9px;color:var(--text-dim)">sin cat</span>'}</div>
+        ${r.hook ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(trText(r.hook))}"</div>` : ''}
+        <div style="margin-bottom:3px;display:flex;flex-wrap:wrap">${catBadgeHTML(r.cat, true) || '<span style="font-size:var(--text-2xs);color:var(--text-dim)">sin cat</span>'}</div>
         <div style="display:flex;flex-wrap:wrap">${forBadgeHTML(r.for, true)}</div>
       </div>
     </div>`;
   }).join('');
   // Tarjeta "+ Crear post desde cero" siempre al inicio (con "Cargar más" el inicio siempre está visible).
   const addCard = `<div class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
-        <div style="text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<div style="font-size:11px;font-family:var(--font-mono);margin-top:8px;letter-spacing:1px">CREAR POST<br>DESDE CERO</div></div>
+        <div style="text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<div style="font-size:var(--text-xs);font-family:var(--font-ui);margin-top:8px;letter-spacing:var(--track-caps)">CREAR POST<br>DESDE CERO</div></div>
       </div>`;
   const restantes = filtered.length - shown;
   const paginacion = `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 4px 0;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">Cargar de a</span>
-        ${[10,25,50].map(n => `<button onclick="cambiarPorPagina(${n})" style="padding:4px 9px;border-radius:3px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border:1px solid ${porPagina===n?'var(--accent)':'var(--border)'};background:${porPagina===n?'color-mix(in srgb, var(--accent) 10%, transparent)':'transparent'};color:${porPagina===n?'var(--accent)':'var(--text-muted)'}">${n}</button>`).join('')}
+        <span style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted)">Cargar de a</span>
+        ${[10,25,50].map(n => `<button onclick="cambiarPorPagina(${n})" style="padding:4px 9px;border-radius:3px;font-family:var(--font-ui);font-size:var(--text-2xs);cursor:pointer;border:1px solid ${porPagina===n?'var(--accent)':'var(--border)'};background:${porPagina===n?'color-mix(in srgb, var(--accent) 10%, transparent)':'transparent'};color:${porPagina===n?'var(--accent)':'var(--text-muted)'}">${n}</button>`).join('')}
       </div>
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">${shown} de ${filtered.length}</span>
+      <span style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted)">${shown} de ${filtered.length}</span>
       <div style="display:flex;align-items:center;gap:6px">
         ${restantes > 0
-          ? `<button class="btn btn-ghost" style="padding:5px 14px;font-size:11px" onclick="cargarMasBanco()">Cargar más (+${Math.min(porPagina, restantes)})</button>
-             <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px;color:var(--text-dim)" onclick="verTodasBanco()">Ver todas</button>`
-          : `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">${icon('check',11)} todas cargadas</span>`}
+          ? `<button class="btn btn-ghost" style="padding:5px 14px;font-size:var(--text-xs)" onclick="cargarMasBanco()">Cargar más (+${Math.min(porPagina, restantes)})</button>
+             <button class="btn btn-ghost" style="padding:5px 12px;font-size:var(--text-xs);color:var(--text-dim)" onclick="verTodasBanco()">Ver todas</button>`
+          : `<span style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-dim)">${icon('check',11)} todas cargadas</span>`}
       </div>
     </div>`;
   grid.innerHTML = addCard + cards + paginacion;
@@ -706,7 +706,7 @@ function customBadgeHTML(r) {
   const col = community ? '#a78bfa' : (shared ? '#4ade80' : 'var(--text-dim)');
   const ico = community ? 'star' : (shared ? 'eye' : 'lock');
   return `<span title="${community ? ('De la comunidad' + (s(r.author)?(' · '+s(r.author)):'')) : (shared ? 'Compartida con la comunidad' : 'Privada (solo tú)')}"
-    style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:8px;font-family:var(--font-mono);letter-spacing:0.5px;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
+    style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:var(--text-2xs);font-family:var(--font-ui);letter-spacing:var(--track-caps-sm);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
 }
 
 // ── Toolbar del banco: búsqueda + "Mis referencias" + orden + aleatorio + importar desde link ──
@@ -719,23 +719,23 @@ function renderBancoToolbar() {
       <div style="flex:1;min-width:170px;position:relative;display:flex;align-items:center">
         <span style="position:absolute;left:10px;color:var(--text-dim);display:flex;pointer-events:none">${icon('search',14)}</span>
         <input id="banco-search" class="input" type="text" value="${s(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
-          oninput="bancoSetSearch(this.value)" style="width:100%;padding-left:32px;font-size:12px">
+          oninput="bancoSetSearch(this.value)" style="width:100%;padding-left:32px;font-size:var(--text-sm)">
         ${bancoSearch ? `<button onclick="bancoSetSearch('')" title="Limpiar" style="position:absolute;right:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex">${icon('close',12)}</button>` : ''}
       </div>
-      <select class="input" title="Ordenar" onchange="setBancoSort(this.value)" style="font-size:11px;padding:7px 10px;width:auto">
+      <select class="input" title="Ordenar" onchange="setBancoSort(this.value)" style="font-size:var(--text-xs);padding:7px 10px;width:auto">
         ${sortOpts.map(o => `<option value="${o[0]}" ${bancoSort===o[0]?'selected':''}>Orden: ${o[1]}</option>`).join('')}
       </select>
       <button onclick="toggleBancoMine()" title="Ver solo tus referencias personalizadas"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-body);font-size:12px;cursor:pointer;border:1px solid ${bancoMine?"var(--muted)":"var(--border)"};background:${bancoMine?"var(--surface2)":"transparent"};color:${bancoMine?"var(--text)":"var(--text-muted)"}">${icon(bancoMine?'starFill':'star',13)} Mis referencias${mineN?` · ${mineN}`:''}</button>
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid ${bancoMine?"var(--muted)":"var(--border)"};background:${bancoMine?"var(--surface2)":"transparent"};color:${bancoMine?"var(--text)":"var(--text-muted)"}">${icon(bancoMine?'starFill':'star',13)} Mis referencias${mineN?` · ${mineN}`:''}</button>
       <button onclick="toggleBancoRandom()" title="Orden aleatorio (on/off)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-body);font-size:12px;cursor:pointer;border:1px solid ${bancoRandom?"var(--muted)":"var(--border)"};background:${bancoRandom?"var(--surface2)":"transparent"};color:${bancoRandom?"var(--text)":"var(--text-muted)"}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
-      ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-body);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid ${bancoRandom?"var(--muted)":"var(--border)"};background:${bancoRandom?"var(--surface2)":"transparent"};color:${bancoRandom?"var(--text)":"var(--text-muted)"}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
+      ${bancoRandom ? `<button onclick="reshuffleBanco()" title="Volver a mezclar" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('refresh',13)} Mezclar</button>` : ''}
       <button onclick="toggleBancoTranslate()" title="Traducir las referencias al español (Google)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-body);font-size:12px;cursor:pointer;border:1px solid ${bancoTranslate?"var(--muted)":"var(--border)"};background:${bancoTranslate?"var(--surface2)":"transparent"};color:${bancoTranslate?"var(--text)":"var(--text-muted)"}">${icon('globe',13)} ${bancoTranslate?'Español ON':'Traducir'}</button>
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid ${bancoTranslate?"var(--muted)":"var(--border)"};background:${bancoTranslate?"var(--surface2)":"transparent"};color:${bancoTranslate?"var(--text)":"var(--text-muted)"}">${icon('globe',13)} ${bancoTranslate?'Español ON':'Traducir'}</button>
       <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('link',13)} Importar desde link</button>
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--radius-sm);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('link',13)} Importar desde link</button>
       ${(typeof isAdmin === 'function' && isAdmin()) ? `<button onclick="abrirModeracion()" title="Moderar el pool de la comunidad (reportes)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-body);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}
     </div>`;
   ensureTagDatalist();
   if (typeof hydrateIcons === 'function') hydrateIcons(host);
@@ -867,13 +867,13 @@ function openRefBoxdrop(idx) {
     const forChips = fors.map(f => `<span class="brief-tag">${s(f)}</span>`).join('');
     ensureTagDatalist();
     document.getElementById('bd-tags').innerHTML = chips + forChips +
-      `<input class="input" list="tag-suggestions" style="font-size:11px;width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
+      `<input class="input" list="tag-suggestions" style="font-size:var(--text-xs);width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
   } else {
     const tagHTML = [
       ...cats.map(c => `<span class="brief-tag accent">${s(trTag(c,'cat'))}</span>`),
       ...fors.map(f => `<span class="brief-tag">${s(trTag(f,'for'))}</span>`)
     ].join('');
-    document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:11px;color:var(--text-dim)">Sin tags</span>';
+    document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:var(--text-xs);color:var(--text-dim)">Sin tags</span>';
   }
 
   // Badge de categoría en header
@@ -881,7 +881,7 @@ function openRefBoxdrop(idx) {
   badge.removeAttribute('class');
   const fc = cats[0] || '';
   const fcol = catColor(fc);
-  badge.style.cssText = `background:${fcol}22;color:${fcol};border:1px solid ${fcol}44;padding:3px 10px;border-radius:2px;font-size:9px;font-family:var(--font-mono)`;
+  badge.style.cssText = `background:${fcol}22;color:${fcol};border:1px solid ${fcol}44;padding:3px 10px;border-radius:2px;font-size:var(--text-2xs);font-family:var(--font-ui)`;
   badge.textContent   = up(fc) || 'REF';
 
   // Miniatura (lado derecho del brief) — el LINK y la MINIATURA son independientes.
@@ -890,10 +890,10 @@ function openRefBoxdrop(idx) {
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
   const linkFooter = editable
-    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:11px;width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
+    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:var(--text-xs);width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:var(--text-2xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
     : (link
-      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
-      : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`);
+      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
+      : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`);
   card.innerHTML = `
     <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${esc(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
       onerror="this.style.display='none';this.parentNode.querySelector('.brief-thumb-fallback').style.display='flex'">
@@ -905,16 +905,16 @@ function openRefBoxdrop(idx) {
   const selLabel = a ? `Seleccionar para ${s(a.name)}` : 'Seleccionar idea';
   document.getElementById('bd-actions').innerHTML = `
     <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${sel?'color-mix(in srgb, var(--accent) 30%, transparent)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${sel?'color-mix(in srgb, var(--accent) 30%, transparent)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
     <button onclick="generarContenidoBanco(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
-      style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
-    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
-    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
-    <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
-    ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
-    ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:11px;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
+      style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
+    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
+    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
+    <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
+    ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
+    ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
@@ -1229,9 +1229,9 @@ function renderCalGrid() {
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
       const delX = canEditCal ? `<button onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
       const drag = canEditCal ? `draggable="true" ondragstart="calDragStart(event,'${ci._campId}','${ci.id}')" ondragend="calDragEnd(event)"` : '';
-      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:9px;font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</span></div>`;
+      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:var(--text-2xs);font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</span></div>`;
     }).join('');
-    const dropBadge = isDrop ? `<div style="font-size:8px;font-family:var(--font-mono);color:var(--accent);letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
+    const dropBadge = isDrop ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);letter-spacing:var(--track-caps);margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
     const div = document.createElement('div');
     div.className = 'cal-day' + (isToday ? ' today' : '') + (outMonth ? '' : ' addable');
     if (calRange === '1m') div.style.minHeight = '78px';
@@ -1270,13 +1270,13 @@ function renderCampaignsBar() {
     const tag = c.isEvergreen ? 'always-on' : 'release';
     return `<div style="display:flex;align-items:center;gap:8px;opacity:${hidden?0.4:1};cursor:pointer" onclick="toggleCampaign('${c.id}')" title="${hidden?'Mostrar':'Ocultar'} en el calendario">
       <span style="width:11px;height:11px;border-radius:3px;background:${c.color};display:inline-block;flex-shrink:0;${hidden?'opacity:.5':''}"></span>
-      <span style="flex:1;min-width:0;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s(c.name)} <span style="font-size:8px;font-family:var(--font-mono);color:var(--text-dim)">${tag}</span></span>
+      <span style="flex:1;min-width:0;font-size:var(--text-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s(c.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${tag}</span></span>
       <span style="color:var(--text-dim);display:flex">${icon(hidden?'eye':'eye',11)}</span>
       ${del}
     </div>`;
   }).join('');
-  el.innerHTML = (rows || '<div style="font-size:10px;color:var(--text-dim)">Sin campañas.</div>') +
-    (canEditC ? `<button class="btn btn-ghost" style="margin-top:8px;font-size:11px;padding:5px 9px;width:100%" onclick="crearCampania()">+ Campaña always-on</button>` : '');
+  el.innerHTML = (rows || '<div style="font-size:var(--text-2xs);color:var(--text-dim)">Sin campañas.</div>') +
+    (canEditC ? `<button class="btn btn-ghost" style="margin-top:8px;font-size:var(--text-xs);padding:5px 9px;width:100%" onclick="crearCampania()">+ Campaña always-on</button>` : '');
   if (typeof hydrateIcons === 'function') hydrateIcons(el);
 }
 
@@ -1314,7 +1314,7 @@ function donutSVG(segments, size, thickness, centerLabel, centerSub) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${thickness}"></circle>
     ${arcs}
-    ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Bebas Neue" font-size="${size*0.28}">${centerLabel}</text>` : ''}
+    ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Inter, sans-serif" font-weight="700" font-size="${Math.round(size*0.28)}">${centerLabel}</text>` : ''}
     ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Inter, sans-serif" font-size="${size*0.08}">${centerSub}</text>` : ''}
   </svg>`;
 }
@@ -1580,15 +1580,15 @@ async function renderShares() {
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500">${esc(r.title) || '(sin título)'} <span style="font-size:9px;font-family:var(--font-mono);color:${estado[1]};border:1px solid ${estado[1]};border-radius:3px;padding:1px 5px;margin-left:4px">${estado[0]}</span></div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">creado ${fecha} · ${expLbl}</div>
+            <div style="font-size:var(--text-base);font-weight:500">${esc(r.title) || '(sin título)'} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:${estado[1]};border:1px solid ${estado[1]};border-radius:3px;padding:1px 5px;margin-left:4px">${estado[0]}</span></div>
+            <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">creado ${fecha} · ${expLbl}</div>
           </div>
-          <button class="btn btn-ghost" style="font-size:11px;padding:5px 11px" onclick="shareCopy('${r.token}')">${icon('link',12)} Copiar</button>
-          ${active ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="shareRevoke('${r.token}')">Revocar</button>` : ''}
+          <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:5px 11px" onclick="shareCopy('${r.token}')">${icon('link',12)} Copiar</button>
+          ${active ? `<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:5px 11px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="shareRevoke('${r.token}')">Revocar</button>` : ''}
         </div>
         ${active ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap">
-          <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);letter-spacing:1px">EXPIRACIÓN</span>
-          ${[['7d','7 días'],['30d','30 días'],['90d','90 días'],['never','Nunca']].map(o => `<button class="btn btn-ghost" style="font-size:10px;padding:3px 9px" onclick="shareSetExpiry('${r.token}','${o[0]}')">${o[1]}</button>`).join('')}
+          <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);letter-spacing:var(--track-caps)">EXPIRACIÓN</span>
+          ${[['7d','7 días'],['30d','30 días'],['90d','90 días'],['never','Nunca']].map(o => `<button class="btn btn-ghost" style="font-size:var(--text-2xs);padding:3px 9px" onclick="shareSetExpiry('${r.token}','${o[0]}')">${o[1]}</button>`).join('')}
         </div>` : ''}
       </div>`;
     }).join('');
@@ -1653,7 +1653,7 @@ function openProduction(launchId, itemId) {
   document.getElementById('prod-estado').value = ci.production.estado;
   const badge = document.getElementById('prod-cat');
   const col = catColor(ci.cat);
-  badge.style.cssText = `margin:0;font-size:9px;padding:3px 9px;border-radius:2px;font-family:var(--font-mono);background:${col}22;color:${col};border:1px solid ${col}44`;
+  badge.style.cssText = `margin:0;font-size:var(--text-2xs);padding:3px 9px;border-radius:2px;font-family:var(--font-ui);background:${col}22;color:${col};border:1px solid ${col}44`;
   badge.textContent = up(ci.cat || 'pieza');
   document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => t.classList.toggle('active', t.dataset.ptab === 'brief'));
   renderProd();
@@ -1719,7 +1719,7 @@ function prodBriefHTML(ci, p) {
   const campOpts = launches.filter(l => l.artistId === artId)
     .map(l => `<option value="${esc(l.id)}" ${l.id === prodCtx.launchId ? 'selected' : ''}>${esc(l.name)}${l.type === 'evergreen' ? ' · always-on' : ''}</option>`).join('');
   return `
-    <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:10px">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)">${campOpts}</select></div>
+    <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:var(--text-2xs)">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)">${campOpts}</select></div>
     <div class="field-grid" style="margin-bottom:16px">
       <div class="field"><label>Objetivo</label><input class="input" value="${s(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
       <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
@@ -1729,17 +1729,17 @@ function prodBriefHTML(ci, p) {
     </div>
     <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
     <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${s(p.descripcion)}</textarea></div>
-    ${ci.refLink ? `<div style="margin-top:14px"><a href="${safeUrl(ci.refLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono);text-decoration:none">↗ Referencia de inspiración</a></div>` : ''}`;
+    ${ci.refLink ? `<div style="margin-top:14px"><a href="${safeUrl(ci.refLink)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none">↗ Referencia de inspiración</a></div>` : ''}`;
 }
 function prodGuionHTML(p) {
   const blocks = p.guion.map((b, i) => `
     <div class="script-block">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input class="input" style="font-family:var(--font-mono);font-size:11px;color:var(--accent)" value="${s(b.time)}" onchange="prodGuionSet(${i},'time',this.value)" placeholder="00:00 – 00:03 · HOOK">
+        <input class="input" style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--accent)" value="${s(b.time)}" onchange="prodGuionSet(${i},'time',this.value)" placeholder="00:00 – 00:03 · HOOK">
         <button class="goal-btn reject" onclick="prodGuionDel(${i})" title="Quitar">${icon('close',12)}</button>
       </div>
       <textarea class="textarea" onchange="prodGuionSet(${i},'text',this.value)" placeholder="Qué pasa / qué se dice">${s(b.text)}</textarea>
-      <input class="input" style="margin-top:8px;font-size:11px" value="${s(b.note)}" onchange="prodGuionSet(${i},'note',this.value)" placeholder="Nota (audio, tono, texto en pantalla…)">
+      <input class="input" style="margin-top:8px;font-size:var(--text-xs)" value="${s(b.note)}" onchange="prodGuionSet(${i},'note',this.value)" placeholder="Nota (audio, tono, texto en pantalla…)">
     </div>`).join('');
   return `${blocks || '<div class="empty-hint">Sin guión. Agrega bloques por tiempo (hook, desarrollo, clímax, CTA).</div>'}<button class="btn btn-ghost" style="margin-top:6px" onclick="prodGuionAdd()">+ Bloque</button>`;
 }
@@ -1770,7 +1770,7 @@ function prodAssetsHTML(ci, p) {
       <input class="input" value="${s(as.link)}" onchange="prodAssetSet(${i},'link',this.value)" placeholder="Link (Drive, Dropbox, archivo…)">
       <button class="goal-btn reject" onclick="prodAssetDel(${i})" title="Quitar">${icon('close',12)}</button>
     </div>`).join('');
-  return `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Enlaces a fotos, videos y archivos de la pieza (Drive, Dropbox, etc.).</div>
+  return `<div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:12px;line-height:1.5">Enlaces a fotos, videos y archivos de la pieza (Drive, Dropbox, etc.).</div>
     ${assets || '<div class="empty-hint">Sin assets todavía.</div>'}
     <button class="btn btn-ghost" style="margin-top:6px" onclick="prodAssetAdd()">+ Asset</button>`;
 }
@@ -1825,12 +1825,12 @@ function prodContentHTML(ci, p) {
   return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
       <button class="btn btn-ghost" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)" onclick="generarContenidoIA()">${icon('ai',13)} ${c ? 'Regenerar' : 'Generar'} contenido</button>
-      ${c && c.at ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
+      ${c && c.at ? `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
     <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, script y hashtags a partir del ADN del artista + el Campaign DNA + esta pieza.</div>'}</div>
     ${p.contentPrev ? `<div class="section-header" style="margin-top:22px"><div class="section-title" style="color:var(--text-dim)">GENERACIÓN ANTERIOR${p.contentPrev.at ? ` · ${new Date(p.contentPrev.at).toLocaleDateString()}` : ''}</div></div>
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar.</div>
+      <div style="font-size:var(--text-xs);color:var(--text-dim);margin-bottom:10px;font-family:var(--font-ui)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar.</div>
       ${contentResultPrevHTML(p.contentPrev)}` : ''}`;
 }
 // Render read-only de la generación de contenido ANTERIOR (estado global propio para no chocar con el actual).
@@ -1998,22 +1998,22 @@ function renderPOW() {
   if (!d.a) { body.innerHTML = '<div class="empty-hint" style="margin:0">Selecciona un lanzamiento con calendario para generar el POW.</div>'; return; }
   const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;
   body.innerHTML = `
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-bottom:18px">${up(d.art.name)} · ${up(d.a.name)} · SEMANA DEL ${powDMd(d.now.mon)} AL ${powDMd(d.now.sun)}</div>
+    <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:18px">${up(d.art.name)} · ${up(d.a.name)} · SEMANA DEL ${powDMd(d.now.mon)} AL ${powDMd(d.now.sun)}</div>
 
     <div class="pow-section">
       <h4>${icon('check',14)} Semana pasada · hit rate ${hit}%</h4>
-      <div style="font-size:13px;margin-bottom:8px">${d.lastPublished.length} de ${d.lastWeekItems.length} piezas publicadas.</div>
+      <div style="font-size:var(--text-base);margin-bottom:8px">${d.lastPublished.length} de ${d.lastWeekItems.length} piezas publicadas.</div>
       <div class="progress-track"><div class="progress-fill" style="width:${hit}%"></div></div>
     </div>
 
     <div class="pow-section">
       <h4>${icon('calendar',14)} Esta semana · ${d.pending.length} pendiente${d.pending.length===1?'':'s'}</h4>
-      ${d.pending.length ? d.pending.map(c => `<div class="pow-row"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:48px">${powDM(c.fecha)}</span><span style="flex:1">${ESTADO_ICON[(c.production&&c.production.estado)||'pendiente']||''} ${s(c.title)}</span><span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${(c.production&&c.production.estado)||'pendiente'}</span></div>`).join('') : '<div style="font-size:12px;color:var(--text-dim)">Sin piezas pendientes esta semana.</div>'}
+      ${d.pending.length ? d.pending.map(c => `<div class="pow-row"><span style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);width:48px">${powDM(c.fecha)}</span><span style="flex:1">${ESTADO_ICON[(c.production&&c.production.estado)||'pendiente']||''} ${s(c.title)}</span><span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${(c.production&&c.production.estado)||'pendiente'}</span></div>`).join('') : '<div style="font-size:var(--text-sm);color:var(--text-dim)">Sin piezas pendientes esta semana.</div>'}
     </div>
 
     <div class="pow-section">
       <h4>${icon('chart',14)} Métricas top — ${s(d.a.name)}</h4>
-      ${d.metrics.length ? `<div class="dashboard-grid" style="grid-template-columns:repeat(3,1fr);gap:10px">${d.metrics.map(m => `<div class="stat-card" style="padding:14px"><div class="stat-label">${s(m.metric)}</div><div class="stat-value" style="font-size:24px">${fmtNum(m.value)}</div></div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--text-dim)">Sin métricas cargadas (impórtalas en Métricas).</div>'}
+      ${d.metrics.length ? `<div class="dashboard-grid" style="grid-template-columns:repeat(3,1fr);gap:10px">${d.metrics.map(m => `<div class="stat-card" style="padding:14px"><div class="stat-label">${s(m.metric)}</div><div class="stat-value" style="font-size:var(--text-xl)">${fmtNum(m.value)}</div></div>`).join('')}</div>` : '<div style="font-size:var(--text-sm);color:var(--text-dim)">Sin métricas cargadas (impórtalas en Métricas).</div>'}
     </div>
 
     <div class="pow-section" style="margin-bottom:0">
@@ -2124,7 +2124,7 @@ function renderObjetivos() {
       const col = pct == null ? 'var(--text-dim)' : (pct >= 100 ? '#4ade80' : pct >= 60 ? 'var(--accent)' : 'var(--beat)');
       progHTML = `<div style="margin-top:6px;max-width:240px">
         <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${col};transition:width .3s"></div></div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:3px">logrado ${fmtNum(pr.actual)}${pct != null ? ` · <span style="color:${col}">${pct}%</span>` : ' (objetivo relativo)'}</div></div>`;
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:3px">logrado ${fmtNum(pr.actual)}${pct != null ? ` · <span style="color:${col}">${pct}%</span>` : ' (objetivo relativo)'}</div></div>`;
     }
     return `<div class="goal-row${cls}">
       <div class="goal-platform" style="background:${g.bg || 'var(--surface2)'};display:flex;align-items:center;justify-content:center;color:var(--text)">${icon(ICONS[s(g.icon)]?s(g.icon):'goals',18)}</div>
@@ -2311,7 +2311,7 @@ function renderMetaModal() {
       <select class="input" id="meta-metric" onchange="metaMetricChange(this.value)">${metricOpts}</select></div>
     <div class="field" style="margin-bottom:12px"><label>Objetivo</label>
       <input class="input" id="meta-target" placeholder="ej. 100K, +5K, 2M" value="${s(_metaSel.target || '')}"></div>
-    <div class="field"><label>Fecha límite <span style="color:var(--text-dim);font-weight:400;font-size:10px">· sugerida: cierre del lanzamiento (editable)</span></label>
+    <div class="field"><label>Fecha límite <span style="color:var(--text-dim);font-weight:400;font-size:var(--text-2xs)">· sugerida: cierre del lanzamiento (editable)</span></label>
       <input class="input" id="meta-deadline" type="date" value="${launchEndDate(a)}"></div>
     <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="guardarMetaManual()">Agregar meta</button>`;
 }
@@ -2465,12 +2465,12 @@ async function generarAprendizajesIA() {
 // ══════════════════════════════════════════
 function strategyCardsHTML(st) {
   const items = st.items || [];
-  return `${st.generatedAt ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:12px">Generado ${new Date(st.generatedAt).toLocaleString()}</div>` : ''}
+  return `${st.generatedAt ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:12px">Generado ${new Date(st.generatedAt).toLocaleString()}</div>` : ''}
     <div class="dashboard-grid" style="grid-template-columns:repeat(2,1fr)">${items.map(it => `
       <div class="panel" style="margin:0">
         <div class="brief-label">${s(it.title)}</div>
-        <div style="font-family:var(--font-display);font-size:26px;letter-spacing:1px;margin:6px 0;color:var(--accent)">${s(it.value)}</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.5">${s(it.detail)}</div>
+        <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-2xl);letter-spacing:var(--track-tight);margin:6px 0;color:var(--accent)">${s(it.value)}</div>
+        <div style="font-size:var(--text-sm);color:var(--text-muted);line-height:1.5">${s(it.detail)}</div>
       </div>`).join('')}</div>`;
 }
 function buildStrategyPrompt(art) {
@@ -2598,9 +2598,9 @@ function metricsTimeSeriesHTML(entries) {
   const bars = best.map((e,i) => {
     const h = Math.round(e.value / max * 100); const last = i === best.length - 1;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;justify-content:flex-end;height:100%">
-      <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted)">${fmtNum(e.value)}</div>
+      <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted)">${fmtNum(e.value)}</div>
       <div style="background:${last?'var(--text)':'var(--muted)'};width:100%;height:${h}%;border-radius:3px 3px 0 0;opacity:${last?1:0.5}"></div>
-      <div style="font-family:var(--font-mono);font-size:8px;color:${last?'var(--text)':'var(--text-dim)'}">${s(e.date).slice(5)}</div>
+      <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:${last?'var(--text)':'var(--text-dim)'}">${s(e.date).slice(5)}</div>
     </div>`;
   }).join('');
   return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-top:14px">
@@ -2672,7 +2672,7 @@ async function deleteMetricEntry(scope, id) {
 function metricEntriesAdminHTML() {
   const art = activeArtist(); const a = activeLaunch();
   const editable = canDo('editar_data');
-  const inp = 'background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px';
+  const inp = 'background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:var(--text-sm);padding:5px 8px';
   const section = (scope, title, arr) => {
     if (!arr || !arr.length) return '';
     const rows = arr.slice().sort((x, y) => (y.date || '') < (x.date || '') ? 1 : -1).reverse().map(e => {
@@ -2682,11 +2682,11 @@ function metricEntriesAdminHTML() {
         <input class="input" style="${inp};flex:1;min-width:120px" value="${s(e.metric)}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','metric',this.value)">
         <input class="input" type="number" step="any" style="${inp};width:120px" value="${e.value}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','value',this.value)">
         <input class="input" type="date" style="${inp};width:auto" value="${s(e.date)}" ${editable ? '' : 'disabled'} onchange="editMetricEntry('${scope}','${e.id}','date',this.value)">
-        <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);min-width:46px">${s(e.source || '')}</span>
+        <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);min-width:46px">${s(e.source || '')}</span>
         ${editable ? `<button class="goal-btn reject" title="Borrar entrada" onclick="deleteMetricEntry('${scope}','${e.id}')">${icon('trash', 12)}</button>` : ''}
       </div>`;
     }).join('');
-    return `<div style="margin:14px 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-muted)">${title} · ${arr.length} entrada${arr.length === 1 ? '' : 's'}</div>${rows}`;
+    return `<div style="margin:14px 0 8px;font-family:var(--font-ui);font-size:var(--text-2xs);letter-spacing:var(--track-caps);color:var(--text-muted)">${title} · ${arr.length} entrada${arr.length === 1 ? '' : 's'}</div>${rows}`;
   };
   const body = section('artist', 'ARTISTA · ' + up(art.name), art.metricEntries) + (a ? section('launch', 'LANZAMIENTO · ' + up(a.name), a.metricEntries) : '');
   if (!body) return '';
@@ -2713,10 +2713,10 @@ function metricsImportarHTML() {
       </div>
       <label for="mcsv-file" class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">${icon('upload',14)} Subir archivo .csv</label>
       <input type="file" id="mcsv-file" accept=".csv,text/csv" style="display:none" onchange="csvFileToText(event)">
-      <textarea class="textarea" id="mcsv-text" placeholder="…o pega aquí el contenido del CSV" style="min-height:90px;font-family:var(--font-mono);font-size:11px"></textarea>
+      <textarea class="textarea" id="mcsv-text" placeholder="…o pega aquí el contenido del CSV" style="min-height:90px;font-family:var(--font-ui);font-size:var(--text-xs)"></textarea>
       <button class="btn btn-primary" style="margin-top:10px" onclick="analizarMetricasCSV()">Analizar CSV</button>
       <div id="mcsv-preview"></div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:10px;font-family:var(--font-mono);line-height:1.6">Tomamos la <b style="color:var(--text-muted)">última fila</b> (la más reciente) y detectamos las columnas numéricas. ¿No sabes exportar? → pestaña “Instrucciones CSV”.</div>
+      <div style="font-size:var(--text-2xs);color:var(--text-dim);margin-top:10px;font-family:var(--font-ui);line-height:1.6">Tomamos la <b style="color:var(--text-muted)">última fila</b> (la más reciente) y detectamos las columnas numéricas. ¿No sabes exportar? → pestaña “Instrucciones CSV”.</div>
     </div>
 
     <div class="panel" style="margin:0">
@@ -2728,9 +2728,9 @@ function metricsImportarHTML() {
       <label for="shot-file" class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">${icon('camera',14)} Subir screenshot</label>
       <input type="file" id="shot-file" accept="image/*" style="display:none" onchange="handleMetricScreenshot(event)">
       <div id="shot-preview" style="margin-bottom:10px"></div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:8px">ESCRIBE LOS NÚMEROS QUE VES</div>
+      <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:8px">ESCRIBE LOS NÚMEROS QUE VES</div>
       <div id="shot-fields"></div>
-      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="addShotField()">+ Otra métrica</button>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:var(--text-xs)" onclick="addShotField()">+ Otra métrica</button>
       <div class="field" style="margin-top:12px;max-width:200px"><label>Fecha del dato</label><input type="date" class="input" id="shot-date" value="${todayISO()}"></div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="guardarScreenshotMetricas()">Guardar</button>
     </div>
@@ -2789,7 +2789,7 @@ function analizarMetricasCSV() {
 function renderCSVPreview() {
   const prev = document.getElementById('mcsv-preview'); if (!prev) return;
   if (!csvMetricRows.length) { prev.innerHTML = '<div class="empty-hint">No se detectaron columnas numéricas en la última fila.</div>'; return; }
-  prev.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin:12px 0 8px">DETECTADO — edita o quita lo que no aplique:</div>`
+  prev.innerHTML = `<div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);margin:12px 0 8px">DETECTADO — edita o quita lo que no aplique:</div>`
     + csvMetricRows.map((e,i) => `<div class="metric-entry-row">
         <input class="input" value="${s(e.metric)}" onchange="csvMetricRows[${i}].metric=this.value">
         <input class="input" value="${e.value}" onchange="csvMetricRows[${i}].value=parseMetricNum(this.value)">
@@ -2918,7 +2918,7 @@ function usarDemoData() {
 document.getElementById('csv-cols').innerHTML =
   ['title','hook','for','cat','link','thumb','comentarios'].map(c => {
     const opt = ['link','thumb','comentarios','hook'].indexOf(c) >= 0;
-    return `<div style="background:var(--surface2);padding:5px 10px;border-radius:3px;font-family:var(--font-mono);font-size:10px;color:${opt?'var(--text-dim)':'var(--text)'};border:1px solid var(--border)">${c}${opt?' ·opc':''}</div>`;
+    return `<div style="background:var(--surface2);padding:5px 10px;border-radius:3px;font-family:var(--font-ui);font-size:var(--text-2xs);color:${opt?'var(--text-dim)':'var(--text)'};border:1px solid var(--border)">${c}${opt?' ·opc':''}</div>`;
   }).join('');
 
 // ══════════════════════════════════════════
@@ -3074,6 +3074,7 @@ function normalizeLaunch(l) {
   l.expenses = Array.isArray(l.expenses) ? l.expenses : []; // [{id, monto, categoria, proveedor, fecha, metodo, reciboLink, note}]
   l.recoup = (l.recoup && typeof l.recoup === 'object') ? l.recoup : {}; // {ingresos, inversionTotal?}
   l.marketingPlan = (l.marketingPlan && typeof l.marketingPlan === 'object') ? l.marketingPlan : {}; // plan de marketing en PDF (Supabase Storage): {path,name,size,uploadedAt,uploadedBy}
+  l.bizDefault = Array.isArray(l.bizDefault) ? l.bizDefault : []; // default de partes del negocio madre del proyecto [{partner, madre}] — precarga el split de negocio de cada track
   return l;
 }
 // Lanzamientos REALES del artista (excluye campañas evergreen, que son launches type:'evergreen').
@@ -3135,8 +3136,8 @@ function renderCampanias() {
     return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:15px;font-weight:600">${esc(l.name)} <span style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">${art ? esc(art.name) : '—'} · ${esc(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
+        <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${art ? esc(art.name) : '—'} · ${esc(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
       </div>
       <span class="chip" style="cursor:default">Ver →</span>
     </div>`;
@@ -3210,7 +3211,8 @@ function normalizeTrack(t) {
   t.labelCopy.track        = t.labelCopy.track || {};                                                       // campos de nivel track (main artists, repertoire owner, explicit, clean, featuring, release date)
   t.labelCopy.recording    = t.labelCopy.recording || {};                                                   // créditos de grabación: rol → nombre
   t.labelCopy.royaltySplit = Array.isArray(t.labelCopy.royaltySplit)  ? t.labelCopy.royaltySplit  : [];     // reparto de dinero (distinto del split de composición)
-  t.labelCopy.businessSplit= Array.isArray(t.labelCopy.businessSplit) ? t.labelCopy.businessSplit : [];     // % invitados (socios × madre/aporte/final)
+  t.labelCopy.businessSplit= Array.isArray(t.labelCopy.businessSplit) ? t.labelCopy.businessSplit : [];     // partes del negocio MADRE [{partner, madre, final}] — deben sumar 100
+  t.labelCopy.businessInvited = Array.isArray(t.labelCopy.businessInvited) ? t.labelCopy.businessInvited : []; // INVITADOS [{name, puntos}] — salen del negocio madre, se restan por igual (X/N)
   t.labelCopy.filing       = t.labelCopy.filing || {};                                                      // metadata de filing (video ISRC, P&C, provisto por, O/R + fecha/nombre)
   t.legal = Array.isArray(t.legal) ? t.legal : [];
   t.marketingPlan = (t.marketingPlan && typeof t.marketingPlan === 'object') ? t.marketingPlan : {}; // plan de marketing en PDF (Supabase Storage): {path,name,size,uploadedAt,uploadedBy}
@@ -3371,7 +3373,7 @@ function renderLaunches() {
   if (!grid) return;
   const sel = document.getElementById('launch-sort'); if (sel) sel.value = launchSortMode();
   grid.innerHTML =
-    `<div class="launch-card add" onclick="abrirWizard()"><div class="plus">+</div><div style="font-size:12px">Nuevo Lanzamiento</div></div>`
+    `<div class="launch-card add" onclick="abrirWizard()"><div class="plus">+</div><div style="font-size:var(--text-sm)">Nuevo Lanzamiento</div></div>`
     + sortLaunches(artistLaunches()).map(launchCardHTML).join('');
 }
 function renderDashLaunches() {
@@ -3501,6 +3503,10 @@ async function renderDashTrend(art, ls) {
   const surf = (css.getPropertyValue('--surface').trim()) || '#1a1a1a';   // tooltip theme-aware (antes era verde-negro hardcodeado)
   const txtStrong = (css.getPropertyValue('--text').trim()) || '#FFFFFF';
   const ctx = cv.getContext('2d');
+  // Sin esto Chart.js dibuja sus ticks en su default (Helvetica/Arial): una tercera
+  // tipografía en pantalla que nadie eligió. DESIGN.md §Typography: dos familias.
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.font.weight = 500;
   if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} }
   _dashChart = new Chart(ctx, {
     type: 'line',
@@ -3658,9 +3664,9 @@ function renderDashboard() {
         const urgent = dr <= 2 && estado !== 'publicado';
         const dlabel = dr === 0 ? 'HOY' : (dr === 1 ? 'MAÑANA' : (() => { const d = new Date(ci.fecha + 'T00:00:00'); return `${MESES_CAL[d.getMonth()]} ${d.getDate()}`; })());
         return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;cursor:pointer;">
-          <div style="font-family:var(--font-mono);font-size:10px;color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
+          <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
           <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${esc(ci.title)}</span>
-          <div style="margin-left:auto;font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${s(ci.launch)}</div>
+          <div style="margin-left:auto;font-size:var(--text-2xs);color:var(--text-muted);font-family:var(--font-ui)">${s(ci.launch)}</div>
         </div>`;
       }).join('');
     }

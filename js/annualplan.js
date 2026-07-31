@@ -68,8 +68,8 @@ function _planRowHTML(bar, y) {
   const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${planStatusColor(bar.status, bar.tentative)};margin-right:6px;vertical-align:middle"></span>`;
   return `<div class="pl-row" style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--hairline)">
     <div class="pl-rowlabel" style="width:190px;flex:none" ${open}>
-      <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dot}${s(bar.title)}${bar.tentative ? ' <span style="font-size:9px;font-family:var(--font-mono);color:var(--dim);border:1px dashed var(--border);border-radius:var(--radius-sm);padding:0 4px">TENTATIVA</span>' : ''}</div>
-      <div style="font-size:10px;font-family:var(--font-mono);color:var(--dim);margin-top:2px;font-variant-numeric:tabular-nums">${dateTxt} · ${planStatusWord(bar.status, bar.tentative)}</div>
+      <div style="font-size:var(--text-base);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${dot}${s(bar.title)}${bar.tentative ? ' <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--dim);border:1px dashed var(--border);border-radius:var(--radius-sm);padding:0 4px">TENTATIVA</span>' : ''}</div>
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--dim);margin-top:2px;font-variant-numeric:tabular-nums">${dateTxt} · ${planStatusWord(bar.status, bar.tentative)}</div>
     </div>
     ${track}
   </div>`;
@@ -77,12 +77,12 @@ function _planRowHTML(bar, y) {
 
 // Cabecera de 12 meses + línea de "hoy" (si el año visible es el actual).
 function _planMonthHeader(y) {
-  const cells = _PLAN_MONTHS.map(m => `<div style="flex:1;text-align:center;font-size:9px;font-family:var(--font-mono);color:var(--dim);letter-spacing:1px">${m}</div>`).join('');
+  const cells = _PLAN_MONTHS.map(m => `<div style="flex:1;text-align:center;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--dim);letter-spacing:var(--track-caps)">${m}</div>`).join('');
   let hoy = '';
   const now = new Date();
   if (now.getFullYear() === y) { const f = _planFrac(Date.now(), y); hoy = `<div title="Hoy" style="position:absolute;left:calc(190px + 12px + (100% - 190px - 12px) * ${f} / 100);top:0;bottom:0;width:1px;background:var(--muted);opacity:.5"></div>`; }
   return `<div style="position:relative;display:flex;align-items:center;gap:12px;padding:0 0 6px;border-bottom:1px solid var(--border)">
-    <div style="width:190px;flex:none;font-size:9px;font-family:var(--font-mono);color:var(--dim);letter-spacing:1px">${y}</div>
+    <div style="width:190px;flex:none;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--dim);letter-spacing:var(--track-caps)">${y}</div>
     <div style="flex:1;display:flex">${cells}</div>${hoy}</div>`;
 }
 
@@ -90,13 +90,13 @@ function _planMonthHeader(y) {
 function _planGanttForArtist(artistId, y) {
   const bars = _planBarsFor(artistId);
   const rows = bars.map(b => _planRowHTML(b, y)).filter(Boolean).join('');
-  if (!rows) return `<div style="text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--dim);padding:14px 0">— SIN CANCIONES EN ${y} —</div>`;
+  if (!rows) return `<div style="text-align:center;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--dim);padding:14px 0">— SIN CANCIONES EN ${y} —</div>`;
   return rows;
 }
 
 function planLegendHTML() {
   const sw = (col, lbl) => `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:${col}"></span>${lbl}</span>`;
-  return `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:10px">
+  return `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--muted);margin-top:10px">
     <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:20px;height:6px;background:color-mix(in srgb, var(--muted) 30%, transparent);border-radius:2px"></span>Campaña</span>
     <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:20px;height:3px;background:var(--surface2);border:1px solid var(--border);border-radius:2px"></span>Post-lanzamiento</span>
     ${sw('var(--ok)', 'En campaña')} ${sw('var(--risk)', 'En análisis')} ${sw('var(--blocked)', 'Bloqueado')} ${sw('var(--muted)', 'Planeando')} ${sw('var(--done)', 'Lanzado')} ${sw('var(--dim)', 'Tentativa')}</div>`;
@@ -105,9 +105,9 @@ function planLegendHTML() {
 // Barra de navegación de año (compartida).
 function planYearNavHTML() {
   return `<div style="display:flex;align-items:center;gap:10px">
-    <button class="btn btn-ghost btn-sm" onclick="planPrevYear()" title="Año anterior" style="font-family:var(--font-mono)">‹</button>
-    <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:center">${_planYear}</span>
-    <button class="btn btn-ghost btn-sm" onclick="planNextYear()" title="Año siguiente" style="font-family:var(--font-mono)">›</button></div>`;
+    <button class="btn btn-ghost btn-sm" onclick="planPrevYear()" title="Año anterior" style="font-family:var(--font-ui)">‹</button>
+    <span style="font-family:var(--font-ui);font-size:var(--text-md);font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:center">${_planYear}</span>
+    <button class="btn btn-ghost btn-sm" onclick="planNextYear()" title="Año siguiente" style="font-family:var(--font-ui)">›</button></div>`;
 }
 
 // ── Vista ROSTER: un Gantt por artista (la visión del label con todos los artistas) ──
@@ -121,9 +121,9 @@ function annualRosterHTML() {
     const count = bars.filter(b => _planBarHTML(b, y)).length;
     return `<div style="margin-top:14px">
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px">
-        <div style="font-family:var(--font-display);font-size:18px;letter-spacing:.5px">${s(a.name)}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--dim)">${count} canción(es) en ${y}</div></div>
-      ${rows || `<div style="font-size:11px;font-family:var(--font-mono);color:var(--dim);padding:8px 0">— sin canciones planeadas este año —</div>`}
+        <div style="font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps-sm)">${s(a.name)}</div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--dim)">${count} canción(es) en ${y}</div></div>
+      ${rows || `<div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--dim);padding:8px 0">— sin canciones planeadas este año —</div>`}
     </div>`;
   }).join('');
   return `<div class="panel">
@@ -151,11 +151,11 @@ function tentativesEditorHTML(a) {
   const canEdit = (typeof canDo !== 'function') || canDo('edit_launch');
   const list = ((a.plan && a.plan.tentatives) || []);
   const rows = list.map(tt => `<div class="panel" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-    <input class="input" style="flex:2;min-width:140px;font-size:13px;font-weight:600" value="${esc(tt.title)}" placeholder="Título de la canción" ${canEdit ? `onchange="setTentativeField('${tt.id}','title',this.value)"` : 'disabled'}>
-    <div class="field" style="margin:0"><label style="font-size:9px">Fecha objetivo</label><input class="input" type="date" style="padding:5px 8px;font-size:12px" value="${esc(tt.targetDate)}" ${canEdit ? `onchange="setTentativeField('${tt.id}','targetDate',this.value)"` : 'disabled'}></div>
-    <div class="field" style="margin:0;width:70px"><label style="font-size:9px">Pre (d)</label><input class="input" inputmode="numeric" style="padding:5px 8px;font-size:12px" value="${tt.preDays != null ? tt.preDays : 21}" ${canEdit ? `onchange="setTentativeField('${tt.id}','preDays',this.value)"` : 'disabled'}></div>
-    <div class="field" style="margin:0;width:70px"><label style="font-size:9px">Post (d)</label><input class="input" inputmode="numeric" style="padding:5px 8px;font-size:12px" value="${tt.postDays != null ? tt.postDays : 21}" ${canEdit ? `onchange="setTentativeField('${tt.id}','postDays',this.value)"` : 'disabled'}></div>
-    <input class="input" style="flex:1;min-width:120px;padding:5px 8px;font-size:12px" value="${esc(tt.notes)}" placeholder="Notas" ${canEdit ? `onchange="setTentativeField('${tt.id}','notes',this.value)"` : 'disabled'}>
+    <input class="input" style="flex:2;min-width:140px;font-size:var(--text-base);font-weight:600" value="${esc(tt.title)}" placeholder="Título de la canción" ${canEdit ? `onchange="setTentativeField('${tt.id}','title',this.value)"` : 'disabled'}>
+    <div class="field" style="margin:0"><label style="font-size:var(--text-2xs)">Fecha objetivo</label><input class="input" type="date" style="padding:5px 8px;font-size:var(--text-sm)" value="${esc(tt.targetDate)}" ${canEdit ? `onchange="setTentativeField('${tt.id}','targetDate',this.value)"` : 'disabled'}></div>
+    <div class="field" style="margin:0;width:70px"><label style="font-size:var(--text-2xs)">Pre (d)</label><input class="input" inputmode="numeric" style="padding:5px 8px;font-size:var(--text-sm)" value="${tt.preDays != null ? tt.preDays : 21}" ${canEdit ? `onchange="setTentativeField('${tt.id}','preDays',this.value)"` : 'disabled'}></div>
+    <div class="field" style="margin:0;width:70px"><label style="font-size:var(--text-2xs)">Post (d)</label><input class="input" inputmode="numeric" style="padding:5px 8px;font-size:var(--text-sm)" value="${tt.postDays != null ? tt.postDays : 21}" ${canEdit ? `onchange="setTentativeField('${tt.id}','postDays',this.value)"` : 'disabled'}></div>
+    <input class="input" style="flex:1;min-width:120px;padding:5px 8px;font-size:var(--text-sm)" value="${esc(tt.notes)}" placeholder="Notas" ${canEdit ? `onchange="setTentativeField('${tt.id}','notes',this.value)"` : 'disabled'}>
     ${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="tentativeToLaunch('${tt.id}')" title="Convertir en lanzamiento">${icon('releases', 12)} A lanzamiento</button>` : ''}
     ${canEdit ? `<button class="goal-btn reject" title="Quitar" onclick="removeTentative('${tt.id}')">${icon('close', 12)}</button>` : ''}
   </div>`).join('');

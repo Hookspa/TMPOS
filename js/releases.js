@@ -18,7 +18,7 @@ function mixBadges(mix) {
   if (!mix || !mix.length) return '<span class="dna-empty">— sin definir</span>';
   return mix.map(m => {
     const col = catColor(m);
-    return `<span style="display:inline-block;padding:3px 9px;border-radius:4px;font-size:10px;font-family:var(--font-mono);margin:2px;background:${col}18;color:${col};border:1px solid ${col}44">${s(m)}</span>`;
+    return `<span style="display:inline-block;padding:3px 9px;border-radius:4px;font-size:var(--text-2xs);font-family:var(--font-ui);margin:2px;background:${col}18;color:${col};border:1px solid ${col}44">${s(m)}</span>`;
   }).join('');
 }
 
@@ -59,7 +59,7 @@ function renderLaunchDetail() {
 
   host.innerHTML = `
     <div style="margin-bottom:16px">
-      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer" onclick="showPage('lanzamientos')">← Lanzamientos</span>
+      <span style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer" onclick="showPage('lanzamientos')">← Lanzamientos</span>
     </div>
 
     <div class="launch-hero">
@@ -74,12 +74,12 @@ function renderLaunchDetail() {
           </div>
         </div>
         <div class="lh-meta">
-          <span class="chip on" style="cursor:default;text-transform:uppercase;font-size:10px;letter-spacing:1px">${up(l.type || 'single')}</span>
+          <span class="chip on" style="cursor:default;text-transform:uppercase;font-size:var(--text-2xs);letter-spacing:var(--track-caps)">${up(l.type || 'single')}</span>
           ${statusDropdownHTML(l)}
           <span class="lh-date">${launchDateLabel(l)}</span>
         </div>
         <div class="lh-timeline">
-          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">TIMELINE DE CAMPAÑA</div>
+          <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:6px">TIMELINE DE CAMPAÑA</div>
           <div class="tl-bar">
             <div class="tl-seg pre" style="flex:${pre}">PRE · ${pre}d</div>
             <div class="tl-seg day">DROP</div>
@@ -109,10 +109,10 @@ function _infoTipStyles(){
   st.textContent = `
   .info-tip{position:relative;display:inline-flex;align-items:center;color:var(--text-dim);cursor:help;vertical-align:middle}
   .info-tip:hover,.info-tip:focus{color:var(--accent);outline:none}
-  .info-tip-bubble{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;width:max-content;max-width:280px;font-size:11px;line-height:1.5;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;box-shadow:0 10px 30px var(--shadow);opacity:0;visibility:hidden;transition:opacity .15s;z-index:60;pointer-events:none}
+  .info-tip-bubble{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;width:max-content;max-width:280px;font-size:var(--text-xs);line-height:1.5;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;box-shadow:0 10px 30px var(--shadow);opacity:0;visibility:hidden;transition:opacity .15s;z-index:60;pointer-events:none}
   .info-tip:hover .info-tip-bubble,.info-tip:focus .info-tip-bubble{opacity:1;visibility:visible}
   .info-tip-bubble::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:var(--border)}
-  .sec-label{display:flex;align-items:center;gap:7px;margin-bottom:12px;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;text-transform:uppercase}`;
+  .sec-label{display:flex;align-items:center;gap:7px;margin-bottom:12px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);letter-spacing:var(--track-caps);text-transform:uppercase}`;
   document.head.appendChild(st);
 }
 function infoTip(text){ _infoTipStyles(); return `<span class="info-tip" tabindex="0">${icon('info',13)}<span class="info-tip-bubble">${esc(text)}</span></span>`; }
@@ -180,7 +180,7 @@ function renderReleaseGroup(group, l){
   releaseRestorePages(); // saca cualquier nodo embebido ANTES de reescribir el host (si no, se destruye)
   const subs = TAB_GROUPS[group];
   const sub = _releaseSubTab[group] && subs.some(x=>x[0]===_releaseSubTab[group]) ? _releaseSubTab[group] : subs[0][0];
-  const bar = `<div class="mtabs" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">${subs.map(x=>`<div class="mtab ${x[0]===sub?'active':''}" style="font-size:11px;padding:6px 12px" onclick="setReleaseSubTab('${group}','${x[0]}')">${icon(x[2],13)} ${x[1]}</div>`).join('')}</div>`;
+  const bar = `<div class="mtabs" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">${subs.map(x=>`<div class="mtab ${x[0]===sub?'active':''}" style="font-size:var(--text-xs);padding:6px 12px" onclick="setReleaseSubTab('${group}','${x[0]}')">${icon(x[2],13)} ${x[1]}</div>`).join('')}</div>`;
   host.innerHTML = bar + `<div id="release-sub-body"></div>`;
   const body = document.getElementById('release-sub-body');
   if(sub==='reportes'){ releaseRestorePages(); body.innerHTML = releaseReportesHTML(l); }
@@ -211,24 +211,24 @@ function releaseLegalHTML(l){
     const issueRow = i=>{
       const isRouted = i.key && routed(i.key);
       const action = isRouted
-        ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--ok);white-space:nowrap">${icon('check',11)} En Legal</span>`
-        : (canLegal && i.key ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px;white-space:nowrap" onclick="routeIssueToLegal('${t.id}','${i.key}')">${icon('plus',10)} Rutear a Legal</button>` : '');
-      return `<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot ${i.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${s(i.text)}</span>${action}</div>`;
+        ? `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--ok);white-space:nowrap">${icon('check',11)} En Legal</span>`
+        : (canLegal && i.key ? `<button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 8px;white-space:nowrap" onclick="routeIssueToLegal('${t.id}','${i.key}')">${icon('plus',10)} Rutear a Legal</button>` : '');
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm)"><span class="dot ${i.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1">${s(i.text)}</span>${action}</div>`;
     };
     const issuesHTML = issues.length
       ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${issues.map(issueRow).join('')}</div>`
-      : `<div style="margin-top:8px;font-size:12px;color:var(--ok)">${icon('check',12)} Titularidad completa — splits al 100%, writers con publisher/PRO.</div>`;
+      : `<div style="margin-top:8px;font-size:var(--text-sm);color:var(--ok)">${icon('check',12)} Titularidad completa — splits al 100%, writers con publisher/PRO.</div>`;
     // Documentos legales EDITABLES inline (antes había que entrar a la canción). Si no puede editar, resumen de solo lectura.
     const docsHTML = canLegal
       ? `<div style="margin-top:10px">${(typeof trackLegalHTML==='function') ? trackLegalHTML(t) : ''}</div>`
       : (legal.length
-        ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">${legal.map(d=>`${d.source==='labelcopy'?icon('flag',10)+' ':''}${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
-        : `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Sin documentos legales cargados.</div>`);
+        ? `<div style="margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">${legal.map(d=>`${d.source==='labelcopy'?icon('flag',10)+' ':''}${s(d.type)||'doc'}: <span style="color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}">${s(d.state)||'—'}</span>`).join(' · ')}</div>`
+        : `<div style="margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-dim)">Sin documentos legales cargados.</div>`);
     const bulkBtn = (canLegal && unrouted.length>1) ? `<button class="btn btn-ghost btn-sm" onclick="routeAllIssuesToLegal('${t.id}')">${icon('plus',12)} Rutear ${unrouted.length} a Legal</button>` : '';
     return `<div class="panel" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1;min-width:150px"><div style="font-family:var(--font-display);font-size:20px;letter-spacing:.5px">${s(t.title)||'(sin título)'}</div>
-          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px">ISRC ${s(t.isrc)||'— por asignar'} · ${legal.length} doc(s) · ${firmados} firmado(s)</div></div>
+        <div style="flex:1;min-width:150px"><div style="font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps-sm)">${s(t.title)||'(sin título)'}</div>
+          <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">ISRC ${s(t.isrc)||'— por asignar'} · ${legal.length} doc(s) · ${firmados} firmado(s)</div></div>
         ${stateChip}
         ${bulkBtn}
         <button class="btn btn-ghost btn-sm" onclick="openTrack('${t.id}','labelcopy')">${icon('file',13)} Label Copy</button>
@@ -248,15 +248,15 @@ function releaseAssetsHTML(l){
   const assets = l.assets || [];
   const rows = assets.map(a=>{
     const tipoLabel = s((ASSET_TIPOS.find(x=>x[0]===a.tipo)||['','Otro'])[1]);
-    const lock = a.private ? `<span class="chip" style="cursor:default;font-size:10px;color:var(--beat);border-color:var(--beat)" title="Archivo privado">${icon('lock',11)} Privado</span>` : '';
+    const lock = a.private ? `<span class="chip" style="cursor:default;font-size:var(--text-2xs);color:var(--beat);border-color:var(--beat)" title="Archivo privado">${icon('lock',11)} Privado</span>` : '';
     const blocked = a.private && !seePriv;
     const body = blocked
-      ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">${icon('lock',12)} Archivo privado · sin acceso</div>`
-      : `<a href="${safeUrl(a.url)}" target="_blank" rel="noopener" ${a.private?`onclick="logAssetOpen('${a.id}')"`:''} style="font-size:11px;font-family:var(--font-mono);color:var(--accent);word-break:break-all">${esc(a.url)}</a>`;
+      ? `<div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-dim)">${icon('lock',12)} Archivo privado · sin acceso</div>`
+      : `<a href="${safeUrl(a.url)}" target="_blank" rel="noopener" ${a.private?`onclick="logAssetOpen('${a.id}')"`:''} style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--accent);word-break:break-all">${esc(a.url)}</a>`;
     const copyBtn = blocked ? '' : `<button class="goal-btn" title="Copiar link" onclick="copyAssetLink('${a.id}')">${icon('link',12)}</button>`;
     return `<div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${tipoLabel}</span>
-      <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">${s(a.label)||'(sin nombre)'} ${lock}</div>${body}</div>
+      <span class="chip on" style="cursor:default;font-size:var(--text-2xs);text-transform:uppercase;letter-spacing:var(--track-caps)">${tipoLabel}</span>
+      <div style="flex:1;min-width:120px"><div style="font-size:var(--text-base);font-weight:600;display:flex;align-items:center;gap:6px">${s(a.label)||'(sin nombre)'} ${lock}</div>${body}</div>
       ${copyBtn}
       ${editable?`<button class="goal-btn" title="${a.private?'Hacer público':'Hacer privado'}" onclick="toggleAssetPrivate('${a.id}')">${icon(a.private?'eye':'lock',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">${icon('close',12)}</button>`:''}
@@ -269,7 +269,7 @@ function releaseAssetsHTML(l){
         <button class="btn btn-primary" onclick="agregarAsset()">Agregar</button>
       </div>
       <div class="field" style="margin-top:8px"><label>Link (Drive / Dropbox / WeTransfer / URL)</label><input class="input" id="asset-url" placeholder="https://…" onkeydown="if(event.key==='Enter')agregarAsset()"></div>
-      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);cursor:pointer"><input type="checkbox" id="asset-private"> ${icon('lock',12)} Privado (solo gestión; se audita quién lo abre)</label>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);cursor:pointer"><input type="checkbox" id="asset-private"> ${icon('lock',12)} Privado (solo gestión; se audita quién lo abre)</label>
     </div>` : '';
   return `${secInfo('Archivos del release', 'No subimos archivos: guardamos los enlaces (Drive, Dropbox, WeTransfer, URL). Los marcados como privados solo los ven roles de gestión, y se audita quién los abre o copia.')}${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
 }
@@ -324,11 +324,11 @@ function releaseTracklistHTML(l){
     const otros = (typeof releasesOfTrack==='function') ? releasesOfTrack(t.id).filter(r=>r.id!==l.id) : [];
     const shared = otros.length ? `<span style="color:var(--beat)" title="También en: ${otros.map(r=>s(r.name)).join(', ')}">· también en ${otros.length} release(s)</span>` : '';
     return `<div class="panel" onclick="openTrack('${t.id}')" style="display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer">
-      <div style="font-family:var(--font-display);font-size:22px;color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
-      <div style="flex:1"><div style="font-size:15px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:12px">· ${s(t.version)}</span>`:''}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span> ${shared}</div></div>
-      <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-display);font-size:18px;color:${readyColor(pct)}">${pct}%</div><div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim)">LISTO</div></div>
-      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">${icon('close',12)}</button>` : `<span style="color:var(--text-dim);font-size:18px">›</span>`}
+      <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-xl);color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
+      <div style="flex:1"><div style="font-size:var(--text-md);font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:var(--text-sm)">· ${s(t.version)}</span>`:''}</div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span> ${shared}</div></div>
+      <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-lg);color:${readyColor(pct)}">${pct}%</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">LISTO</div></div>
+      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">${icon('close',12)}</button>` : `<span style="color:var(--text-dim);font-size:var(--text-lg)">›</span>`}
     </div>`; }).join('');
   const addBtns = (!single && editable) ? `<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="abrirTrackPicker()">+ Agregar single existente</button>
@@ -374,17 +374,17 @@ function renderTrackPicker(filter){
   const cands = tracks.filter(t => t.artistId === l.artistId && !inThis[t.id] && (!f || s(t.title).toLowerCase().includes(f) || s(t.isrc).toLowerCase().includes(f)));
   const rows = cands.map(t => { const rels = releasesOfTrack(t.id).map(r=>s(r.name));
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><div style="font-size:13px;font-weight:600">${s(t.title)||'(sin título)'}${t.version?` · ${s(t.version)}`:''}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">ISRC ${s(t.isrc)||'—'}${rels.length?` · en: ${rels.join(', ')}`:''}</div></div>
-      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="addTrackToRelease('${t.id}')">Agregar</button>
+      <div style="flex:1"><div style="font-size:var(--text-base);font-weight:600">${s(t.title)||'(sin título)'}${t.version?` · ${s(t.version)}`:''}</div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">ISRC ${s(t.isrc)||'—'}${rels.length?` · en: ${rels.join(', ')}`:''}</div></div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:var(--text-xs)" onclick="addTrackToRelease('${t.id}')">Agregar</button>
     </div>`; }).join('');
   document.getElementById('tp-body').innerHTML = rows || `<div class="empty-hint">No hay otras canciones de este artista para agregar${f?' con ese filtro':''}.</div>`;
 }
 function releaseResumenHTML(l) {
   const rr = releaseReady(l), phase = releasePhase(l);
   const editable = canDo('edit_launch');
-  const statusSel = `<select class="input" style="width:auto;padding:5px 9px;font-size:11px;margin-left:auto" ${editable?'':'disabled'} onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k=>`<option value="${k}" ${l.status===k?'selected':''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
-  const tplBtn = (typeof openTemplatePicker==='function' && canDo('gestionar_tareas')) ? `<button class="btn btn-ghost" style="margin-top:12px;font-size:12px" onclick="openTemplatePicker('${l.id}')">${icon('checklist',13)} ${l.templateApplied?'Aplicar otra plantilla':'Aplicar plantilla de proyecto'}</button>` : '';
+  const statusSel = `<select class="input" style="width:auto;padding:5px 9px;font-size:var(--text-xs);margin-left:auto" ${editable?'':'disabled'} onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k=>`<option value="${k}" ${l.status===k?'selected':''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
+  const tplBtn = (typeof openTemplatePicker==='function' && canDo('gestionar_tareas')) ? `<button class="btn btn-ghost" style="margin-top:12px;font-size:var(--text-sm)" onclick="openTemplatePicker('${l.id}')">${icon('checklist',13)} ${l.templateApplied?'Aplicar otra plantilla':'Aplicar plantilla de proyecto'}</button>` : '';
   // "Lanzado" (calendar fact) and "0% listo" (checklist fact) answer different questions — when there
   // are unresolved red-level alerts, flag the macro-fase itself instead of only the bar below it,
   // so a calm green "Lanzado" badge doesn't read as "all good" while blockers sit unresolved.
@@ -395,7 +395,7 @@ function releaseResumenHTML(l) {
       <div class="panel-head"><span class="ph-icon">${icon('rocket',18)}</span><span class="ph-title">Estado del release</span>
         <span class="ph-sub">${phaseWarning}macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span>${statusSel}</div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
-      <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
+      <div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
       ${alertsHTML(l)}
       ${(typeof spacingHTML==='function') ? spacingHTML(l) : ''}
       ${tplBtn}
@@ -426,8 +426,8 @@ function toggleReleaseCheck(group, key){
 function releaseChecklistPanelHTML(l){
   const editable=canDo('editar_crm'); const rc=l.releaseChecklist||{};
   const groups=Object.keys(RELEASE_CHECKLIST).map(g=>`<div style="margin-bottom:8px">
-      <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:1px;margin-bottom:2px">${(CHECKLIST_GROUP_LABEL[g]||g).toUpperCase()}</div>
-      ${RELEASE_CHECKLIST[g].map(([k,label])=>{ const on=!!(rc[g]&&rc[g][k]); return `<label style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);cursor:${editable?'pointer':'default'};font-size:13px"><input type="checkbox" ${on?'checked':''} ${editable?'':'disabled'} onchange="toggleReleaseCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:2px">${(CHECKLIST_GROUP_LABEL[g]||g).toUpperCase()}</div>
+      ${RELEASE_CHECKLIST[g].map(([k,label])=>{ const on=!!(rc[g]&&rc[g][k]); return `<label style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);cursor:${editable?'pointer':'default'};font-size:var(--text-base)"><input type="checkbox" ${on?'checked':''} ${editable?'':'disabled'} onchange="toggleReleaseCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
     </div>`).join('');
   return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Checklist del release</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
 }
@@ -542,7 +542,7 @@ function mediaPlanPanelHTML(l) {
     </div>
     <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--space-3)">
       <div class="brief-label">Presupuesto total</div>
-      <div style="font-family:var(--font-mono);font-weight:700;font-size:28px;font-variant-numeric:tabular-nums;color:var(--text)">${money(total)}</div>
+      <div style="font-family:var(--font-ui);font-weight:700;font-size:var(--text-2xl);font-variant-numeric:tabular-nums;color:var(--text)">${money(total)}</div>
     </div>
     <div class="mp-list">${rows}</div>
     ${canE ? `<button class="btn btn-ghost btn-sm" style="margin-top:var(--space-3)" onclick="budgetAddLine('${l.id}')">+ Agregar plataforma</button>` : ''}
@@ -582,7 +582,7 @@ function renderIdeas() {
   const art = activeArtist();
   const d = a.dna || {};
   const adn = (art && art.adn) || {};
-  const chip = v => (v != null && s(v).trim()) ? `<div class="brief-value" style="font-size:12px;line-height:1.4">${s(v)}</div>` : `<div class="dna-empty">— sin definir</div>`;
+  const chip = v => (v != null && s(v).trim()) ? `<div class="brief-value" style="font-size:var(--text-sm);line-height:1.4">${s(v)}</div>` : `<div class="dna-empty">— sin definir</div>`;
   const adnBits = [
     ['Arquetipos', ((adn.personality||{}).archetypes||[]).join(', ')],
     ['Tono', (adn.personality||{}).tone],
@@ -621,17 +621,17 @@ function renderIdeas() {
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span>${infoTip('La letra es la semilla: alimenta el Campaign DNA (Concepto, Emoción, Mensaje, Keywords), las ideas de contenido y el pitch editorial.')}</div>
-      <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
+      <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:var(--text-base);line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
         <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA</button>
         <button class="btn btn-ghost" onclick="traducirLetra()">${icon('ai',13)} Traducir</button>
         <button class="btn btn-ghost" onclick="extraerHooks()">${icon('ai',13)} Extraer ganchos</button>
       </div>
       ${s(a.letraTraducida) ? `<div style="margin-top:12px"><div class="brief-label" style="margin-bottom:4px">Traducción (editable)</div>
-        <textarea class="textarea" placeholder="Traducción de la letra…" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" onchange="setLaunchLetraTraducida(this.value)">${s(a.letraTraducida)}</textarea></div>` : ''}
+        <textarea class="textarea" placeholder="Traducción de la letra…" style="min-height:90px;width:100%;font-size:var(--text-base);line-height:1.5" onchange="setLaunchLetraTraducida(this.value)">${s(a.letraTraducida)}</textarea></div>` : ''}
       ${(a.hooks && a.hooks.length) ? `<div style="margin-top:12px"><div class="brief-label" style="margin-bottom:6px">Ganchos de la letra (${a.hooks.length}) · para "Burn the Song"</div>
-        <div style="display:flex;flex-direction:column;gap:6px">${a.hooks.map((h, i) => `<div class="panel" style="display:flex;gap:8px;align-items:center;padding:7px 10px;margin:0"><span style="flex:1;font-size:12px;line-height:1.4">${esc(h)}</span><button class="goal-btn reject" title="Quitar gancho" onclick="quitarHook(${i})">${icon('close',12)}</button></div>`).join('')}</div></div>` : ''}
-      <div id="letra-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+        <div style="display:flex;flex-direction:column;gap:6px">${a.hooks.map((h, i) => `<div class="panel" style="display:flex;gap:8px;align-items:center;padding:7px 10px;margin:0"><span style="flex:1;font-size:var(--text-sm);line-height:1.4">${esc(h)}</span><button class="goal-btn reject" title="Quitar gancho" onclick="quitarHook(${i})">${icon('close',12)}</button></div>`).join('')}</div></div>` : ''}
+      <div id="letra-status" style="margin-top:10px;font-size:var(--text-xs);font-family:var(--font-ui)"></div>
     </div>
 
     ${(() => { const pe = a.pitchEditorial || {}; const sLen = s(pe.spotify).length; return `<div class="panel">
@@ -639,13 +639,13 @@ function renderIdeas() {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
         <button class="btn btn-primary" onclick="generarPitchEditorial()">${icon('ai',13)} ${pe.spotify ? 'Regenerar' : 'Generar'} pitch</button>
       </div>
-      ${pe.spotify ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span class="brief-label">Spotify</span><span id="pitch-count" style="font-size:10px;font-family:var(--font-mono);color:${pitchCountColor(sLen)}">${sLen}/500</span></div>
-        <textarea class="textarea" style="min-height:90px;width:100%;font-size:13px;line-height:1.5" oninput="setPitchField('spotify',this.value)" onchange="setPitchField('spotify',this.value)">${s(pe.spotify)}</textarea>
+      ${pe.spotify ? `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span class="brief-label">Spotify</span><span id="pitch-count" style="font-size:var(--text-2xs);font-family:var(--font-ui);color:${pitchCountColor(sLen)}">${sLen}/500</span></div>
+        <textarea class="textarea" style="min-height:90px;width:100%;font-size:var(--text-base);line-height:1.5" oninput="setPitchField('spotify',this.value)" onchange="setPitchField('spotify',this.value)">${s(pe.spotify)}</textarea>
         <div style="margin:6px 0 14px"><button class="btn btn-ghost btn-sm" onclick="copyPitch('spotify',this)">${icon('copy',12)} Copiar Spotify</button></div>
         <div class="brief-label" style="margin-bottom:4px">Apple Music</div>
-        <textarea class="textarea" style="min-height:70px;width:100%;font-size:13px;line-height:1.5" onchange="setPitchField('apple',this.value)">${s(pe.apple)}</textarea>
+        <textarea class="textarea" style="min-height:70px;width:100%;font-size:var(--text-base);line-height:1.5" onchange="setPitchField('apple',this.value)">${s(pe.apple)}</textarea>
         <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="copyPitch('apple',this)">${icon('copy',12)} Copiar Apple</button></div>` : '<div class="empty-hint">Genera el pitch para tener tu draft de Spotify y Apple, listo para copiar.</div>'}
-      <div id="pitch-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+      <div id="pitch-status" style="margin-top:10px;font-size:var(--text-xs);font-family:var(--font-ui)"></div>
     </div>`; })()}
 
     ${(() => {
@@ -656,7 +656,7 @@ function renderIdeas() {
       else {
         const groups = {}; plan.forEach((p, i) => { const k = s(p.categoria) || 'Otros'; (groups[k] = groups[k] || []).push({ p, i }); });
         inner = Object.keys(groups).map(k => `<div style="margin-bottom:12px"><div class="brief-label" style="margin-bottom:6px">${esc(k)}</div>${groups[k].map(({ p, i }) => `<div class="panel" style="display:flex;gap:10px;align-items:flex-start;padding:9px 11px;margin-bottom:6px">
-          <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(p.titulo)}</div>${p.formato ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-top:2px">${esc(p.formato)}</div>` : ''}${p.porque ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4">${esc(p.porque)}</div>` : ''}</div>
+          <div style="flex:1"><div style="font-size:var(--text-base);font-weight:600">${esc(p.titulo)}</div>${p.formato ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);margin-top:2px">${esc(p.formato)}</div>` : ''}${p.porque ? `<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:3px;line-height:1.4">${esc(p.porque)}</div>` : ''}</div>
           <button class="goal-btn reject" title="Quitar pieza" onclick="quitarPlanItem(${i})">${icon('close',12)}</button></div>`).join('')}</div>`).join('');
       }
       return `<div class="panel">
@@ -665,28 +665,28 @@ function renderIdeas() {
           <button class="btn btn-primary" onclick="generarPlanContenido()"${ready ? '' : ' disabled style="opacity:.5;cursor:not-allowed"'}>${icon('ai',13)} ${plan.length ? 'Regenerar' : 'Generar'} plan</button>
         </div>
         ${inner}
-        <div id="plan-status" style="margin-top:10px;font-size:11px;font-family:var(--font-mono)"></div>
+        <div id="plan-status" style="margin-top:10px;font-size:var(--text-xs);font-family:var(--font-ui)"></div>
       </div>`;
     })()}
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas de Referencia Seleccionadas</span><span class="ph-sub">${ideas.length} para ${s(a.name)}</span><button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:var(--text-xs)" onclick="crearPostDesdeCero()">+ Crear post desde cero</button></div>
       <div class="ideas-grid">${ideasHTML}</div>
     </div>
 
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('zap',18)}</span><span class="ph-title">Generar Ideas</span>
         ${ideasRestantes() !== null ? `<span class="ph-sub" style="margin-left:auto;color:${ideasRestantes()>0?'var(--text-muted)':'var(--accent2)'}">${ideasRestantes()} de 12 ideas restantes este mes</span>` : ''}
-        ${(isAdmin() || !authed()) ? `<button class="btn btn-ghost" style="${ideasRestantes()!==null?'':'margin-left:auto;'}padding:4px 10px;font-size:11px" onclick="abrirAISettings()">${icon('settings',13)} API</button>` : ''}
+        ${(isAdmin() || !authed()) ? `<button class="btn btn-ghost" style="${ideasRestantes()!==null?'':'margin-left:auto;'}padding:4px 10px;font-size:var(--text-xs)" onclick="abrirAISettings()">${icon('settings',13)} API</button>` : ''}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cantidad</span>
+        <span style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">Cantidad</span>
         <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()">${(ideas.length >= 12 ? [6,8,10,12,16,20,24] : [6,8,10,12]).map(n => `<option ${n===8?'selected':''}>${n}</option>`).join('')}</select>
-        ${ideas.length >= 12 ? `<span style="font-size:10px;color:#4ade80;font-family:var(--font-mono)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">Selecciona 12+ referencias para generar hasta 24</span>`}
+        ${ideas.length >= 12 ? `<span style="font-size:var(--text-2xs);color:#4ade80;font-family:var(--font-ui)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">Selecciona 12+ referencias para generar hasta 24</span>`}
         <button class="btn btn-primary" onclick="generarIdeasPlantilla()">${icon('zap',13)} Generar (plantillas)</button>
         <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)">${icon('ai',13)} Generar con IA</button>
       </div>
-      <div id="gen-cost" style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);line-height:1.6"></div>
+      <div id="gen-cost" style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);line-height:1.6"></div>
     </div>
     <div id="ideas-results"></div>`;
   renderResults();
@@ -777,7 +777,7 @@ function renderResults() {
   if (!g.length) { host.innerHTML = ''; return; }
   const showCost = !(typeof isAdmin === 'function') || isAdmin(); // detalle de costo solo super-admin
   const usage = (a.lastUsage && showCost)
-    ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
+    ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
     : '';
   host.innerHTML = `
     <div class="section-header" style="margin-top:8px"><div class="section-title">IDEAS GENERADAS · ${g.length}</div></div>
@@ -788,11 +788,11 @@ function renderResults() {
         <span class="idea-cat" style="background:${col}18;color:${col}">${up(it.cat || 'idea')}</span>
         <div class="idea-title">${s(it.title)}</div>
         ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">${s(it.descripcion || '')}</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:8px;line-height:1.5">${s(it.descripcion || '')}</div>
         <div class="idea-meta">${s(it.format || '')}${it.objetivo ? ' · ' + s(it.objetivo) : ''}</div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="addGeneratedToCal(${i})">+ Calendario</button>
-          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
+          <button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-2xs)" onclick="addGeneratedToCal(${i})">+ Calendario</button>
+          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-2xs);text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
         </div>
       </div>`;
     }).join('')}</div>
@@ -804,18 +804,18 @@ function prevResultsHTML(a) {
   if (!prev.length) return '';
   return `
     <div class="section-header" style="margin-top:22px"><div class="section-title" style="color:var(--text-dim)">GENERACIÓN ANTERIOR · ${prev.length}${a.generatedPrevAt ? ` · ${new Date(a.generatedPrevAt).toLocaleDateString()}` : ''}</div></div>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar de nuevo.</div>
+    <div style="font-size:var(--text-xs);color:var(--text-dim);margin-bottom:10px;font-family:var(--font-ui)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar de nuevo.</div>
     <div class="ideas-grid">${prev.map((it, i) => {
       const col = catColor(it.cat);
       return `<div class="idea-card" style="cursor:default;opacity:.82">
         <span class="idea-cat" style="background:${col}18;color:${col}">${up(it.cat || 'idea')}</span>
         <div class="idea-title">${s(it.title)}</div>
         ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">${s(it.descripcion || '')}</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:8px;line-height:1.5">${s(it.descripcion || '')}</div>
         <div class="idea-meta">${s(it.format || '')}${it.objetivo ? ' · ' + s(it.objetivo) : ''}</div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="addGeneratedPrevToCal(${i})">+ Calendario</button>
-          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:10px;text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
+          <button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-2xs)" onclick="addGeneratedPrevToCal(${i})">+ Calendario</button>
+          ${it.refLink ? `<a class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-2xs);text-decoration:none" href="${safeUrl(it.refLink)}" target="_blank">↗ ref</a>` : ''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -886,12 +886,12 @@ function aiHintHTML(prompt, expectedOut) {
   if (typeof isAdmin === 'function' && !isAdmin()) return '';
   const e = aiCostHint(prompt, expectedOut);
   const perDollar = e.cost > 0 ? Math.max(1, Math.floor(1 / e.cost)) : '∞';
-  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
+  return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
 }
 function usageBadge(u, ai) {
   if (!u) return '';
   if (typeof isAdmin === 'function' && !isAdmin()) return '';
-  return `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
+  return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
 }
 function buildIdeaPrompt(a, count) {
   const art = activeArtist() || {}; const adn = art.adn || {}; const d = a.dna || {};
@@ -1477,7 +1477,7 @@ function renderSidebarArtist() {
   const menu = document.getElementById('artist-menu');
   menu.innerHTML = (_restrictedArtist ? '' : artists.map(ar => `
     <div class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
-      <div class="artist-avatar" style="width:24px;height:24px;font-size:11px">${up(ar.name).slice(0,1)}</div>
+      <div class="artist-avatar" style="width:24px;height:24px;font-size:var(--text-xs)">${up(ar.name).slice(0,1)}</div>
       <span>${s(ar.name)}</span>
       ${ar.id===currentArtistId?'<span style="margin-left:auto">'+icon('check',12)+'</span>':''}
     </div>`).join('')
@@ -1485,7 +1485,7 @@ function renderSidebarArtist() {
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
     + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</div>`) : '')
     + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
-    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:10px;color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
+    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:var(--text-2xs);color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + (authed() ? `<div class="artist-menu-item" onclick="signOutTempo()" style="color:var(--accent2)">${icon('logout',14)} Salir</div>` : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
   renderMoreSheet();
 }
@@ -1502,16 +1502,16 @@ function renderMoreSheet() {
   const _a = activeArtist();
   if (!_restrictedArtist && _a) {
     html += `<div class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:8px;margin-bottom:4px">
-      <div class="artist-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${up(_a.name).slice(0,1)}</div>
+      <div class="artist-avatar" style="width:32px;height:32px;font-size:var(--text-base);flex-shrink:0">${up(_a.name).slice(0,1)}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:600;color:var(--text)">${s(_a.name)}</div>
-        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Cambiar artista</div>
+        <div style="font-size:var(--text-base);font-weight:600;color:var(--text)">${s(_a.name)}</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">Cambiar artista</div>
       </div>
-      <span id="more-artist-chevron" style="color:var(--text-dim);font-size:13px;display:inline-block;transition:transform .15s">▾</span>
+      <span id="more-artist-chevron" style="color:var(--text-dim);font-size:var(--text-base);display:inline-block;transition:transform .15s">▾</span>
     </div>
     <div id="more-artist-list" style="display:none;padding-bottom:4px">` +
       artists.map(ar => `<div class="more-sheet-item" style="padding-left:30px" onclick="setActiveArtist('${ar.id}');cerrarMoreSheet()">
-        <div class="artist-avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0">${up(ar.name).slice(0,1)}</div>
+        <div class="artist-avatar" style="width:24px;height:24px;font-size:var(--text-2xs);flex-shrink:0">${up(ar.name).slice(0,1)}</div>
         <span style="flex:1">${s(ar.name)}</span>${ar.id === currentArtistId ? icon('check', 15) : ''}
       </div>`).join('') +
       `<div class="more-sheet-item" style="padding-left:30px" onclick="abrirNuevoArtista();cerrarMoreSheet()"><span class="icon">${icon('plus', 17)}</span><span>Nuevo artista</span></div>
@@ -1523,7 +1523,7 @@ function renderMoreSheet() {
   const pageLinks = [['campanias','megaphone','Campañas activas']]
     .concat(showLabel ? [['label','label','Label']] : [])
     .concat([['perfil','artist','Perfil del Artista'], ['adn','dna','ADN Artístico'], ['banco','references','Banco de Referencias']]);
-  html += '<div class="more-sheet-item" onclick="cerrarMoreSheet();cmdkOpen()"><span class="icon">' + icon('search', 19) + '</span><span>Buscar… <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">⌘K</span></span></div>';
+  html += '<div class="more-sheet-item" onclick="cerrarMoreSheet();cmdkOpen()"><span class="icon">' + icon('search', 19) + '</span><span>Buscar… <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">⌘K</span></span></div>';
   html += '<div class="more-sheet-label">Secciones</div>' + pageLinks.map(([id, ic, label]) =>
     `<div class="more-sheet-item" onclick="showPage('${id}');cerrarMoreSheet()"><span class="icon">${icon(ic, 19)}</span><span>${label}</span></div>`
   ).join('');
@@ -1533,7 +1533,7 @@ function renderMoreSheet() {
     html += `<div class="more-sheet-item" onclick="abrirCuenta();cerrarMoreSheet()"><span class="icon">${icon('settings', 19)}</span><span>Mi cuenta</span></div>`;
     if (!_restrictedArtist) html += `<div class="more-sheet-item" onclick="abrirTeam();cerrarMoreSheet()"><span class="icon">${icon('team', 19)}</span><span>Mi equipo · ${s(_teamName)}</span></div>`;
     if (isAdmin()) html += `<div class="more-sheet-item" onclick="abrirAdmin();cerrarMoreSheet()"><span class="icon" style="color:var(--accent)">${icon('wrench', 19)}</span><span style="color:var(--accent)">Backend admin</span></div>`;
-    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:11px;color:${cloudEnabled() ? '#4ade80' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
+    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:var(--text-xs);color:${cloudEnabled() ? '#4ade80' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
     html += `<div class="more-sheet-item" onclick="signOutTempo()"><span class="icon" style="color:var(--accent2)">${icon('logout', 19)}</span><span style="color:var(--accent2)">Cerrar sesión</span></div>`;
   } else {
     html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span>Sincronización</span></div>`;
@@ -1659,9 +1659,9 @@ function awResultHTML(g) {
   return `
     <div class="wiz-field"><label>Bio · 1 línea</label><input class="input" value="${s(g.bio_1line)}" oninput="awData.generated.bio_1line=this.value"></div>
     <div class="wiz-field"><label>Bio · ~100 palabras</label><textarea class="textarea" oninput="awData.generated.bio_100=this.value">${s(g.bio_100)}</textarea></div>
-    <div class="wiz-field"><label>Bio · ~250 palabras <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">prensa / medios</span></label><textarea class="textarea" style="min-height:110px" oninput="awData.generated.bio_250=this.value">${s(g.bio_250)}</textarea></div>
+    <div class="wiz-field"><label>Bio · ~250 palabras <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">prensa / medios</span></label><textarea class="textarea" style="min-height:110px" oninput="awData.generated.bio_250=this.value">${s(g.bio_250)}</textarea></div>
     <div class="wiz-field"><label>Bio · ~300 palabras</label><textarea class="textarea" style="min-height:120px" oninput="awData.generated.bio_300=this.value">${s(g.bio_300)}</textarea></div>
-    <div class="wiz-field"><label>Bio · ~500 palabras <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">booking / festivales</span></label><textarea class="textarea" style="min-height:150px" oninput="awData.generated.bio_500=this.value">${s(g.bio_500)}</textarea></div>
+    <div class="wiz-field"><label>Bio · ~500 palabras <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">booking / festivales</span></label><textarea class="textarea" style="min-height:150px" oninput="awData.generated.bio_500=this.value">${s(g.bio_500)}</textarea></div>
     <div class="stepper-row" style="grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px">
       <div class="wiz-field" style="margin:0"><label>Tono de comunicación</label><input class="input" value="${s(g.tono)}" oninput="awData.generated.tono=this.value"></div>
       <div class="wiz-field" style="margin:0"><label>Keywords</label><input class="input" value="${s((g.keywords||[]).join(', '))}" oninput="awData.generated.keywords=this.value.split(',').map(x=>x.trim()).filter(Boolean)"></div>
@@ -1798,8 +1798,8 @@ function renderArtistForms() {
   const b2=document.getElementById('adn-artist-badge'); if(b2) b2.textContent = a.name;
   const vis = document.getElementById('perfil-visibility');
   if (vis) vis.innerHTML = authed()
-    ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px">VISIBILIDAD</span>
-       <select class="input" style="padding:4px 8px;font-size:11px;width:auto" ${canEdit()?'':'disabled'} onchange="setArtistVisibility('${a.id}',this.value)">
+    ? `<span style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps)">VISIBILIDAD</span>
+       <select class="input" style="padding:4px 8px;font-size:var(--text-xs);width:auto" ${canEdit()?'':'disabled'} onchange="setArtistVisibility('${a.id}',this.value)">
          <option value="team" ${(a.visibility||'team')==='team'?'selected':''}>Todo el equipo</option>
          <option value="private" ${a.visibility==='private'?'selected':''}>Solo yo</option>
        </select>`
@@ -1898,12 +1898,12 @@ function renderTeam() {
   const rows = team.length ? team.map((m,i) => {
     const nm = _artistMemberName(m); const linked = !!m.email;
     const chip = linked
-      ? `<span class="chip on" style="cursor:default;font-size:9px;padding:2px 7px" title="Miembro del workspace">${icon('team',10)} conectado</span>`
-      : `<span class="chip" style="cursor:default;font-size:9px;padding:2px 7px;color:var(--text-dim)" title="Colaborador externo (no es del workspace)">externo</span>`;
+      ? `<span class="chip on" style="cursor:default;font-size:var(--text-2xs);padding:2px 7px" title="Miembro del workspace">${icon('team',10)} conectado</span>`
+      : `<span class="chip" style="cursor:default;font-size:var(--text-2xs);padding:2px 7px;color:var(--text-dim)" title="Colaborador externo (no es del workspace)">externo</span>`;
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div class="artist-avatar" style="width:30px;height:30px;font-size:12px">${up(nm||'?').slice(0,1)}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">${s(nm)} ${chip}</div>
-        <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${s(m.role)||'—'}${linked?' · '+s(m.email):''}</div></div>
+      <div class="artist-avatar" style="width:30px;height:30px;font-size:var(--text-sm)">${up(nm||'?').slice(0,1)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:var(--text-base);font-weight:500;display:flex;align-items:center;gap:6px">${s(nm)} ${chip}</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">${s(m.role)||'—'}${linked?' · '+s(m.email):''}</div></div>
       <button class="goal-btn reject" onclick="quitarMiembro(${i})" title="Quitar">${icon('close',12)}</button>
     </div>`;
   }).join('') : `<div class="empty-hint">Aún no hay miembros. Conecta a alguien de tu equipo (de "Mi equipo") o agrega un colaborador externo.</div>`;
@@ -1919,12 +1919,12 @@ function renderTeam() {
         return `<option value="${s(tm.email)}">${s(nm)}${rl?' · '+rl:''}</option>`;
       }).join('');
       picker = `<div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
-        <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${icon('team',12)} Conectar del workspace</span>
-        <select class="input" id="artist-member-pick" style="flex:1;min-width:150px;font-size:12px"><option value="">Elige un miembro…</option>${opts}</select>
-        <button class="btn btn-ghost" style="font-size:12px" onclick="conectarMiembro()">Conectar</button>
+        <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${icon('team',12)} Conectar del workspace</span>
+        <select class="input" id="artist-member-pick" style="flex:1;min-width:150px;font-size:var(--text-sm)"><option value="">Elige un miembro…</option>${opts}</select>
+        <button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="conectarMiembro()">Conectar</button>
       </div>`;
     } else if (team.some(m=>m.email)) {
-      picker = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:12px">Todos los miembros del workspace ya están en este artista.</div>`;
+      picker = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:12px">Todos los miembros del workspace ya están en este artista.</div>`;
     }
   }
   host.innerHTML = rows + picker;

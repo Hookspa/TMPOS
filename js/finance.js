@@ -56,31 +56,31 @@ function royaltyPanelHTML(l){
   const d = royaltyDistribution(l);
   const head = `<div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Reparto de ingresos</span><span class="ph-sub">por titular · Royalty Split</span>
     <div class="mtabs" style="margin-left:auto;gap:4px">
-      <div class="mtab ${d.base==='neto'?'active':''}" style="font-size:10px;padding:4px 9px" onclick="setRoyaltyBase('neto')">Neto (post-recoup)</div>
-      <div class="mtab ${d.base==='bruto'?'active':''}" style="font-size:10px;padding:4px 9px" onclick="setRoyaltyBase('bruto')">Bruto</div>
+      <div class="mtab ${d.base==='neto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('neto')">Neto (post-recoup)</div>
+      <div class="mtab ${d.base==='bruto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('bruto')">Bruto</div>
     </div></div>`;
   if(!d.hasSplit) return `<div class="panel">${head}<div class="empty-hint">Define el <b>Royalty Split</b> en el Label Copy del track para ver cómo se reparten los ingresos por titular.</div></div>`;
   if(d.base==='neto' && d.distributable<=0){
     return `<div class="panel">${head}<div class="empty-hint">En <b>recoupment</b>: faltan <b>${money(d.faltaRecoup)}</b> para recuperar la inversión. Nada que repartir todavía (o cambia a <b>Bruto</b> para ver el reparto sobre ingresos totales).</div></div>`;
   }
-  const warn = Math.round(d.totalPct) !== 100 ? `<span style="color:var(--accent);font-family:var(--font-mono);font-size:11px" title="El Royalty Split no suma 100%">${icon('warning',11)} split ${d.totalPct%1?d.totalPct.toFixed(2):d.totalPct}%</span>` : '';
+  const warn = Math.round(d.totalPct) !== 100 ? `<span style="color:var(--accent);font-family:var(--font-ui);font-size:var(--text-xs)" title="El Royalty Split no suma 100%">${icon('warning',11)} split ${d.totalPct%1?d.totalPct.toFixed(2):d.totalPct}%</span>` : '';
   const rows = d.rows.sort((a,b)=>b.monto-a.monto).map(r => `<tr>
-      <td style="padding:6px 8px">${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''}${d.multi&&r.tracks?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${r.tracks} canc.</span>`:''}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-muted)">${r.pct%1?r.pct.toFixed(2):r.pct}%</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(r.monto)}</td></tr>`).join('');
+      <td style="padding:6px 8px">${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">${s(r.rol)}</span>`:''}${d.multi&&r.tracks?` <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">${r.tracks} canc.</span>`:''}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:var(--text-muted)">${r.pct%1?r.pct.toFixed(2):r.pct}%</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);font-weight:600">${money(r.monto)}</td></tr>`).join('');
   const multiNote = d.multi ? `<br>Reparto agregado de <b>${d.nTracks} canciones</b> — cada track aporta una parte igual (<b>${money(d.perTrackShare)}</b>) y se reparte por su propio Royalty Split.` : '';
   const offNote = d.trackOff.length ? `<br><span style="color:var(--accent)">${icon('warning',11)} ${d.trackOff.length} canción(es) con split ≠ 100%: ${d.trackOff.map(p=>s(p.title)||'(sin título)').join(', ')}</span>` : '';
-  const breakdown = d.multi ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Desglose por canción</summary>
-    <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">${d.perTrack.map(pt=>`<div style="font-size:11px">
-      <div style="font-family:var(--font-mono);color:var(--text-muted)">${s(pt.title)||'(sin título)'} · ${money(pt.share)}${Math.round(pt.totalPct)!==100?` <span style="color:var(--accent)">(split ${pt.totalPct%1?pt.totalPct.toFixed(2):pt.totalPct}%)</span>`:''}</div>
-      ${pt.rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px">${s(r.rol)}</span>`:''} <span style="color:var(--text-muted);font-family:var(--font-mono)">${r.pct%1?r.pct.toFixed(2):r.pct}%</span></span><span style="font-family:var(--font-mono)">${money(r.monto)}</span></div>`).join('')}
+  const breakdown = d.multi ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">Desglose por canción</summary>
+    <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">${d.perTrack.map(pt=>`<div style="font-size:var(--text-xs)">
+      <div style="font-family:var(--font-ui);color:var(--text-muted)">${s(pt.title)||'(sin título)'} · ${money(pt.share)}${Math.round(pt.totalPct)!==100?` <span style="color:var(--accent)">(split ${pt.totalPct%1?pt.totalPct.toFixed(2):pt.totalPct}%)</span>`:''}</div>
+      ${pt.rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${s(r.name)}${r.rol?` <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">${s(r.rol)}</span>`:''} <span style="color:var(--text-muted);font-family:var(--font-ui)">${r.pct%1?r.pct.toFixed(2):r.pct}%</span></span><span style="font-family:var(--font-ui)">${money(r.monto)}</span></div>`).join('')}
     </div>`).join('')}</div></details>` : '';
   return `<div class="panel">${head}
-    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:8px">
+    <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-bottom:8px">
       Base a repartir: <b style="color:var(--text)">${money(d.distributable)}</b> ${d.base==='neto'?`(ingresos ${money(d.fs.ingresos)} − inversión ${money(d.fs.inversion)})`:`(ingresos brutos)`} ${warn}
       ${multiNote}${offNote}
     </div>
-    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase">
       <th style="text-align:left;padding:6px 8px">Titular</th><th style="text-align:right;padding:6px 8px">%</th><th style="text-align:right;padding:6px 8px">Monto</th></tr></thead>
       <tbody>${rows}</tbody></table>${breakdown}</div>`;
 }
@@ -97,23 +97,23 @@ function releaseInversionHTML(l){
   const lines = (typeof budgetEnsure === 'function') ? budgetEnsure(l).lines : ((l.budget && l.budget.lines) || []);
   const labelOf = id => (typeof planLineLabel === 'function') ? planLineLabel(l, id) : catLabel(id);
   const _row = (lbl, plan, real) => { const diff = plan - real; return `<tr><td style="padding:6px 8px">${s(lbl)}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">${money(plan)}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">${money(real)}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:${diff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(diff)}</td></tr>`; };
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui)">${money(plan)}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui)">${money(real)}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:${diff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(diff)}</td></tr>`; };
   const usedIds = {}; let planTotal = 0, realTotal = 0; const _body = [];
   lines.forEach(ln => { usedIds[ln.id] = true; const plan = +ln.amount || 0, real = byCat[ln.id] || 0; planTotal += plan; realTotal += real; if (plan || real) _body.push(_row(ln.label || labelOf(ln.id), plan, real)); });
   Object.keys(byCat).forEach(cat => { if (usedIds[cat]) return; const real = byCat[cat] || 0; if (!real) return; realTotal += real; _body.push(_row(labelOf(cat), 0, real)); });
   const planRows = _body.join('');
   const _tdiff = planTotal - realTotal;
   const totalRow = planRows ? `<tr style="border-top:1px solid var(--border)"><td style="padding:8px;font-weight:600">Total</td>
-      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(planTotal)}</td>
-      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600">${money(realTotal)}</td>
-      <td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:${_tdiff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(_tdiff)}</td></tr>` : '';
+      <td style="padding:8px;text-align:right;font-family:var(--font-ui);font-weight:600">${money(planTotal)}</td>
+      <td style="padding:8px;text-align:right;font-family:var(--font-ui);font-weight:600">${money(realTotal)}</td>
+      <td style="padding:8px;text-align:right;font-family:var(--font-ui);font-weight:600;color:${_tdiff < 0 ? 'var(--accent2)' : 'var(--text-muted)'}">${_signedMoney(_tdiff)}</td></tr>` : '';
   const gastos = (l.expenses || []).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(e => `<div class="panel${_editingExpId === e.id ? ' editing' : ''}" style="display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap${_editingExpId === e.id ? ';border-color:var(--accent)' : ''}">
-      <span class="chip on" style="cursor:default;font-size:10px;text-transform:uppercase;letter-spacing:1px">${s(labelOf(e.categoria))}</span>
-      <div style="flex:1;min-width:120px"><div style="font-size:13px;font-weight:600">${money(+e.monto || 0)}${e.proveedor ? ` <span style="color:var(--text-muted);font-size:12px;font-weight:400">· ${s(e.proveedor)}</span>` : ''}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(e.fecha) || ''}${e.metodo ? ' · ' + s(e.metodo) : ''}${e.note ? ' · ' + s(e.note) : ''}</div></div>
-      ${e.reciboLink ? `<a href="${safeUrl(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-family:var(--font-mono)">↗ recibo</a>` : ''}
+      <span class="chip on" style="cursor:default;font-size:var(--text-2xs);text-transform:uppercase;letter-spacing:var(--track-caps)">${s(labelOf(e.categoria))}</span>
+      <div style="flex:1;min-width:120px"><div style="font-size:var(--text-base);font-weight:600">${money(+e.monto || 0)}${e.proveedor ? ` <span style="color:var(--text-muted);font-size:var(--text-sm);font-weight:400">· ${s(e.proveedor)}</span>` : ''}</div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(e.fecha) || ''}${e.metodo ? ' · ' + s(e.metodo) : ''}${e.note ? ' · ' + s(e.note) : ''}</div></div>
+      ${e.reciboLink ? `<a href="${safeUrl(e.reciboLink)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui)">↗ recibo</a>` : ''}
       ${editable ? `<button class="goal-btn" title="Editar" onclick="editarGasto('${e.id}')">${icon('pencil',12)}</button><button class="goal-btn reject" title="Quitar" onclick="quitarGasto('${e.id}')">${icon('close',12)}</button>` : ''}
     </div>`).join('');
   // Opciones de categoría = tus plataformas del Plan de Medios (+ Otros; + la del gasto en edición si ya no existe).
@@ -149,7 +149,7 @@ function releaseInversionHTML(l){
     </div>
     ${royaltyPanelHTML(l)}
     <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('chart',18)}</span><span class="ph-title">Plan vs. gasto real</span><span class="ph-sub">por categoría</span></div>
-      <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+      <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase">
         <th style="text-align:left;padding:6px 8px">Categoría</th><th style="text-align:right;padding:6px 8px">Plan</th><th style="text-align:right;padding:6px 8px">Real</th><th style="text-align:right;padding:6px 8px">Dif.</th></tr></thead>
         <tbody>${planRows ? planRows + totalRow : '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin presupuesto ni gastos aún. Define plataformas en el Plan de Medios.</td></tr>'}</tbody></table>
     </div>
@@ -291,10 +291,10 @@ function snapshotPanelHTML(l) {
   if (!l) return '';
   const snap = releaseSnapshot(l.id);
   const canCap = (typeof canDo !== 'function') || canDo('edit_launch');
-  const btn = canCap ? `<button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="captureReleaseSnapshot('${l.id}')">${icon('save', 12)} ${snap ? 'Actualizar' : 'Capturar'} snapshot</button>` : '';
+  const btn = canCap ? `<button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:var(--text-xs)" onclick="captureReleaseSnapshot('${l.id}')">${icon('save', 12)} ${snap ? 'Actualizar' : 'Capturar'} snapshot</button>` : '';
   const head = `<div class="panel-head"><span class="ph-icon">${icon('chart', 18)}</span><span class="ph-title">Snapshot de cierre</span><span class="ph-sub">dato operativo del lanzamiento</span>${btn}</div>`;
   if (!snap) return `<div class="panel">${head}<div class="empty-hint">Aún sin snapshot. Se captura solo al cerrar el release, o con el botón. Mide cómo se corrió: tareas, cycle-time, latencia de gates, lead time, espaciado, inversión/ROI y resultado.</div></div>`;
-  const stat = (lbl, val) => `<div class="stat-card"><div class="stat-label">${lbl}</div><div class="stat-value" style="font-size:22px">${val == null ? '—' : val}</div></div>`;
+  const stat = (lbl, val) => `<div class="stat-card"><div class="stat-label">${lbl}</div><div class="stat-value" style="font-size:var(--text-xl)">${val == null ? '—' : val}</div></div>`;
   const gates = Object.keys(snap.gate_latency_dias || {}).length;
   const r7 = snap.resultado_d7 && snap.resultado_d7.streams != null ? (snap.resultado_d7.streams.toLocaleString('es') + ' streams') : '—';
   const grid = `<div class="dash-kpis" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px">
@@ -307,8 +307,8 @@ function snapshotPanelHTML(l) {
     ${stat('ROI', snap.roi == null ? '—' : snap.roi + '%')}
     ${stat('Gates medidos', gates)}
   </div>`;
-  const meta = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${snap.genero || 's/género'} · ${snap.tipo_release} · ${snap.etapa_carrera} · resultado d7: ${r7} · completitud ${snap.completitud}% · capturado ${new Date(snap.capturedAt).toLocaleString('es')}${snap.cycle_estimadas ? ' · ' + snap.cycle_estimadas + ' cycle estimado(s)' : ''}</div>`;
+  const meta = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${snap.genero || 's/género'} · ${snap.tipo_release} · ${snap.etapa_carrera} · resultado d7: ${r7} · completitud ${snap.completitud}% · capturado ${new Date(snap.capturedAt).toLocaleString('es')}${snap.cycle_estimadas ? ' · ' + snap.cycle_estimadas + ' cycle estimado(s)' : ''}</div>`;
   const rs = snap.royalty_split;
-  const royalty = rs ? `<div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Reparto congelado (neto ${money(rs.distributable)}${rs.per_track ? ` · ${rs.n_tracks} canciones` : ''}): ${rs.titulares.slice(0, 4).map(x => `${s(x.name)} ${money(x.monto)}`).join(' · ')}${rs.titulares.length > 4 ? ` +${rs.titulares.length - 4}` : ''}</div>` : '';
+  const royalty = rs ? `<div style="margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">Reparto congelado (neto ${money(rs.distributable)}${rs.per_track ? ` · ${rs.n_tracks} canciones` : ''}): ${rs.titulares.slice(0, 4).map(x => `${s(x.name)} ${money(x.monto)}`).join(' · ')}${rs.titulares.length > 4 ? ` +${rs.titulares.length - 4}` : ''}</div>` : '';
   return `<div class="panel">${head}${grid}${meta}${royalty}</div>`;
 }

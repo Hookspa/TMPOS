@@ -615,9 +615,9 @@ function renderTeamModal() {
   const teamsList = _teams.map(t => {
     const active = t.id === _teamId;
     return `<div onclick="switchTeam('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;background:${active?'color-mix(in srgb, var(--accent) 6%, transparent)':'transparent'}">
-      <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(t.name||'?').slice(0,1)}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${s(t.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(t.role)}</div></div>
-      ${active?'<span style="color:var(--accent);font-size:12px">● activo</span>':'<span style="font-size:11px;color:var(--text-dim)">cambiar →</span>'}
+      <div class="artist-avatar" style="width:26px;height:26px;font-size:var(--text-xs)">${up(t.name||'?').slice(0,1)}</div>
+      <div style="flex:1"><div style="font-size:var(--text-base);font-weight:500">${s(t.name)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(t.role)}</div></div>
+      ${active?'<span style="color:var(--accent);font-size:var(--text-sm)">● activo</span>':'<span style="font-size:var(--text-xs);color:var(--text-dim)">cambiar →</span>'}
     </div>`;
   }).join('');
   // Panel de asignación de artistas al equipo
@@ -625,10 +625,10 @@ function renderTeamModal() {
   const userOpts = m => `<option value="">— sin asignar</option>` + _teamMembers.map(u => `<option value="${u.user_id}" ${m===u.user_id?'selected':''}>${s(u.email)||u.user_id}</option>`).join('');
   const assignList = canEdit() && artists.length ? artists.map(a => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <div class="artist-avatar" style="width:26px;height:26px;font-size:11px">${up(a.name||'?').slice(0,1)}</div>
-      <span style="flex:1;min-width:90px;font-size:13px">${s(a.name)}</span>
-      ${isOwner() ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" title="Usuario-artista (solo verá esta ficha)" onchange="setArtistUser('${a.id}',this.value)">${userOpts(a.userId)}</select>` : ''}
-      ${otherTeams.length ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="if(this.value){moveArtistToTeam('${a.id}',this.value);this.value='';}">
+      <div class="artist-avatar" style="width:26px;height:26px;font-size:var(--text-xs)">${up(a.name||'?').slice(0,1)}</div>
+      <span style="flex:1;min-width:90px;font-size:var(--text-base)">${s(a.name)}</span>
+      ${isOwner() ? `<select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" title="Usuario-artista (solo verá esta ficha)" onchange="setArtistUser('${a.id}',this.value)">${userOpts(a.userId)}</select>` : ''}
+      ${otherTeams.length ? `<select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" onchange="if(this.value){moveArtistToTeam('${a.id}',this.value);this.value='';}">
         <option value="">Mover a…</option>
         ${otherTeams.map(t => `<option value="${t.id}">${s(t.name)}</option>`).join('')}
       </select>` : ''}
@@ -636,22 +636,22 @@ function renderTeamModal() {
   body.innerHTML = `
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Tus equipos (${_teams.length})</span></div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">${teamsList}</div>
-    <button class="btn btn-ghost" style="margin-bottom:18px;font-size:12px" onclick="createTeam()">+ Crear equipo nuevo</button>
+    <button class="btn btn-ghost" style="margin-bottom:18px;font-size:var(--text-sm)" onclick="createTeam()">+ Crear equipo nuevo</button>
     <div class="field" style="margin-bottom:16px"><label>Nombre del equipo activo</label>
       <div style="display:flex;gap:8px"><input class="input" id="team-name" value="${s(_teamName)}" ${canEditName?'':'disabled'}>${canEditName?'<button class="btn btn-ghost" onclick="renameTeam()">Guardar</button>':''}</div>
     </div>
     ${canManageWorkspace() ? `
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('settings',18)}</span><span class="ph-title">Marca del workspace</span><span class="ph-sub">logo · color · nombre</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
-      <label style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Color de acento
-        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B30'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B30" style="width:90px;font-size:12px;font-family:var(--font-mono)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
+      <label style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Color de acento
+        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B30'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B30" style="width:90px;font-size:var(--text-sm);font-family:var(--font-ui)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
       </label>
-      <label style="flex:1;min-width:160px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Nombre de marca
-        <input class="input" id="brand-name" value="${s(_brandName)}" placeholder="(opcional)" style="font-size:12px;margin-top:3px">
+      <label style="flex:1;min-width:160px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Nombre de marca
+        <input class="input" id="brand-name" value="${s(_brandName)}" placeholder="(opcional)" style="font-size:var(--text-sm);margin-top:3px">
       </label>
     </div>
-    <label style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);display:block;margin-bottom:10px">URL del logo (imagen)
-      <input class="input" id="brand-logo" value="${s(_logoUrl)}" placeholder="https://…/logo.png" style="font-size:12px;margin-top:3px">
+    <label style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);display:block;margin-bottom:10px">URL del logo (imagen)
+      <input class="input" id="brand-logo" value="${s(_logoUrl)}" placeholder="https://…/logo.png" style="font-size:var(--text-sm);margin-top:3px">
     </label>
     <div style="display:flex;gap:8px;margin-bottom:18px">
       <button class="btn btn-primary" onclick="saveBranding()">Guardar marca</button>
@@ -666,28 +666,28 @@ function renderTeamModal() {
       const roleOpts = ['owner'].concat(BUSINESS_PRESETS).map(p =>
         `<option value="${p}" ${curSeat===p?'selected':''}>${PRESET_LABELS[p]||p}</option>`).join('');
       const roleCtl = (isWorkspaceOwner() && !mine)
-        ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" title="Rol del miembro" onchange="updateMemberRole('${m.user_id}',this.value)">${roleOpts}</select>`
-        : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${PRESET_LABELS[curSeat]||s(m.role)}</span>`;
+        ? `<select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" title="Rol del miembro" onchange="updateMemberRole('${m.user_id}',this.value)">${roleOpts}</select>`
+        : `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${PRESET_LABELS[curSeat]||s(m.role)}</span>`;
       const revokeCtl = (isWorkspaceOwner() && !mine)
-        ? `<button class="btn btn-ghost" style="padding:3px 7px;font-size:10px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" title="Revocar acceso" onclick="removeMember('${m.user_id}','${s(m.email)}')">${icon('close',12)}</button>`
+        ? `<button class="btn btn-ghost" style="padding:3px 7px;font-size:var(--text-2xs);color:var(--accent2);border-color:rgba(255,77,77,0.3)" title="Revocar acceso" onclick="removeMember('${m.user_id}','${s(m.email)}')">${icon('close',12)}</button>`
         : '';
       const artistCtl = isOwner()
-        ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
+        ? `<label style="display:flex;align-items:center;gap:4px;font-size:var(--text-2xs);font-family:var(--font-ui);color:${m.is_artist?'var(--accent)':'var(--text-dim)'};cursor:pointer" title="Marca al artista del equipo (solo 1)">
              <input type="checkbox" ${m.is_artist?'checked':''} onchange="assignArtist('${m.user_id}',this.checked)">${icon('mic',13)}</label>`
-        : (m.is_artist ? `<span style="font-size:10px;color:var(--accent)" title="Artista del equipo">${icon('mic',13)}</span>` : '');
+        : (m.is_artist ? `<span style="font-size:var(--text-2xs);color:var(--accent)" title="Artista del equipo">${icon('mic',13)}</span>` : '');
       const nm = (typeof _nameMap==='function') ? (_nameMap()[s(m.email).toLowerCase()] || '') : '';
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div class="artist-avatar" style="width:28px;height:28px;font-size:11px">${up(nm||m.email||'?').slice(0,1)}</div>
+        <div class="artist-avatar" style="width:28px;height:28px;font-size:var(--text-xs)">${up(nm||m.email||'?').slice(0,1)}</div>
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
-          <input class="input" style="padding:4px 8px;font-size:12px;max-width:170px" placeholder="Nombre (para @menciones)" value="${s(nm)}" onchange="if(typeof setMemberName==='function')setMemberName('${s(m.email)}',this.value)">
-          <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${s(m.email)||m.user_id}${mine?' · tú':''}</span>
+          <input class="input" style="padding:4px 8px;font-size:var(--text-sm);max-width:170px" placeholder="Nombre (para @menciones)" value="${s(nm)}" onchange="if(typeof setMemberName==='function')setMemberName('${s(m.email)}',this.value)">
+          <span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">${s(m.email)||m.user_id}${mine?' · tú':''}</span>
         </div>
         ${artistCtl}
         ${roleCtl}
         ${revokeCtl}
       </div>`;
     }).join('')}</div>
-    <div style="font-size:10px;color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-mono);line-height:1.6">Owner: dueño del workspace (propiedad, asientos, branding) · Admin: todo lo operativo · roles especializados (Productor/Abogado/Marketing…) ven y editan solo su área · Lector: solo ve · ${icon('mic',12)} = el artista (edita Perfil/ADN).</div>
+    <div style="font-size:var(--text-2xs);color:var(--text-dim);margin:-10px 0 16px;font-family:var(--font-ui);line-height:1.6">Owner: dueño del workspace (propiedad, asientos, branding) · Admin: todo lo operativo · roles especializados (Productor/Abogado/Marketing…) ven y editan solo su área · Lector: solo ve · ${icon('mic',12)} = el artista (edita Perfil/ADN).</div>
     ${canSeePrivate() ? `
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('lock',18)}</span><span class="ph-title">Asientos del workspace</span><span class="ph-sub">plan · ocupación</span></div>
     <div id="team-seats" style="margin-bottom:18px"></div>
@@ -697,14 +697,14 @@ function renderTeamModal() {
     <div class="empty-hint" style="margin-bottom:10px">Genera un enlace con rol y alcance. Quien lo abra e inicie sesión se unirá con ese rol. El enlace puede caducar.</div>
     ${isWorkspaceOwner() || canDo('invite_members') ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <label style="flex:1;min-width:130px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Rol
-        <select class="input" id="inv-role" style="font-size:12px;margin-top:3px">${BUSINESS_PRESETS.map(p=>`<option value="${p}" ${p==='editor'?'selected':''}>${PRESET_LABELS[p]}</option>`).join('')}</select>
+      <label style="flex:1;min-width:130px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Rol
+        <select class="input" id="inv-role" style="font-size:var(--text-sm);margin-top:3px">${BUSINESS_PRESETS.map(p=>`<option value="${p}" ${p==='editor'?'selected':''}>${PRESET_LABELS[p]}</option>`).join('')}</select>
       </label>
-      <label style="flex:1;min-width:130px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Alcance
-        <select class="input" id="inv-scope" style="font-size:12px;margin-top:3px"><option value="">Todo el workspace</option>${artists.map(a=>`<option value="${a.id}">Solo ${s(a.name)}</option>`).join('')}</select>
+      <label style="flex:1;min-width:130px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Alcance
+        <select class="input" id="inv-scope" style="font-size:var(--text-sm);margin-top:3px"><option value="">Todo el workspace</option>${artists.map(a=>`<option value="${a.id}">Solo ${s(a.name)}</option>`).join('')}</select>
       </label>
-      <label style="flex:1;min-width:110px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">Expira
-        <select class="input" id="inv-exp" style="font-size:12px;margin-top:3px"><option value="7">En 7 días</option><option value="1">En 24 horas</option><option value="30">En 30 días</option><option value="">Nunca</option></select>
+      <label style="flex:1;min-width:110px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Expira
+        <select class="input" id="inv-exp" style="font-size:var(--text-sm);margin-top:3px"><option value="7">En 7 días</option><option value="1">En 24 horas</option><option value="30">En 30 días</option><option value="">Nunca</option></select>
       </label>
     </div>
     <button class="btn btn-primary" onclick="createInvite()">Generar enlace de invitación</button>
@@ -713,12 +713,12 @@ function renderTeamModal() {
     <div class="panel-head" style="margin:18px 0 8px"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos para @menciones</span><span class="ph-sub">nombre + correo</span></div>
     <div class="empty-hint" style="margin-bottom:8px">Pre-registra a quien aún no se une (o ponle nombre a un correo): aparecerá en el autocompletado @ de los comentarios.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
-      <input class="input" id="contact-name" placeholder="Nombre" style="flex:1;min-width:120px;font-size:12px">
-      <input class="input" id="contact-email" placeholder="correo@ejemplo.com" style="flex:1;min-width:150px;font-size:12px">
+      <input class="input" id="contact-name" placeholder="Nombre" style="flex:1;min-width:120px;font-size:var(--text-sm)">
+      <input class="input" id="contact-email" placeholder="correo@ejemplo.com" style="flex:1;min-width:150px;font-size:var(--text-sm)">
       <button class="btn btn-ghost" onclick="addContactName()">Agregar</button>
     </div>
     <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">${s(me)}</span>
+      <span style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui)">${s(me)}</span>
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
     </div>`;
   renderPendingInvites(); // carga las invitaciones activas (best-effort)
@@ -768,9 +768,9 @@ async function renderAuditLog() {
   host.innerHTML = rows.map(e => {
     const nm = (typeof _nameMap === 'function') ? (_nameMap()[s(e.actor).toLowerCase()] || '') : '';
     const when = e.created_at ? new Date(e.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+    return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--text-xs)">
       <span style="flex:1;min-width:0"><strong>${s(nm || e.actor)}</strong> ${AUDIT_LABEL[e.action] || s(e.action)} ${s(e.label || e.target_type || '')}</span>
-      <span style="color:var(--text-dim);font-family:var(--font-mono);white-space:nowrap">${when}</span>
+      <span style="color:var(--text-dim);font-family:var(--font-ui);white-space:nowrap">${when}</span>
     </div>`;
   }).join('');
 }
@@ -785,21 +785,21 @@ function renderSeats() {
   const addl = members.filter(m => m.seat_type === 'additional').length;
   const over = Math.max(0, used - included);
   const planSel = isWorkspaceOwner()
-    ? `<select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="setTeamPlan(this.value)">${Object.keys(PLAN_SEATS).map(p => `<option value="${p}" ${_teamPlan===p?'selected':''}>${PLAN_LABEL[p]}</option>`).join('')}</select>`
+    ? `<select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" onchange="setTeamPlan(this.value)">${Object.keys(PLAN_SEATS).map(p => `<option value="${p}" ${_teamPlan===p?'selected':''}>${PLAN_LABEL[p]}</option>`).join('')}</select>`
     : `<span class="chip on" style="cursor:default">${PLAN_LABEL[_teamPlan] || _teamPlan}</span>`;
   const list = members.map(m => {
     const nm = (typeof _nameMap === 'function') ? (_nameMap()[s(m.email).toLowerCase()] || '') : '';
     const seat = m.seat_type === 'additional' ? 'additional' : 'included';
     const ctl = isWorkspaceOwner()
-      ? `<select class="input" style="width:auto;padding:3px 7px;font-size:10px" onchange="setMemberSeat('${m.user_id}',this.value)"><option value="included" ${seat==='included'?'selected':''}>Incluido</option><option value="additional" ${seat==='additional'?'selected':''}>Adicional</option></select>`
-      : `<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${seat==='additional'?'adicional':'incluido'}</span>`;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px"><span style="flex:1;min-width:0">${s(nm || m.email || m.user_id)}</span>${ctl}</div>`;
+      ? `<select class="input" style="width:auto;padding:3px 7px;font-size:var(--text-2xs)" onchange="setMemberSeat('${m.user_id}',this.value)"><option value="included" ${seat==='included'?'selected':''}>Incluido</option><option value="additional" ${seat==='additional'?'selected':''}>Adicional</option></select>`
+      : `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${seat==='additional'?'adicional':'incluido'}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:var(--text-xs)"><span style="flex:1;min-width:0">${s(nm || m.email || m.user_id)}</span>${ctl}</div>`;
   }).join('');
   host.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Plan</span>${planSel}
-      <span style="font-size:11px;font-family:var(--font-mono);color:${over?'var(--beat)':'var(--text-muted)'}">${used} de ${included} asientos${over?` · +${over} adicional${over>1?'es':''}`:''}</span>
+      <span style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">Plan</span>${planSel}
+      <span style="font-size:var(--text-xs);font-family:var(--font-ui);color:${over?'var(--beat)':'var(--text-muted)'}">${used} de ${included} asientos${over?` · +${over} adicional${over>1?'es':''}`:''}</span>
     </div>${list}
-    <div style="font-size:10px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono)">Cobro desactivado (BILLING_ENFORCED=off): los asientos son informativos por ahora.</div>`;
+    <div style="font-size:var(--text-2xs);color:var(--text-dim);margin-top:6px;font-family:var(--font-ui)">Cobro desactivado (BILLING_ENFORCED=off): los asientos son informativos por ahora.</div>`;
 }
 async function setTeamPlan(plan) {
   if (!isWorkspaceOwner()) return;
@@ -844,10 +844,10 @@ async function createInvite() {
   const meta = [PRESET_LABELS[role] || role, scopeArtist ? 'alcance: ' + s((artists.find(a => a.id === scopeArtist) || {}).name || '') : 'todo el workspace', expDays ? 'expira en ' + expDays + 'd' : 'sin caducidad'].join(' · ');
   document.getElementById('team-invite').innerHTML = `
     <div style="display:flex;gap:8px">
-      <input class="input" id="invite-link" value="${link}" readonly style="font-size:11px">
+      <input class="input" id="invite-link" value="${link}" readonly style="font-size:var(--text-xs)">
       <button class="btn btn-ghost" onclick="copyInvite(this)">Copiar</button>
     </div>
-    <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:5px">${meta}</div>`;
+    <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:5px">${meta}</div>`;
   renderPendingInvites();
 }
 // Lista de invitaciones activas (no usadas, no revocadas) con botón de revocar.
@@ -859,13 +859,13 @@ async function renderPendingInvites() {
   const now = Date.now();
   const live = (r.data || []).filter(i => !i.used_at && !i.revoked && (!i.expires_at || new Date(i.expires_at).getTime() > now));
   if (!live.length) { host.innerHTML = ''; return; }
-  host.innerHTML = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-bottom:6px">Invitaciones activas (${live.length})</div>` +
+  host.innerHTML = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:6px">Invitaciones activas (${live.length})</div>` +
     live.map(i => {
       const a = i.scope && i.scope.artistIds && i.scope.artistIds[0] ? (artists.find(x => x.id === i.scope.artistIds[0]) || {}).name : '';
       const exp = i.expires_at ? new Date(i.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'sin caducidad';
-      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
-        <span style="flex:1;min-width:0">${PRESET_LABELS[i.seat_role] || i.seat_role || 'Miembro'}${a ? ' · ' + s(a) : ''} <span style="color:var(--text-dim);font-family:var(--font-mono)">· ${exp}</span></span>
-        <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="revokeInvite('${i.token}')">Revocar</button>
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--text-xs)">
+        <span style="flex:1;min-width:0">${PRESET_LABELS[i.seat_role] || i.seat_role || 'Miembro'}${a ? ' · ' + s(a) : ''} <span style="color:var(--text-dim);font-family:var(--font-ui)">· ${exp}</span></span>
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:var(--text-2xs);color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="revokeInvite('${i.token}')">Revocar</button>
       </div>`;
     }).join('');
 }
@@ -961,7 +961,7 @@ function renderCuenta() {
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('key',18)}</span><span class="ph-title">Cambiar contraseña</span></div>
     <div class="field" style="margin-bottom:10px"><input class="input" id="acc-pass" type="password" placeholder="Nueva contraseña (mín. 6)"></div>
     <button class="btn btn-primary" onclick="cambiarPassword()">Actualizar contraseña</button>
-    <div id="acc-status" style="font-family:var(--font-mono);font-size:11px;margin-top:10px;min-height:14px;color:var(--text-muted)"></div>
+    <div id="acc-status" style="font-family:var(--font-ui);font-size:var(--text-xs);margin-top:10px;min-height:14px;color:var(--text-muted)"></div>
 
     <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px"></div>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('save',18)}</span><span class="ph-title">Respaldo de datos</span></div>
@@ -972,7 +972,7 @@ function renderCuenta() {
     </div>
 
     <div style="border-top:1px solid var(--border);margin-top:22px;padding-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Equipo: ${s(_teamName)} · rol ${s(myRole())}</span>
+      <span style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui)">Equipo: ${s(_teamName)} · rol ${s(myRole())}</span>
       <button class="btn btn-ghost" style="color:var(--accent2);border-color:rgba(255,77,77,0.3)" onclick="signOutTempo()">Cerrar sesión</button>
     </div>`;
 }
@@ -1091,7 +1091,7 @@ async function adminTab(name, el) {
     else if (name === 'descuentos') await renderAdminDescuentos();
     else if (name === 'admins') await renderAdminSupers();
   } catch (e) {
-    body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)}<br><span style="font-size:10px">¿Corriste <b>admin_backend.sql</b> en Supabase?</span></div>`;
+    body.innerHTML = `<div class="empty-hint" style="border-color:var(--accent2)">${icon('warning',13)} ${s(e.message)}<br><span style="font-size:var(--text-2xs)">¿Corriste <b>admin_backend.sql</b> en Supabase?</span></div>`;
   }
 }
 
@@ -1119,14 +1119,14 @@ function adminTeamRow(tm) {
   const suspended = tm.status === 'suspended';
   return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${suspended ? 'opacity:.6;border-color:var(--accent2)' : ''}">
     <div style="flex:1;min-width:140px">
-      <div style="font-size:13px;font-weight:500">${s(tm.name)} ${suspended ? '<span style="color:var(--accent2);font-size:10px">· SUSPENDIDO</span>' : ''}</div>
-      <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${tm.members} miembros · ${tm.artists} artistas · ${tm.launches} lanz. · IA ${_money(tm.ia_cost)} · últ. ${_fdate(tm.last_ia)}</div>
-      <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">ideas/mes: ${tm.ideas_generadas_mes} · refresh: ${tm.banco_refreshes}</div>
+      <div style="font-size:var(--text-base);font-weight:500">${s(tm.name)} ${suspended ? '<span style="color:var(--accent2);font-size:var(--text-2xs)">· SUSPENDIDO</span>' : ''}</div>
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${tm.members} miembros · ${tm.artists} artistas · ${tm.launches} lanz. · IA ${_money(tm.ia_cost)} · últ. ${_fdate(tm.last_ia)}</div>
+      <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">ideas/mes: ${tm.ideas_generadas_mes} · refresh: ${tm.banco_refreshes}</div>
     </div>
-    <select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="adminSetPlan('${tm.id}',this.value)" title="Plan">${planSel}</select>
-    <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="adminEditMembers('${tm.id}','${s(tm.name)}')">Miembros</button>
-    <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="adminResetCounters('${tm.id}')" title="Resetear contadores">↺</button>
-    <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:${suspended ? '#4ade80' : 'var(--accent2)'}" onclick="adminSetStatus('${tm.id}','${suspended ? 'active' : 'suspended'}')">${suspended ? 'Activar' : 'Suspender'}</button>
+    <select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" onchange="adminSetPlan('${tm.id}',this.value)" title="Plan">${planSel}</select>
+    <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs)" onclick="adminEditMembers('${tm.id}','${s(tm.name)}')">Miembros</button>
+    <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs)" onclick="adminResetCounters('${tm.id}')" title="Resetear contadores">↺</button>
+    <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs);color:${suspended ? '#4ade80' : 'var(--accent2)'}" onclick="adminSetStatus('${tm.id}','${suspended ? 'active' : 'suspended'}')">${suspended ? 'Activar' : 'Suspender'}</button>
   </div>`;
 }
 async function adminRpc(fn, args, okMsg) {
@@ -1147,13 +1147,13 @@ async function adminEditMembers(tid, name) {
   const rows = (r.data || []).map(m => {
     const roleSel = ['owner', 'editor', 'lector'].map(x => `<option value="${x}" ${m.role === x ? 'selected' : ''}>${x}</option>`).join('');
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="flex:1;font-size:13px">${s(m.email) || m.user_id}</span>
-      <label style="display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);color:${m.is_artist ? 'var(--accent)' : 'var(--text-dim)'};cursor:pointer">
+      <span style="flex:1;font-size:var(--text-base)">${s(m.email) || m.user_id}</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:var(--text-2xs);font-family:var(--font-ui);color:${m.is_artist ? 'var(--accent)' : 'var(--text-dim)'};cursor:pointer">
         <input type="checkbox" ${m.is_artist ? 'checked' : ''} onchange="adminSetArtist('${tid}','${m.user_id}',this.checked,'${s(name)}')">${icon('mic',13)}</label>
-      <select class="input" style="width:auto;padding:4px 8px;font-size:11px" onchange="adminSetMemberRole('${tid}','${m.user_id}',this.value,'${s(name)}')">${roleSel}</select>
+      <select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" onchange="adminSetMemberRole('${tid}','${m.user_id}',this.value,'${s(name)}')">${roleSel}</select>
     </div>`;
   }).join('');
-  body.innerHTML = `<button class="btn btn-ghost" style="margin-bottom:12px;font-size:12px" onclick="adminTab('cuentas')">← Volver a cuentas</button>
+  body.innerHTML = `<button class="btn btn-ghost" style="margin-bottom:12px;font-size:var(--text-sm)" onclick="adminTab('cuentas')">← Volver a cuentas</button>
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Miembros de ${s(name)}</span></div>
     <div>${rows || '<div class="empty-hint">Sin miembros.</div>'}</div>`;
 }
@@ -1166,19 +1166,19 @@ async function renderAdminUso() {
   if (r.error) throw new Error(r.error.message);
   const d = r.data || {}; _adminData.usage = d;
   const byModel = (d.by_model || []).map(m => `<tr>
-    <td style="padding:6px 8px;font-family:var(--font-mono);font-size:11px">${s(m.model)}</td>
+    <td style="padding:6px 8px;font-family:var(--font-ui);font-size:var(--text-xs)">${s(m.model)}</td>
     <td style="padding:6px 8px;text-align:right">${m.calls}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);font-size:11px">${(m.in_tok || 0).toLocaleString()} / ${(m.out_tok || 0).toLocaleString()}</td>
+    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);font-size:var(--text-xs)">${(m.in_tok || 0).toLocaleString()} / ${(m.out_tok || 0).toLocaleString()}</td>
     <td style="padding:6px 8px;text-align:right;color:var(--accent)">${_money(m.cost, 4)}</td></tr>`).join('');
-  const recent = (d.recent || []).map(u => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
-    <span style="font-family:var(--font-mono);color:var(--text-dim);white-space:nowrap">${_fdate(u.created_at)}</span>
+  const recent = (d.recent || []).map(u => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--text-xs)">
+    <span style="font-family:var(--font-ui);color:var(--text-dim);white-space:nowrap">${_fdate(u.created_at)}</span>
     <span style="flex:1">${s(u.team) || '—'} · ${s(u.feature) || s(u.model)}</span>
-    <span style="font-family:var(--font-mono);color:var(--accent)">${_money(u.cost, 4)}</span></div>`).join('');
+    <span style="font-family:var(--font-ui);color:var(--accent)">${_money(u.cost, 4)}</span></div>`).join('');
   const totCost = (d.by_model || []).reduce((a, m) => a + (+m.cost || 0), 0);
   document.getElementById('admin-body').innerHTML = `
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('zap',18)}</span><span class="ph-title">Consumo de IA (últimos 30 días)</span><span class="ph-sub">total ${_money(totCost, 4)}</span></div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:18px">
-      <thead><tr style="text-align:left;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase">
+      <thead><tr style="text-align:left;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase">
         <th style="padding:6px 8px">Modelo</th><th style="padding:6px 8px;text-align:right">Llamadas</th><th style="padding:6px 8px;text-align:right">Tokens in/out</th><th style="padding:6px 8px;text-align:right">Costo</th></tr></thead>
       <tbody>${byModel || '<tr><td colspan="4" style="padding:10px;color:var(--text-dim)">Sin uso registrado todavía.</td></tr>'}</tbody>
     </table>
@@ -1191,9 +1191,9 @@ function renderAdminKeys() {
   const c = supaCfg();
   const lastIa = (_adminData.usage && (_adminData.usage.recent || [])[0]) || (_adminData.overview && null);
   const row = (label, val, note) => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-    <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">${label}</div>
-    <div style="font-family:var(--font-mono);font-size:12px;word-break:break-all;margin-top:3px">${val}</div>
-    ${note ? `<div style="font-size:10px;color:var(--text-dim);margin-top:3px">${note}</div>` : ''}</div>`;
+    <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase;letter-spacing:var(--track-caps)">${label}</div>
+    <div style="font-family:var(--font-ui);font-size:var(--text-sm);word-break:break-all;margin-top:3px">${val}</div>
+    ${note ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);margin-top:3px">${note}</div>` : ''}</div>`;
   document.getElementById('admin-body').innerHTML = `
     <div class="empty-hint" style="margin-bottom:14px">Inventario de APIs/keys del app. Solo tú (super-admin) ves esto. La key de Anthropic es un <b style="color:var(--text-muted)">secreto del servidor</b> y nunca se expone en el navegador.</div>
     ${row('Supabase · Project URL', s(c.url), 'pública')}
@@ -1201,8 +1201,8 @@ function renderAdminKeys() {
     ${row('Anthropic · API key', '<span style="color:#4ade80">secreto en servidor '+icon('check',11)+'</span> <span style="color:var(--text-dim)">•••• (Edge Function)</span>', 'No accesible desde el cliente. Editar: Supabase → Edge Functions → Secrets → ANTHROPIC_API_KEY')}
     ${row('Edge Function · claude', '<span style="color:#4ade80">desplegada</span>', 'Proxy seguro a Anthropic (verify_jwt on). Inserta uso en ai_usage.')}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="font-size:12px" onclick="adminTab('uso',document.querySelector('[data-atab=uso]'))">Ver uso de IA →</button>
-      <button class="btn btn-ghost" style="font-size:12px" onclick="abrirSync()">Editar credenciales Supabase →</button>
+      <button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="adminTab('uso',document.querySelector('[data-atab=uso]'))">Ver uso de IA →</button>
+      <button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="abrirSync()">Editar credenciales Supabase →</button>
     </div>`;
 }
 
@@ -1216,11 +1216,11 @@ async function renderAdminDescuentos() {
     const uses = (dc.max_uses != null) ? `${dc.used_count}/${dc.max_uses}` : `${dc.used_count}/∞`;
     return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;${dc.active ? '' : 'opacity:.55'}">
       <div style="flex:1;min-width:140px">
-        <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);letter-spacing:1px">${s(dc.code)} <span style="color:var(--accent)">${val}</span></div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${dc.plan ? 'plan ' + s(dc.plan) : 'cualquier plan'} · usos ${uses} · ${exp}${dc.note ? ' · ' + s(dc.note) : ''}</div>
+        <div style="font-size:var(--text-base);font-weight:600;font-family:var(--font-ui);letter-spacing:var(--track-caps)">${s(dc.code)} <span style="color:var(--accent)">${val}</span></div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${dc.plan ? 'plan ' + s(dc.plan) : 'cualquier plan'} · usos ${uses} · ${exp}${dc.note ? ' · ' + s(dc.note) : ''}</div>
       </div>
-      <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="adminToggleDiscount('${s(dc.code)}',${!dc.active})">${dc.active ? 'Desactivar' : 'Activar'}</button>
-      <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminDeleteDiscount('${s(dc.code)}')">${icon('close',12)}</button>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs)" onclick="adminToggleDiscount('${s(dc.code)}',${!dc.active})">${dc.active ? 'Desactivar' : 'Activar'}</button>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs);color:var(--accent2)" onclick="adminDeleteDiscount('${s(dc.code)}')">${icon('close',12)}</button>
     </div>`;
   }).join('');
   document.getElementById('admin-body').innerHTML = `
@@ -1273,9 +1273,9 @@ async function renderAdminSupers() {
   const rows = (r.data || []).map(a => {
     const mine = (a.email || '').toLowerCase() === me;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="flex:1;font-size:13px">${s(a.email)}${mine ? ' <span style="color:var(--text-dim)">(tú)</span>' : ''}</span>
-      <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${_fdate(a.added_at)}</span>
-      ${mine ? '' : `<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--accent2)" onclick="adminRemoveSuper('${s(a.email)}')">${icon('close',12)}</button>`}
+      <span style="flex:1;font-size:var(--text-base)">${s(a.email)}${mine ? ' <span style="color:var(--text-dim)">(tú)</span>' : ''}</span>
+      <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${_fdate(a.added_at)}</span>
+      ${mine ? '' : `<button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs);color:var(--accent2)" onclick="adminRemoveSuper('${s(a.email)}')">${icon('close',12)}</button>`}
     </div>`;
   }).join('');
   document.getElementById('admin-body').innerHTML = `
