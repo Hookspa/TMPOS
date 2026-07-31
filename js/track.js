@@ -26,14 +26,14 @@ function renderTrackDetail() {
   const phase = trackPhase(t);
   const TABS = [['audio','Audio'],['labelcopy','Label Copy']];
   host.innerHTML = `
-    <div style="margin-bottom:16px"><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);cursor:pointer" onclick="backToRelease()">← ${s(l ? l.name : 'Release')}</span></div>
+    <div style="margin-bottom:16px"><span style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer" onclick="backToRelease()">← ${s(l ? l.name : 'Release')}</span></div>
     <div class="panel" style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
-        <div style="font-family:var(--font-display);font-size:30px;letter-spacing:1px">${s(t.title) || '(sin título)'}</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);margin-top:4px">${t.version ? s(t.version) + ' · ' : ''}ISRC ${s(t.isrc) || '— por asignar'}</div>
+        <div style="font-family:var(--font-display);font-size:var(--text-2xl);letter-spacing:var(--track-display)">${s(t.title) || '(sin título)'}</div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:4px">${t.version ? s(t.version) + ' · ' : ''}ISRC ${s(t.isrc) || '— por asignar'}</div>
         <div style="margin-top:10px"><span class="chip on" style="cursor:default;color:${phaseColor(phase)}">${phase}</span></div>
       </div>
-      <div style="min-width:220px;flex:1">${readyBarHTML(pct, 'LISTO PARA LANZAR · TRACK')}<div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:6px">${rd.done}/${rd.total} ítems del checklist</div></div>
+      <div style="min-width:220px;flex:1">${readyBarHTML(pct, 'LISTO PARA LANZAR · TRACK')}<div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:6px">${rd.done}/${rd.total} ítems del checklist</div></div>
     </div>
     <div class="mtabs" id="track-tabbar" style="margin-bottom:16px;flex-wrap:wrap">${TABS.map(x => `<div class="mtab ${x[0] === _trackTab ? 'active' : ''}" data-ttab="${x[0]}" onclick="setTrackTab('${x[0]}')">${x[1]}</div>`).join('')}</div>
     <div id="track-tab-body"></div>`;
@@ -68,25 +68,25 @@ function trackChecklistHTML(t) {
   const tpls = getChecklistTemplates();
   // toolbar de templates
   const toolbar = `<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted)">Plantilla:</span>
-    <select class="input" style="width:auto;padding:5px 8px;font-size:12px" onchange="if(this.value)applyChecklistTemplate(this.value,'${t.id}')">
+    <span style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">Plantilla:</span>
+    <select class="input" style="width:auto;padding:5px 8px;font-size:var(--text-sm)" onchange="if(this.value)applyChecklistTemplate(this.value,'${t.id}')">
       <option value="">${custom ? 'Personalizada' : 'Por defecto'}…</option>
       <option value="__default">↺ Restablecer al default</option>
       ${tpls.map(tp => `<option value="${tp.id}">${s(tp.name)}</option>`).join('')}
     </select>
-    ${editable ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="saveChecklistAsTemplate('${t.id}')">${icon('save',13)} Guardar como plantilla…</button>` : ''}
-    <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="abrirTemplatesPanel('${t.id}')">${icon('checklist',13)} Gestionar</button>
-    <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
+    ${editable ? `<button class="btn btn-ghost" style="font-size:var(--text-sm);padding:5px 10px" onclick="saveChecklistAsTemplate('${t.id}')">${icon('save',13)} Guardar como plantilla…</button>` : ''}
+    <button class="btn btn-ghost" style="font-size:var(--text-sm);padding:5px 10px" onclick="abrirTemplatesPanel('${t.id}')">${icon('checklist',13)} Gestionar</button>
+    <span style="margin-left:auto;font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">${custom ? 'checklist propio de este track' : 'usando el checklist por defecto'}</span>
   </div>`;
   const groups = CHECKLIST_GROUP_ORDER.filter(g => def[g] && def[g].length).map(g => `
-    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g] || g}</span>${editable ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:3px 9px" onclick="addChecklistItem('${g}','${t.id}')">+ ítem</button>` : ''}</div>
+    <div class="panel"><div class="panel-head"><span class="ph-title">${CHECKLIST_GROUP_LABEL[g] || g}</span>${editable ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:var(--text-xs);padding:3px 9px" onclick="addChecklistItem('${g}','${t.id}')">+ ítem</button>` : ''}</div>
       <div style="display:flex;flex-direction:column">
         ${def[g].map(([k, label]) => { const on = !!(c[g] && c[g][k]); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}','${t.id}')"> ${s(label)}</label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:var(--text-base);flex:1"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTrackCheck('${g}','${k}','${t.id}')"> ${s(label)}</label>
           ${editable ? `<button class="goal-btn reject" title="Quitar ítem" onclick="removeChecklistItem('${g}','${k}','${t.id}')">${icon('close',12)}</button>` : ''}
         </div>`; }).join('')}
       </div></div>`).join('');
-  const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:12px" onclick="addChecklistItem('otros','${t.id}')">+ Otra tarea</button>` : '';
+  const addGroup = editable ? `<button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="addChecklistItem('otros','${t.id}')">+ Otra tarea</button>` : '';
   return toolbar + groups + addGroup;
 }
 function toggleTrackCheck(g, k, tid) {
@@ -143,9 +143,9 @@ function releaseChecklistsHTML(l) {
     const rd = (typeof trackReady === 'function') ? trackReady(t) : { done: 0, total: 0 };
     const pct = rd.total ? Math.round(rd.done / rd.total * 100) : 0;
     return `<div style="margin:18px 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-        <div style="font-family:var(--font-display);font-size:20px;letter-spacing:.5px">${s(t.title) || '(sin título)'}</div>
+        <div style="font-family:var(--font-ui);font-weight:var(--fw-title);font-size:var(--text-lg);letter-spacing:var(--track-caps-sm)">${s(t.title) || '(sin título)'}</div>
         <div style="flex:1;min-width:140px;max-width:280px">${(typeof readyBarHTML === 'function') ? readyBarHTML(pct, 'LISTO PARA LANZAR') : ''}</div>
-        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">${rd.done}/${rd.total}</div></div>
+        <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${rd.done}/${rd.total}</div></div>
       ${trackChecklistHTML(t)}`;
   }).join('');
   return `${(typeof secInfo === 'function') ? secInfo('Checklists de lanzamiento', 'El checklist "Listo para lanzar" de cada canción. Alimenta la barra de readiness del track y del release.') : ''}${blocks}`;
@@ -158,11 +158,11 @@ function renderTemplatesPanel() {
   const tpls = getChecklistTemplates();
   const hasTrack = !!_ctxTrack(null);
   const rows = tpls.map(tp => `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <div style="flex:1;min-width:140px"><div style="font-size:13px;font-weight:600">${s(tp.name)}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${_tplItemCount(tp.def)} ítems</div></div>
-      ${hasTrack ? `<button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="aplicarTemplateDesdePanel('${tp.id}')">Aplicar</button>` : ''}
-      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="dupTemplate('${tp.id}')">Duplicar</button>
-      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px" onclick="renameTemplate('${tp.id}')">Renombrar</button>
-      <button class="btn btn-ghost" style="padding:4px 9px;font-size:11px;color:var(--accent2);border-color:rgba(255,77,77,.3)" onclick="deleteTemplate('${tp.id}')">Eliminar</button>
+      <div style="flex:1;min-width:140px"><div style="font-size:var(--text-base);font-weight:600">${s(tp.name)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${_tplItemCount(tp.def)} ítems</div></div>
+      ${hasTrack ? `<button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-xs)" onclick="aplicarTemplateDesdePanel('${tp.id}')">Aplicar</button>` : ''}
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-xs)" onclick="dupTemplate('${tp.id}')">Duplicar</button>
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-xs)" onclick="renameTemplate('${tp.id}')">Renombrar</button>
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:var(--text-xs);color:var(--accent2);border-color:rgba(255,77,77,.3)" onclick="deleteTemplate('${tp.id}')">Eliminar</button>
     </div>`).join('');
   document.getElementById('templates-body').innerHTML = `
     <div class="empty-hint" style="margin-bottom:14px">Flujos de checklist reutilizables de tu equipo. Crea uno nuevo desde el checklist de un track con <b style="color:var(--text-muted)">"Guardar como plantilla"</b>.</div>
@@ -245,7 +245,7 @@ function legalDefaultAssignee(area) {
 function lcTotalBadge(sum, label) {
   const ok = Math.round(sum * 100) / 100 === 100;
   const col = ok ? 'var(--ok)' : 'var(--accent)';
-  return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 4px;font-family:var(--font-mono);font-size:11px">
+  return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 4px;font-family:var(--font-ui);font-size:var(--text-xs)">
     <span style="color:var(--text-muted)">${label || 'TOTAL'}</span>
     <span style="color:${col};font-weight:700">${sum % 1 ? sum.toFixed(2) : sum}%</span>
     ${ok ? `<span style="color:var(--ok)">${icon('check',11)}</span>` : `<span style="color:var(--accent)" title="Debe sumar 100%">${icon('warning',11)} ${sum > 100 ? 'excede' : 'falta ' + (100 - sum) + '%'}</span>`}</div>`;
@@ -285,7 +285,7 @@ function trackLabelCopyHTML(t) {
 
   <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">2 · Recording Credits</span><span class="ph-sub">rol → nombre</span></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px">
-      ${LC_RECORDING_ROLES.map(role => `<div class="field" style="margin-bottom:10px"><label style="font-size:10px">${role}</label><input class="input" list="lc-people-list" style="padding:5px 8px;font-size:12px" value="${esc((lc.recording || {})[role])}" onchange="lcRecordingSet('${esc(role)}',this.value)"></div>`).join('')}
+      ${LC_RECORDING_ROLES.map(role => `<div class="field" style="margin-bottom:10px"><label style="font-size:var(--text-2xs)">${role}</label><input class="input" list="lc-people-list" style="padding:5px 8px;font-size:var(--text-sm)" value="${esc((lc.recording || {})[role])}" onchange="lcRecordingSet('${esc(role)}',this.value)"></div>`).join('')}
     </div>
   </div>
 
@@ -294,7 +294,7 @@ function trackLabelCopyHTML(t) {
     ${lcTotalBadge(rSum, 'TOTAL ROYALTY')}
   </div>
 
-  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">4 · Split de negocio (% invitados)</span><span class="ph-sub">socios × madre/aporte/final</span></div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">4 · Split de negocio</span><span class="ph-sub">partes madre (100%) − invitados (por igual)</span></div>
     ${lcBusinessField(t)}
   </div>
 
@@ -319,10 +319,10 @@ function trackLabelCopyHTML(t) {
 function trackListField(t, path, fields, label, addLabel) {
   const arr = getPath(t, path) || [];
   const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-      ${fields.map(([fk, fl]) => `<input class="input" style="flex:1;min-width:0;padding:5px 8px;font-size:12px" placeholder="${fl}" value="${s(item[fk])}" onchange="setTrackListItem('${path}',${i},'${fk}',this.value)">`).join('')}
+      ${fields.map(([fk, fl]) => `<input class="input" style="flex:1;min-width:0;padding:5px 8px;font-size:var(--text-sm)" placeholder="${fl}" value="${s(item[fk])}" onchange="setTrackListItem('${path}',${i},'${fk}',this.value)">`).join('')}
       <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
     </div>`).join('');
-  return `<div class="field" style="margin-bottom:16px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
+  return `<div class="field" style="margin-bottom:16px"><label>${label}</label>${rows || '<div style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
 }
 function setTrackListItem(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); } }
 function addTrackListItem(path) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); let arr = getPath(t, path); if (!Array.isArray(arr)) { setPath(t, path, []); arr = getPath(t, path); } arr.push({}); saveTracks(); renderTrackTab('labelcopy'); }
@@ -362,15 +362,15 @@ function lcPeopleDatalist() { return `<datalist id="lc-people-list">${lcPeople()
 function lcListField(t, path, fields, label, addLabel, selOpts) {
   const arr = getPath(t, path) || [];
   const cell = (item, i, fk, fl) => {
-    if (fk === 'rol' && selOpts) return `<select class="input" style="flex:1;min-width:80px;padding:5px 8px;font-size:12px" onchange="lcListSet('${path}',${i},'rol',this.value)">${['', ...selOpts].map(o => `<option ${s(item.rol) === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+    if (fk === 'rol' && selOpts) return `<select class="input" style="flex:1;min-width:80px;padding:5px 8px;font-size:var(--text-sm)" onchange="lcListSet('${path}',${i},'rol',this.value)">${['', ...selOpts].map(o => `<option ${s(item.rol) === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
     const isName = fk === 'name';
-    return `<input class="input" ${isName ? 'list="lc-people-list"' : ''} style="flex:${isName ? 2 : 1};min-width:80px;padding:5px 8px;font-size:12px" placeholder="${fl}" value="${esc(item[fk])}" onchange="${isName ? `lcListName('${path}',${i},this.value)` : `lcListSet('${path}',${i},'${fk}',this.value)`}">`;
+    return `<input class="input" ${isName ? 'list="lc-people-list"' : ''} style="flex:${isName ? 2 : 1};min-width:80px;padding:5px 8px;font-size:var(--text-sm)" placeholder="${fl}" value="${esc(item[fk])}" onchange="${isName ? `lcListName('${path}',${i},this.value)` : `lcListSet('${path}',${i},'${fk}',this.value)`}">`;
   };
   const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
       ${fields.map(([fk, fl]) => cell(item, i, fk, fl)).join('')}
       <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
     </div>`).join('');
-  return `<div class="field" style="margin-bottom:12px"><label>${label}</label>${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
+  return `<div class="field" style="margin-bottom:12px"><label>${label}</label>${rows || '<div style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui);margin-bottom:6px">— ninguno —</div>'}<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="addTrackListItem('${path}')">+ ${addLabel || 'Agregar'}</button></div>`;
 }
 function lcListSet(path, i, fk, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); const arr = getPath(t, path) || []; if (arr[i]) { arr[i][fk] = val; saveTracks(); lcPeopleUpsert(arr[i]); if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); if (fk === 'split') renderTrackTab('labelcopy'); /* refresca el total */ } }
 function lcListName(path, i, val) {
@@ -383,33 +383,90 @@ function lcListName(path, i, val) {
 }
 function lcRecordingSet(role, val) { if (!requireCan('editar_labelcopy')) return; const t = curTrack(); if (!t) return; t.labelCopy = t.labelCopy || {}; t.labelCopy.recording = t.labelCopy.recording || {}; t.labelCopy.recording[role] = val; saveTracks(); lcPeopleUpsert({ name: val }); }
 
-// ── Split de negocio (% invitados): socios × madre/aporte/final con totales por columna ──
+// ── Split de negocio: PARTES MADRE (suman 100) + INVITADOS (salen de la madre, se restan POR IGUAL X/N) ──
+// X = total de puntos a invitados. N = nº de partes madre. Cada parte madre: final = madre − X/N.
+function _lcNum(v) { return parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0; }
+function _lcFmt(v) { const r = Math.round(v * 100) / 100; return r % 1 ? r.toFixed(2) : String(r); }
+function _lcBizPer(t) { const inv = (t.labelCopy && t.labelCopy.businessInvited) || []; const X = inv.reduce((n, x) => n + _lcNum(x.puntos), 0); const N = ((t.labelCopy && t.labelCopy.businessSplit) || []).length; return N > 0 ? X / N : 0; }
+function _lcBizRecomputeFinals(t) { const per = _lcBizPer(t); ((t.labelCopy && t.labelCopy.businessSplit) || []).forEach(m => { m.final = _lcFmt(_lcNum(m.madre) - per) + '%'; }); }
 function lcBusinessField(t) {
-  const arr = (t.labelCopy && t.labelCopy.businessSplit) || [];
-  const path = 'labelCopy.businessSplit';
-  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
-  const tM = arr.reduce((n, x) => n + num(x.madre), 0), tA = arr.reduce((n, x) => n + num(x.aporte), 0), tF = arr.reduce((n, x) => n + num(x.final), 0);
-  const head = `<div style="display:flex;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-bottom:4px">
-      <span style="flex:2;min-width:80px">SOCIO</span><span style="flex:1;min-width:60px">NEGOCIO MADRE %</span><span style="flex:1;min-width:60px">APORTE INVITADO %</span><span style="flex:1;min-width:60px">% FINAL</span><span style="width:24px"></span></div>`;
-  const rows = arr.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-      <input class="input" style="flex:2;min-width:80px;padding:5px 8px;font-size:12px" placeholder="Socio" value="${esc(item.partner)}" onchange="lcListSet('${path}',${i},'partner',this.value)">
-      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Madre %" value="${esc(item.madre)}" onchange="lcBizSet(${i},'madre',this.value)">
-      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Aporte %" value="${esc(item.aporte)}" onchange="lcBizSet(${i},'aporte',this.value)">
-      <input class="input" style="flex:1;min-width:60px;padding:5px 8px;font-size:12px" placeholder="Final %" value="${esc(item.final)}" onchange="lcListSet('${path}',${i},'final',this.value)">
-      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('${path}',${i})">${icon('close',12)}</button>
+  const lc = t.labelCopy || {};
+  const madres = lc.businessSplit || [], invited = lc.businessInvited || [];
+  const X = invited.reduce((n, x) => n + _lcNum(x.puntos), 0);   // total a invitados
+  const N = madres.length;
+  const per = N > 0 ? X / N : 0;                                  // se resta por igual de cada parte madre
+  const l = launches.find(x => x.id === currentLaunchId);
+  const hasDefault = l && Array.isArray(l.bizDefault) && l.bizDefault.length;
+  const tM = madres.reduce((n, x) => n + _lcNum(x.madre), 0);
+  const tFinal = madres.reduce((n, x) => n + (_lcNum(x.madre) - per), 0);
+  const grand = tFinal + X;
+  const numSt = 'font-family:var(--font-ui);font-variant-numeric:tabular-nums';
+  const mHead = `<div style="display:flex;gap:6px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">
+      <span style="flex:2;min-width:80px">Socio (parte madre)</span><span style="flex:1;min-width:52px">Madre %</span><span style="flex:1;min-width:52px">− invit.</span><span style="flex:1;min-width:52px">% final</span><span style="width:24px"></span></div>`;
+  const mRows = madres.map((item, i) => {
+    const final = _lcNum(item.madre) - per;
+    return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <input class="input" list="lc-people-list" style="flex:2;min-width:80px;padding:5px 8px;font-size:var(--text-sm)" placeholder="Socio" value="${esc(item.partner)}" onchange="lcListSet('labelCopy.businessSplit',${i},'partner',this.value)">
+      <input class="input" style="flex:1;min-width:52px;padding:5px 8px;font-size:var(--text-sm)" inputmode="decimal" placeholder="0" value="${esc(item.madre)}" onchange="lcMadreSet(${i},this.value)">
+      <span style="flex:1;min-width:52px;${numSt};font-size:var(--text-xs);color:var(--text-dim)">${per ? '−' + _lcFmt(per) : '—'}</span>
+      <span style="flex:1;min-width:52px;${numSt};font-size:var(--text-sm);font-weight:600;color:${final < 0 ? 'var(--accent2)' : 'var(--text)'}">${_lcFmt(final)}%</span>
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('labelCopy.businessSplit',${i})">${icon('close',12)}</button>
+    </div>`;
+  }).join('');
+  const mWarn = madres.length && Math.round(tM) !== 100 ? `<span style="color:var(--accent);${numSt};font-size:var(--text-2xs)" title="Las partes madre deben sumar 100%">${icon('warning',10)} madre ${_lcFmt(tM)}%</span>` : '';
+  const mTotals = madres.length ? `<div style="display:flex;gap:6px;${numSt};font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border);padding-top:5px">
+      <span style="flex:2;min-width:80px;font-weight:700">TOTAL ${mWarn}</span><span style="flex:1;min-width:52px">${_lcFmt(tM)}%</span><span style="flex:1;min-width:52px">${X ? '−' + _lcFmt(X) : '—'}</span><span style="flex:1;min-width:52px;font-weight:600">${_lcFmt(tFinal)}%</span><span style="width:24px"></span></div>` : '';
+  const iHead = invited.length ? `<div style="display:flex;gap:6px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">
+      <span style="flex:2;min-width:80px">Invitado</span><span style="flex:1;min-width:52px">Puntos %</span><span style="width:24px"></span></div>` : '';
+  const iRows = invited.map((item, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <input class="input" list="lc-people-list" style="flex:2;min-width:80px;padding:5px 8px;font-size:var(--text-sm)" placeholder="Invitado" value="${esc(item.name)}" onchange="lcInvitedSet(${i},'name',this.value)">
+      <input class="input" style="flex:1;min-width:52px;padding:5px 8px;font-size:var(--text-sm)" inputmode="decimal" placeholder="0" value="${esc(item.puntos)}" onchange="lcInvitedSet(${i},'puntos',this.value)">
+      <button class="goal-btn reject" title="Quitar" onclick="removeTrackListItem('labelCopy.businessInvited',${i})">${icon('close',12)}</button>
     </div>`).join('');
-  const totals = arr.length ? `<div style="display:flex;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:5px">
-      <span style="flex:2;min-width:80px;font-weight:700">TOTAL</span><span style="flex:1;min-width:60px">${tM}%</span><span style="flex:1;min-width:60px">${tA}%</span><span style="flex:1;min-width:60px">${tF}%</span><span style="width:24px"></span></div>` : '';
-  return `<div class="field" style="margin-bottom:6px">${arr.length ? head : ''}${rows || '<div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:6px">— ninguno —</div>'}${totals}<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-top:6px" onclick="addTrackListItem('${path}')">+ socio</button></div>`;
+  const summary = `<div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin:8px 0">
+      ${X > 0 ? `<b>${_lcFmt(X)}</b> pts a invitados · se resta <b>${_lcFmt(per)}</b> a cada una de las <b>${N}</b> parte(s) madre.` : 'Sin invitados: cada parte madre conserva su % madre.'}
+      ${madres.length ? (Math.round(grand) === 100 ? `<br><span style="color:var(--ok)">${icon('check',10)} total 100%</span>` : `<br><span style="color:var(--accent)">${icon('warning',10)} total (madre final + invitados) = ${_lcFmt(grand)}% — cuadra la madre a 100%.</span>`) : ''}
+    </div>`;
+  const defBtns = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="addTrackListItem('labelCopy.businessSplit')">+ parte madre</button>
+      <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="addTrackListItem('labelCopy.businessInvited')">+ invitado</button>
+      ${madres.length ? `<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="lcBizSaveDefault()" title="Guardar estas partes madre como default del proyecto">${icon('save',12)} Guardar default del proyecto</button>` : ''}
+      ${hasDefault ? `<button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 10px" onclick="lcBizApplyDefault()" title="Precargar las partes madre del default del proyecto">${icon('refresh',12)} Aplicar default (${l.bizDefault.length})</button>` : ''}
+    </div>`;
+  return `<div class="field" style="margin-bottom:6px">
+    ${madres.length ? mHead : '<div style="font-size:var(--text-xs);color:var(--text-dim);font-family:var(--font-ui);margin-bottom:6px">— sin partes madre —</div>'}${mRows}${mTotals}
+    ${invited.length ? `<div style="margin-top:10px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">Invitados (salen de la madre)</div>${iHead}${iRows}` : ''}
+    ${summary}${defBtns}</div>`;
 }
-// Auto-calcula el % final = madre − aporte al editar madre/aporte (el usuario puede sobreescribirlo)
-function lcBizSet(i, fk, val) {
+function lcMadreSet(i, val) {
   if (!requireCan('editar_labelcopy')) return;
   const t = curTrack(); const arr = (t.labelCopy && t.labelCopy.businessSplit) || []; if (!arr[i]) return;
-  arr[i][fk] = val;
-  const num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
-  arr[i].final = (num(arr[i].madre) - num(arr[i].aporte)) + '%';
+  arr[i].madre = val; arr[i].final = _lcFmt(_lcNum(val) - _lcBizPer(t)) + '%';
   saveTracks(); renderTrackTab('labelcopy');
+}
+function lcInvitedSet(i, fk, val) {
+  if (!requireCan('editar_labelcopy')) return;
+  const t = curTrack(); const arr = (t.labelCopy && t.labelCopy.businessInvited) || []; if (!arr[i]) return;
+  arr[i][fk] = val;
+  if (fk === 'name' && typeof lcPeopleUpsert === 'function') lcPeopleUpsert({ name: val });
+  _lcBizRecomputeFinals(t);   // X cambió → recalcular finals de todas las partes madre
+  saveTracks(); renderTrackTab('labelcopy');
+}
+function lcBizSaveDefault() {
+  if (!requireCan('editar_labelcopy')) return;
+  const t = curTrack(); const l = launches.find(x => x.id === currentLaunchId); if (!t || !l) return;
+  l.bizDefault = ((t.labelCopy && t.labelCopy.businessSplit) || []).map(m => ({ partner: m.partner || '', madre: m.madre || '' }));
+  saveLaunches(); if (typeof uiToast === 'function') uiToast('✓ Default del proyecto guardado (' + l.bizDefault.length + ' partes)');
+  renderTrackTab('labelcopy');
+}
+async function lcBizApplyDefault() {
+  if (!requireCan('editar_labelcopy')) return;
+  const t = curTrack(); const l = launches.find(x => x.id === currentLaunchId); if (!t || !l || !(l.bizDefault || []).length) return;
+  if ((t.labelCopy.businessSplit || []).length && typeof uiConfirm === 'function' && !(await uiConfirm('¿Reemplazar las partes madre actuales con el default del proyecto?'))) return;
+  t.labelCopy = t.labelCopy || {};
+  t.labelCopy.businessSplit = l.bizDefault.map(m => ({ partner: m.partner || '', madre: m.madre || '', final: '' }));
+  _lcBizRecomputeFinals(t);
+  saveTracks(); renderTrackTab('labelcopy'); if (typeof uiToast === 'function') uiToast('✓ Default aplicado');
 }
 
 // ── Generar Label Copy → PDF (replica el layout del template FRIKIX) ──
@@ -465,12 +522,22 @@ async function labelCopyPDF() {
   (lc.royaltySplit || []).forEach(r => { need(14); doc.text(clean(r.name), M, y); doc.text(clean(r.split), M + 200, y); doc.text(clean(r.lender) || '—', M + 240, y); doc.text(clean(r.rol), W - M - 70, y); y += 14; });
   need(14); doc.setTextColor(255, 107, 48); doc.text(`TOTAL  ${lcSum(lc.royaltySplit, 'split')}%`, M, y); doc.setTextColor(20, 20, 20); y += 6;
 
-  // 4 · % invitados
-  if ((lc.businessSplit || []).length) {
-    sectionTitle('4 · SPLIT DE NEGOCIO (% INVITADOS)'); doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120); doc.text('SOCIO', M, y); doc.text('NEGOCIO MADRE', M + 180, y); doc.text('APORTE', M + 300, y); doc.text('% FINAL', W - M - 60, y); y += 4;
+  // 4 · Split de negocio: partes madre (100%) − invitados (por igual)
+  if ((lc.businessSplit || []).length || (lc.businessInvited || []).length) {
+    const _num = v => parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0;
+    const _fmt = v => { const r = Math.round(v * 100) / 100; return r % 1 ? r.toFixed(2) : String(r); };
+    const invX = (lc.businessInvited || []).reduce((n, x) => n + _num(x.puntos), 0);
+    const nMadre = (lc.businessSplit || []).length; const perInv = nMadre > 0 ? invX / nMadre : 0;
+    sectionTitle('4 · SPLIT DE NEGOCIO'); doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120); doc.text('PARTE MADRE', M, y); doc.text('MADRE %', M + 220, y); doc.text('% FINAL', W - M - 60, y); y += 4;
     doc.line(M, y, W - M, y); y += 12; doc.setTextColor(20, 20, 20); doc.setFontSize(9);
-    lc.businessSplit.forEach(b => { need(14); doc.text(clean(b.partner), M, y); doc.text(clean(b.madre), M + 180, y); doc.text(clean(b.aporte), M + 300, y); doc.text(clean(b.final), W - M - 60, y); y += 14; });
+    (lc.businessSplit || []).forEach(b => { need(14); doc.text(clean(b.partner), M, y); doc.text(clean(b.madre), M + 220, y); doc.text(_fmt(_num(b.madre) - perInv) + '%', W - M - 60, y); y += 14; });
+    if ((lc.businessInvited || []).length) {
+      need(18); doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.text('INVITADO (sale de la madre)', M, y); doc.text('PUNTOS %', W - M - 60, y); y += 4;
+      doc.line(M, y, W - M, y); y += 12; doc.setTextColor(20, 20, 20); doc.setFontSize(9);
+      (lc.businessInvited || []).forEach(iv => { need(14); doc.text(clean(iv.name), M, y); doc.text(clean(iv.puntos), W - M - 60, y); y += 14; });
+      need(14); doc.setTextColor(255, 107, 53); doc.text(`TOTAL INVITADOS  ${_fmt(invX)} pts`, M, y); doc.setTextColor(20, 20, 20); y += 6;
+    }
   }
 
   // 5 · Filing
@@ -491,21 +558,21 @@ function trackLegalHTML(t) {
   if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
   const legal = t.legal || [];
   const setF = (i, f, cap) => `onchange="setLegalField(${i},'${f}',this.value,'${t.id}')"`;
-  const areaBadge = d => d.area && LEGAL_AREA_LABEL[d.area] ? `<span style="font-size:9px;font-family:var(--font-mono);color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px">${LEGAL_AREA_LABEL[d.area]}</span>` : '';
+  const areaBadge = d => d.area && LEGAL_AREA_LABEL[d.area] ? `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px">${LEGAL_AREA_LABEL[d.area]}</span>` : '';
   const rows = legal.map((d, i) => `<div class="panel" style="margin-bottom:10px">
-    ${d.source === 'labelcopy' ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy${areaBadge(d)}${d.autoResolved ? `<span style="color:var(--ok)">${icon('check',10)} auto-cerrada</span>` : ''}</div>` : ''}
+    ${d.source === 'labelcopy' ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:5px">${icon('flag',11)} Conflicto ruteado desde Label Copy${areaBadge(d)}${d.autoResolved ? `<span style="color:var(--ok)">${icon('check',10)} auto-cerrada</span>` : ''}</div>` : ''}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <input class="input" style="flex:1;min-width:160px;font-size:13px;padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
-      <select class="input" style="width:auto;padding:6px 8px;font-size:11px;color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value,'${t.id}')">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <input class="input" style="flex:1;min-width:160px;font-size:var(--text-base);padding:6px 9px;font-weight:600" value="${s(d.type)}" placeholder="Tipo (split_sheet, producer_agreement…)" ${setF(i,'type')}>
+      <select class="input" style="width:auto;padding:6px 8px;font-size:var(--text-xs);color:${LEGAL_STATE_COLOR[d.state]||'var(--text)'}" onchange="setLegalField(${i},'state',this.value,'${t.id}')">${['pendiente','enviado','firmado','aprobado'].map(x => `<option ${d.state === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
       <button class="goal-btn reject" title="Quitar" onclick="quitarLegal(${i},'${t.id}')">${icon('close',12)}</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${assigneeSelectHTML(d.responsable, setF(i,'responsable'), 'flex:1;min-width:120px;padding:5px 8px;font-size:12px')}
-      <input class="input" style="flex:2;min-width:160px;padding:5px 8px;font-size:12px" value="${s(d.fileLink)}" placeholder="Link del documento (Drive/PDF)" ${setF(i,'fileLink')}>
+      ${assigneeSelectHTML(d.responsable, setF(i,'responsable'), 'flex:1;min-width:120px;padding:5px 8px;font-size:var(--text-sm)')}
+      <input class="input" style="flex:2;min-width:160px;padding:5px 8px;font-size:var(--text-sm)" value="${s(d.fileLink)}" placeholder="Link del documento (Drive/PDF)" ${setF(i,'fileLink')}>
     </div>
-    <input class="input" style="margin-top:8px;padding:5px 8px;font-size:12px" value="${s(d.note)}" placeholder="Nota" ${setF(i,'note')}>
-    ${d.fileLink ? `<a href="${safeUrl(d.fileLink)}" target="_blank" rel="noopener" style="font-size:11px;font-family:var(--font-mono);color:var(--accent);display:inline-block;margin-top:6px">↗ abrir documento</a>` : ''}
-    <div style="font-size:9px;font-family:var(--font-mono);color:var(--text-dim);margin-top:4px">act. ${d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('es-MX') : '—'}</div>
+    <input class="input" style="margin-top:8px;padding:5px 8px;font-size:var(--text-sm)" value="${s(d.note)}" placeholder="Nota" ${setF(i,'note')}>
+    ${d.fileLink ? `<a href="${safeUrl(d.fileLink)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--accent);display:inline-block;margin-top:6px">↗ abrir documento</a>` : ''}
+    <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:4px">act. ${d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('es-MX') : '—'}</div>
   </div>`).join('');
   return `<div class="empty-hint" style="margin-bottom:12px">Documentos legales de esta canción (split sheets, producer agreements, autorizaciones de feature/sample) — con estado, responsable, link y nota.</div>
     ${rows || '<div class="empty-hint">Sin documentos.</div>'}
@@ -599,18 +666,18 @@ function releaseMarketingHTML(l) {
     const zone = canEdit
       ? (cloud
         ? `<button class="btn btn-primary" onclick="document.getElementById('mkt-file').click()">${icon('file',14)} Subir PDF</button>
-           <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim);margin-top:8px">PDF · máx 25 MB</div>`
+           <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">PDF · máx 25 MB</div>`
         : `<div class="empty-hint">Conéctate a la nube (inicia sesión con tu equipo) para subir el plan de marketing.</div>`)
       : `<div class="empty-hint">Aún no hay plan de marketing cargado.</div>`;
     return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)}</span><span class="ph-title">Plan de Marketing</span><span class="ph-sub">PDF presentable</span></div>${intro}${zone}</div>`;
   }
-  const meta = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">${s(mp.name)||'plan.pdf'}${mp.size?` · ${_mktSize(mp.size)}`:''}${mp.uploadedAt?` · subido ${new Date(mp.uploadedAt).toLocaleDateString('es-MX')}`:''}${mp.uploadedBy?` · ${s(mp.uploadedBy)}`:''}</div>`;
+  const meta = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(mp.name)||'plan.pdf'}${mp.size?` · ${_mktSize(mp.size)}`:''}${mp.uploadedAt?` · subido ${new Date(mp.uploadedAt).toLocaleDateString('es-MX')}`:''}${mp.uploadedBy?` · ${s(mp.uploadedBy)}`:''}</div>`;
   const actions = `<div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="openMarketingPlan()">${icon('link',12)} Abrir en pestaña</button>
     ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="document.getElementById('mkt-file').click()">${icon('refresh',12)} Reemplazar</button>`:''}
     ${canEdit?`<button class="goal-btn reject" title="Quitar" onclick="removeMarketingPlan()">${icon('close',12)}</button>`:''}</div>`;
   const viewer = `<div style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface2)">
-    <div id="mkt-viewer-status" style="padding:10px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">Cargando visor…</div>
+    <div id="mkt-viewer-status" style="padding:10px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-dim)">Cargando visor…</div>
     <iframe id="mkt-frame" title="Plan de marketing" style="display:none;width:100%;height:640px;border:0;background:#fff"></iframe></div>`;
   return `${fileInput}<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('megaphone',18)}</span><span class="ph-title">Plan de Marketing</span>${actions}</div>${meta}${viewer}</div>`;
 }
