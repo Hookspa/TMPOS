@@ -423,6 +423,31 @@ test('la comprobación detecta cambios de contenido aunque los conteos no cambie
   );
 });
 
+test('el shell usa assets externos y respeta los presupuestos de tamaño', () => {
+  const root = path.resolve(__dirname, '../..');
+  const htmlPath = path.join(root, 'app.html');
+  const cssPath = path.join(root, 'css/app.css');
+  const catalogPath = path.join(root, 'refs_02.csv');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const expectedAssets = [
+    'logo_exports/tempo-mark-orange.svg',
+    'logo_exports/favicon-32.png',
+    'logo_exports/favicon-16.png',
+    'logo_exports/favicon.ico',
+    'logo_exports/favicon-180.png',
+  ];
+
+  assert.doesNotMatch(html, /href=["']data:image\//i);
+  expectedAssets.forEach(asset => {
+    assert.match(html, new RegExp(`href=["']${asset.replaceAll('.', '\\.')}["']`));
+    assert.ok(fs.statSync(path.join(root, asset)).size > 0, `${asset} debe existir y tener contenido`);
+  });
+  assert.match(html, /<meta name=["']theme-color["'] content=["']#0d0d0f["']>/);
+  assert.ok(fs.statSync(htmlPath).size <= 100 * 1024, 'app.html excede 100 KiB');
+  assert.ok(fs.statSync(cssPath).size <= 115 * 1024, 'css/app.css excede 115 KiB');
+  assert.ok(fs.statSync(catalogPath).size <= 2 * 1024 * 1024, 'refs_02.csv excede 2 MiB');
+});
+
 test('el catálogo canónico conserva las 6,066 referencias y app.html ya no contiene una copia', () => {
   const root = path.resolve(__dirname, '../..');
   const html = fs.readFileSync(path.join(root, 'app.html'), 'utf8');

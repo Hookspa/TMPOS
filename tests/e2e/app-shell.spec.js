@@ -25,6 +25,40 @@ test('el usuario sin sesión ve el acceso al equipo', async ({ page }) => {
   await expect(page.locator('#ag-email')).toBeFocused();
 });
 
+test('los favicons externos responden y conservan el color del navegador', async ({ page, request }) => {
+  const assets = [
+    '/logo_exports/tempo-mark-orange.svg',
+    '/logo_exports/favicon-32.png',
+    '/logo_exports/favicon-16.png',
+    '/logo_exports/favicon.ico',
+    '/logo_exports/favicon-180.png',
+  ];
+  const responses = await Promise.all(assets.map(asset => request.get(asset)));
+  responses.forEach(response => expect(response.ok()).toBe(true));
+
+  await page.goto('/app.html');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', 'logo_exports/favicon-180.png');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d0d0f');
+});
+
+test('el Dashboard queda disponible mientras el catálogo sigue pendiente', async ({ page }) => {
+  let releaseCatalog;
+  const catalogGate = new Promise(resolve => { releaseCatalog = resolve; });
+  await page.route('**/refs_02.csv', async route => {
+    await catalogGate;
+    await route.abort();
+  });
+
+  await page.goto('/app.html');
+  await expect(page.locator('#auth-gate')).toBeVisible({ timeout: 5_000 });
+  await page.evaluate(() => showAuthGate(false));
+  await expect(page.locator('#page-compas')).toHaveClass(/\bactive\b/);
+  await expect(page.locator('#page-compas h2')).toHaveText('Dashboard');
+  await expect.poll(() => page.evaluate(() => catalogLoaderState.status)).toBe('loading');
+
+  releaseCatalog();
+});
+
 test('el usuario puede abrir ArtistOS y navegar al Banco', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));

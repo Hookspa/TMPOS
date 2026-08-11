@@ -2,7 +2,7 @@
 # Solo el codigo necesario para CORRER el app se pushea a Hookspa/TMPOS.
 # Todo documento/artefacto interno queda LOCAL (uso interno).
 # git NO soporta comentarios inline: cada # va en su propia linea.
-# En vivo queda: app.html, index.html, ver.html, report.html, js/,
+# En vivo queda: app.html, index.html, ver.html, report.html, css/, js/,
 #   refs_02.csv, logo_exports/, screenshots/, supabase/, README.md, .gitignore
 # ══════════════════════════════════════════════════════════════════════
 
