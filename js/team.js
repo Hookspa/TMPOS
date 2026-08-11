@@ -113,6 +113,11 @@ async function cloudLoad() {
     // Migrar launches de la nube que aún no tengan track, y persistir si cambió
     let _migrated = migrateLaunchesToTracks();
     if (typeof migrateEmbeddedTasks === 'function' && migrateEmbeddedTasks()) _migrated = true;
+    // La nube puede contener claves de referencia anteriores a los IDs del catálogo unificado.
+    if (typeof migrateCatalogLegacyState === 'function' && migrateCatalogLegacyState()) {
+      saveLaunchesLocal();
+      _migrated = true;
+    }
     if (_migrated) scheduleCloudSync();
     if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
     renderSidebarArtist(); renderAllLaunches();

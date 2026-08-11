@@ -97,3 +97,34 @@ test('el Banco conserva las referencias personales', async ({ page }) => {
 
   await expect(page.locator('#refs-grid')).toContainText('Referencia personal de regresión');
 });
+
+test('el catálogo unificado carga 6,066 referencias sin duplicar el legacy', async ({ page }) => {
+  await openLocalWorkspace(page);
+
+  await expect.poll(() => page.evaluate(() => catalogLoaderState.status), { timeout: 20_000 }).toBe('ready');
+  await expect.poll(() => page.evaluate(() => referencias.length)).toBe(6066);
+});
+
+test('las selecciones antiguas conservan su vínculo y contador de uso', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ao_launches', JSON.stringify([{
+      id: 'legacy-launch',
+      name: 'Legacy',
+      date: '2026-08-11',
+      ideas: [{ key: 't:detrás de cámaras: mi trayectoria profesional', title: 'Detrás de Cámaras: Mi Trayectoria Profesional' }],
+    }]));
+    localStorage.setItem('ao_ref_usage', JSON.stringify({
+      't:detrás de cámaras: mi trayectoria profesional': 2,
+    }));
+  });
+  await openLocalWorkspace(page);
+  await expect.poll(() => page.evaluate(() => catalogLoaderState.status), { timeout: 20_000 }).toBe('ready');
+
+  const migrated = await page.evaluate(() => ({
+    key: launches[0].ideas[0].key,
+    usage: JSON.parse(localStorage.getItem('ao_ref_usage')),
+  }));
+  expect(migrated.key).toBe('id:embedded-08061f310739b3e2266b');
+  expect(migrated.usage['id:embedded-08061f310739b3e2266b']).toBe(2);
+  expect(migrated.usage['t:detrás de cámaras: mi trayectoria profesional']).toBeUndefined();
+});

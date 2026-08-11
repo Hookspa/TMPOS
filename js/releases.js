@@ -783,7 +783,7 @@ function quitarIdea(i) {
 function openIdeaCard(i) {
   const a = activeLaunch(); if (!a) return;
   const it = (a.ideas || [])[i]; if (!it) return;
-  let idx = referencias.findIndex(r => refKey(r) === it.key);
+  let idx = referencias.findIndex(r => (typeof refMatchesStoredKey === 'function' ? refMatchesStoredKey(r, it.key) : refKey(r) === it.key));
   if (idx < 0) {
     referencias.push({ _idx: referencias.length, id: '', title: it.title, hook: it.hook || '', for: it.for || [], cat: it.cat || [], link: it.link || '', thumb: it.thumb || '', comentarios: it.comentarios || '', icon: it.icon || catIcon(it.cat || []) });
     idx = referencias.length - 1;

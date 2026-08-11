@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test": "playwright test",
+    "test": "npm run test:catalog && npm run catalog:check && playwright test",
+    "test:catalog": "node --test tests/catalog/*.test.js",
+    "catalog:manifest": "node js/catalog-build-cli.js --write",
+    "catalog:check": "node js/catalog-build-cli.js --check",
     "test:e2e": "playwright test tests/e2e",
     "test:update-snapshots": "playwright test --update-snapshots"
   },

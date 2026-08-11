@@ -14,8 +14,12 @@ const safeUrl = v => /^https?:\/\//i.test(s(v)) ? s(v) : (s(v).startsWith('data:
 let referencias   = [];
 // La selección de ideas es POR LANZAMIENTO (launch.ideas), no global.
 function refKey(r) { return r && s(r.id).trim() ? ('id:' + s(r.id).trim()) : ('t:' + s(r.title).trim().toLowerCase()); }
-function ideaSelected(r) { const a = activeLaunch(); return !!(a && a.ideas && a.ideas.some(x => x.key === refKey(r))); }
+function legacyRefKey(r) { return 't:' + s(r && r.title).trim().toLowerCase(); }
+function refMatchesStoredKey(r, key) { return key === refKey(r) || key === legacyRefKey(r); }
+function ideaSelected(r) { const a = activeLaunch(); return !!(a && a.ideas && a.ideas.some(x => refMatchesStoredKey(r, x.key))); }
 let bancoCargado  = false;
+let catalogLoaderState = { status: 'idle', attempts: 0 };
+let _catalogLoader = null;
 let activeForFilter = 'all';
 let activeCatFilter = 'all';
 let paginaActual  = 1;
@@ -27,7 +31,7 @@ let _shuffleKey   = 0;         // semilla del orden aleatorio (cambia al re-rand
 let bancoSort     = 'default'; // 'default' | 'recientes' | 'usadas'
 // ── Contador de uso de referencias (para "Más usadas") ──
 function _refUsageMap() { try { return JSON.parse(localStorage.getItem('ao_ref_usage')) || {}; } catch (e) { return {}; } }
-function refUsage(r) { return _refUsageMap()[refKey(r)] || 0; }
+function refUsage(r) { const usage = _refUsageMap(); return usage[refKey(r)] || usage[legacyRefKey(r)] || 0; }
 function bumpRefUsage(r) { try { const m = _refUsageMap(); m[refKey(r)] = (m[refKey(r)] || 0) + 1; localStorage.setItem('ao_ref_usage', JSON.stringify(m)); } catch (e) {} }
 // Timestamp aproximado de una referencia (custom/comunidad llevan 'custom-<ts>' en el id; CSV → 0).
 function refTime(r) { const m = s(r && r.id).match(/(\d{12,})/); return m ? parseInt(m[1], 10) : 0; }
@@ -209,28 +213,62 @@ function mergeCustomRefs() {
   });
   referencias.forEach((r, i) => { r._idx = i; });
 }
-// Carga un banco externo (CSV en el repo) en runtime y lo mezcla (dedup por link/clave).
-// Mantiene app.html liviano: los bancos grandes viven en archivos .csv servidos por Pages.
-async function loadExternalBank(url) {
-  try {
-    const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) return 0;
-    const txt = await r.text(); if (!txt.trim()) return 0;
-    const parsed = (typeof parsearCSV === 'function') ? parsearCSV(txt) : []; if (!parsed.length) return 0;
-    const haveLinks = new Set(referencias.map(x => s(x.link).trim()).filter(Boolean));
-    const haveKeys = new Set(referencias.map(refKey));
-    let added = 0;
-    parsed.forEach(p => {
-      const lk = s(p.link).trim();
-      if (lk && haveLinks.has(lk)) return;
-      if (haveKeys.has(refKey(p))) return;
-      referencias.push(p); if (lk) haveLinks.add(lk); haveKeys.add(refKey(p)); added++;
-    });
-    if (added) {
-      referencias.forEach((x, i) => { x._idx = i; });
-      if (bancoCargado && ((document.querySelector('.page.active') || {}).id === 'page-banco')) renderBanco();
+function migrateCatalogLegacyState() {
+  if (!window.TempoCatalog || catalogLoaderState.status !== 'ready') return false;
+  const migration = TempoCatalog.migrateLegacyReferenceKeys({
+    references: referencias,
+    launches,
+    usage: _refUsageMap(),
+  });
+  if (!migration.changes) return false;
+  launches = migration.launches;
+  try { localStorage.setItem('ao_ref_usage', JSON.stringify(migration.usage)); } catch (e) {}
+  return true;
+}
+// Adapter runtime del catálogo canónico. TempoCatalog concentra validación, reintentos,
+// timeout y reconexión; esta capa sólo traduce el CSV al modelo visual de ArtistOS.
+function applyCatalogReady(state) {
+  const parsed = parsearCSV(state.text);
+  if (parsed.length !== state.stats.rowCount) throw new Error(`El adapter produjo ${parsed.length} de ${state.stats.rowCount} referencias`);
+  setReferencias(parsed);
+
+  if (migrateCatalogLegacyState()) {
+    saveLaunchesLocal();
+    if (typeof scheduleCloudSync === 'function') scheduleCloudSync();
+  }
+
+  mergeCustomRefs();
+  bancoCargado = true;
+  if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
+    renderFiltros();
+    renderBanco();
+  }
+}
+function handleCatalogLoaderState(state) {
+  catalogLoaderState = state;
+  if (state.status === 'ready') applyCatalogReady(state);
+  if (state.status === 'degraded') {
+    // DEMO + referencias propias siguen disponibles hasta que la reconexión automática funcione.
+    bancoCargado = true;
+    if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
+      renderFiltros();
+      renderBanco();
     }
-    return added;
-  } catch (e) { return 0; }
+  }
+}
+function loadCatalogBank(url) {
+  if (!window.TempoCatalog) throw new Error('TempoCatalog no está disponible');
+  if (!_catalogLoader) {
+    _catalogLoader = TempoCatalog.createCatalogLoader({
+      minimumRows: 6066,
+      maxAttempts: 3,
+      timeoutMs: 8000,
+      baseDelayMs: 400,
+      onlineTarget: window,
+      onState: handleCatalogLoaderState,
+    });
+  }
+  return _catalogLoader.load(url);
 }
 function persistCustomEdit(r) {
   if (!r || !r.custom || r.owned === false) return; // las de la comunidad (de otros) no se persisten local
@@ -768,7 +806,7 @@ function toggleIdea(idx, btn) {
   if (!a) { uiAlert('No hay un lanzamiento activo para seleccionar ideas.'); return false; }
   const r = referencias[idx]; if (!r) return false;
   const key = refKey(r);
-  const i = a.ideas.findIndex(x => x.key === key);
+  const i = a.ideas.findIndex(x => refMatchesStoredKey(r, x.key));
   let selected;
   if (i >= 0) { a.ideas.splice(i, 1); selected = false; }
   else {

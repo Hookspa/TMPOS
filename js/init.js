@@ -11,22 +11,13 @@ renderSidebarArtist();
 renderAllLaunches();
 if (typeof renderOnAir === 'function') { renderOnAir(); setInterval(renderOnAir, 30000); }  // franja ON AIR + reloj
 
-// Banco por defecto: CSV embebido (Test ArtistOS — Ideas de contenido)
-(function loadEmbeddedBank() {
-  try {
-    const el = document.getElementById('bank-csv');
-    if (el && el.textContent.trim()) {
-      const parsed = parsearCSV(el.textContent);
-      if (parsed.length) { setReferencias(parsed); bancoCargado = true; }
-    }
-  } catch (e) { console.warn('No se pudo cargar el banco embebido:', e); }
-})();
-if (typeof mergeCustomRefs === 'function') mergeCustomRefs(); // posts propios persistidos → al banco
+// El DEMO permite abrir el Banco de inmediato; el catálogo canónico lo reemplaza al validar.
+if (typeof mergeCustomRefs === 'function') mergeCustomRefs();
 
 iniciarBanco();
 
-// Banco externo grande (CSV en el repo, miniaturas en Supabase) → se mezcla en runtime para no inflar app.html
-if (typeof loadExternalBank === 'function') loadExternalBank('refs_02.csv');
+// Catálogo externo versionado junto al app; incluye las antiguas referencias embebidas.
+if (typeof loadCatalogBank === 'function') loadCatalogBank('refs_02.csv');
 
 // sincronización en la nube al arrancar (si está configurada → pide login)
 if (cloudEnabled()) { showAuthGate(true); setSyncStatus('syncing'); authInit(); } else { setSyncStatus('off'); }
