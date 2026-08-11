@@ -245,7 +245,7 @@ function releaseActividadHTML(l) {
 // ══════════════════════════════════════════
 // APROBACIONES (9 gates) — panel en el Resumen
 // ══════════════════════════════════════════
-const APR_ST_COLOR = { pendiente: 'var(--text-muted)', en_revision: 'var(--beat)', aprobado: '#4ade80', rechazado: 'var(--accent2)' };
+const APR_ST_COLOR = { pendiente: 'var(--text-muted)', en_revision: 'var(--beat)', aprobado: 'var(--ok)', rechazado: 'var(--accent2)' };
 function approvalsPanelHTML(l) {
   const aprs = (typeof approvalsOfRelease === 'function') ? approvalsOfRelease(l.id) : [];
   const latest = {}; aprs.forEach(a => { if (!latest[a.gate] || a.createdAt > latest[a.gate].createdAt) latest[a.gate] = a; });
@@ -255,7 +255,7 @@ function approvalsPanelHTML(l) {
     const st = a ? a.estado : null;
     const stHTML = a ? `<span class="apr-st" style="background:${APR_ST_COLOR[st]}1f;color:${APR_ST_COLOR[st]}">${st.replace('_', ' ')}</span>` : `<span class="apr-st" style="background:var(--surface2);color:var(--text-dim)">sin solicitar</span>`;
     let actions = '';
-    if (a && (st === 'pendiente' || st === 'en_revision') && canDec) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:#4ade80;border-color:rgba(74,222,128,.35)" onclick="decideApprovalUI('${a.id}','aprobado')">Aprobar</button><button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:var(--accent2)" onclick="decideApprovalUI('${a.id}','rechazado')">Rechazar</button>`;
+    if (a && (st === 'pendiente' || st === 'en_revision') && canDec) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)" onclick="decideApprovalUI('${a.id}','aprobado')">Aprobar</button><button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs);color:var(--accent2)" onclick="decideApprovalUI('${a.id}','rechazado')">Rechazar</button>`;
     else if (!a && canReq) actions = `<button class="btn btn-ghost" style="padding:3px 9px;font-size:var(--text-xs)" onclick="requestApproval('${l.id}','${g}')">Solicitar</button>`;
     else if (a && (st === 'aprobado' || st === 'rechazado')) actions = `<span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">${a.decidedBy ? 'por ' + _memberLabel(a.decidedBy) : ''} ${_ago(a.decidedAt)}</span>${canReq ? `<button class="btn btn-ghost" style="padding:3px 8px;font-size:var(--text-2xs)" onclick="requestApproval('${l.id}','${g}')" title="Volver a solicitar">${icon('refresh', 11)}</button>` : ''}`;
     return `<div class="apr-row"><span class="apr-gate">${lbl}</span>${stHTML}<span style="margin-left:auto;display:flex;gap:6px;align-items:center">${actions}</span></div>`;

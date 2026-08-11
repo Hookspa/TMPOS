@@ -3,13 +3,13 @@
 // Lee de la tabla relacional `tasks` (js/collab.js). Mobile-first.
 // ══════════════════════════════════════════
 
-let _tv = { view: 'list', mine: true, q: '', estado: '', priority: '', depto: '', artistId: '', tag: '', groupBy: 'none', sortBy: 'due', calMonth: null };
+let _tv = { view: 'list', mine: false, filtersOpen: false, q: '', estado: '', priority: '', depto: '', artistId: '', tag: '', groupBy: 'none', sortBy: 'due', calMonth: null };
 let _tvSel = new Set(); // selección múltiple para acciones en lote (vista Lista)
 
 // ── Colores / etiquetas ──
 const TASK_ESTADO_COLOR = {
-  backlog: 'var(--text-dim)', pendiente: '#7d8a99', en_progreso: 'var(--accent)', en_revision: 'var(--beat)',
-  aprobado: '#4ade80', bloqueado: 'var(--accent2)', completado: '#4ade80', atrasado: 'var(--accent2)',
+  backlog: 'var(--text-dim)', pendiente: 'var(--text-muted)', en_progreso: 'var(--text)', en_revision: 'var(--risk)',
+  aprobado: 'var(--ok)', bloqueado: 'var(--blocked)', completado: 'var(--ok)', atrasado: 'var(--blocked)',
 };
 const TASK_PRI_COLOR = { baja: 'var(--text-dim)', media: 'var(--text-muted)', alta: 'var(--beat)', urgente: 'var(--accent)', critica: 'var(--accent2)' };
 function _estLabel(e) { const x = TASK_ESTADOS.find(s2 => s2[0] === e); return x ? x[1] : e; }
@@ -42,7 +42,7 @@ function _subMeta(t) {
   const a = Array.isArray(t.checklistInterno) ? t.checklistInterno : [];
   if (!a.length) return '';
   const d = a.filter(x => x && x.done).length;
-  return ` · <span style="font-family:var(--font-ui);color:${d === a.length ? '#4ade80' : 'var(--text-dim)'}">${icon('checklist', 10)} ${d}/${a.length}</span>`;
+  return ` · <span style="font-family:var(--font-ui);color:${d === a.length ? 'var(--ok)' : 'var(--text-dim)'}">${icon('checklist', 10)} ${d}/${a.length}</span>`;
 }
 
 // ── Navegar al contexto de la tarea (release / track + pestaña Tareas) ──
@@ -158,6 +158,14 @@ function _tvBulkBar() {
 function tvScope(mine) { _tv.mine = mine; renderTareas(); }
 function tvFilter(key, val) { _tv[key] = val; tvRenderBody(); updateTaskBadge(); }
 function tvSearch(val) { _tv.q = val; tvRenderBody(); }
+function tvActiveFilterCount() {
+  return ['q','estado','priority','depto','artistId','tag'].filter(k => _tv[k]).length + (_tv.groupBy !== 'none' ? 1 : 0) + (_tv.sortBy !== 'due' ? 1 : 0);
+}
+function tvToggleFilters() { _tv.filtersOpen = !_tv.filtersOpen; renderTareas(); }
+function tvResetFilters() {
+  Object.assign(_tv, { q:'', estado:'', priority:'', depto:'', artistId:'', tag:'', groupBy:'none', sortBy:'due' });
+  _tv.filtersOpen = false; renderTareas();
+}
 function tvCalNav(delta) { const d = _tv.calMonth || new Date(); _tv.calMonth = new Date(d.getFullYear(), d.getMonth() + delta, 1); tvRenderBody(); }
 function setTaskEstadoInline(id, val) { updateTaskRow(id, { estado: val }); tvRenderBody(); updateTaskBadge(); }
 // Asignar/cambiar responsable desde la vista de Tareas → se refleja en el release/track (misma tabla).
@@ -192,11 +200,15 @@ function renderTareas() {
   const arts = (typeof artists !== 'undefined') ? artists : [];
   const saved = getSavedViews();
   const allTags = [...new Set(tasks.flatMap(t => Array.isArray(t.etiquetas) ? t.etiquetas : []))].filter(Boolean).sort();
+  const primaryTabs = TV_TABS.slice(0, 3);
+  const moreTabs = TV_TABS.slice(3);
+  const activeMore = moreTabs.some(t => t[0] === _tv.view) ? _tv.view : '';
+  const filterCount = tvActiveFilterCount();
   head.innerHTML = `
     <div class="dash-head">
       <div>
-        <h2 id="tareas-title">${_tv.mine ? 'Mis tareas' : 'Todas las tareas'}</h2>
-        <div class="dash-sub">${_tv.mine ? mineCount + ' abierta' + (mineCount === 1 ? '' : 's') + ' asignadas a ti' : allOpen + ' abiertas en el equipo'}</div>
+        <h2 id="tareas-title">${_tv.mine ? 'Mis tareas' : 'Hoy'}</h2>
+        <div class="dash-sub">${_tv.mine ? mineCount + ' abierta' + (mineCount === 1 ? '' : 's') + ' asignadas a ti' : allOpen + ' abiertas en el equipo · incluye bloqueos sin responsable'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="tv-seg">
@@ -207,8 +219,15 @@ function renderTareas() {
       </div>
     </div>
     <div class="tv-toolbar">
-      <div class="tv-tabs">${TV_TABS.map(t => `<div class="tv-tab ${_tv.view === t[0] ? 'active' : ''}" onclick="tvSetView('${t[0]}')">${icon(t[2], 13)} ${t[1]}</div>`).join('')}</div>
-      ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia' || _tv.view === 'carga') ? '' : `<div class="tv-filters">
+      <div class="tv-tabs" role="tablist" aria-label="Vista de tareas">
+        ${primaryTabs.map(t => `<button type="button" role="tab" aria-selected="${_tv.view === t[0]}" class="tv-tab ${_tv.view === t[0] ? 'active' : ''}" onclick="tvSetView('${t[0]}')">${icon(t[2], 13)} ${t[1]}</button>`).join('')}
+        <label class="sr-only" for="tv-more-view">Más vistas</label>
+        <select id="tv-more-view" class="tv-tab" aria-label="Más vistas" onchange="if(this.value)tvSetView(this.value)">
+          <option value="">Más vistas…</option>${moreTabs.map(t => `<option value="${t[0]}" ${activeMore === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}
+        </select>
+        ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia' || _tv.view === 'carga') ? '' : `<button type="button" class="tv-tab tv-filter-toggle ${_tv.filtersOpen ? 'active' : ''}" aria-expanded="${_tv.filtersOpen}" aria-controls="tv-filter-panel" onclick="tvToggleFilters()">${icon('filter', 13)} Filtros${filterCount ? `<span class="tv-filter-count">${filterCount}</span>` : ''}</button>`}
+      </div>
+      ${(_tv.view === 'quefalta' || _tv.view === 'jerarquia' || _tv.view === 'carga') ? '' : `<div class="tv-filters" id="tv-filter-panel" ${_tv.filtersOpen ? '' : 'hidden'}>
         <input class="tv-search" placeholder="Buscar tarea…" value="${s(_tv.q)}" oninput="tvSearch(this.value)">
         <select onchange="tvFilter('estado',this.value)"><option value="">Estado: todos</option>${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${_tv.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
         <select onchange="tvFilter('priority',this.value)"><option value="">Prioridad: todas</option>${TASK_PRIORITIES.map(x => `<option value="${x[0]}" ${_tv.priority === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
@@ -220,6 +239,7 @@ function renderTareas() {
         <select id="tv-saved" onchange="if(this.value)tvApplyView(this.value)"><option value="">Vistas guardadas…</option>${saved.map(v => `<option value="${s(v.name)}">${s(v.name)}</option>`).join('')}</select>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:var(--text-xs)" onclick="tvSaveView()">${icon('save', 13)} Guardar</button>
         ${saved.length ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:var(--text-xs)" onclick="tvDeleteView()">${icon('trash', 13)}</button>` : ''}
+        ${filterCount ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:var(--text-xs)" onclick="tvResetFilters()">Limpiar filtros</button>` : ''}
       </div>`}
     </div>`;
   tvRenderBody();
@@ -231,7 +251,13 @@ function tvRenderBody() {
   if (_tv.view === 'carga') { body.innerHTML = tvWorkload(); return; }
   const list = tvFilteredTasks();
   if (_tv.view === 'quefalta') { body.innerHTML = tvQueFalta(); return; }
-  if (!list.length) { body.innerHTML = `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Sin tareas que mostrar con estos filtros.</div></div>`; return; }
+  if (!list.length) {
+    const filtered = tvActiveFilterCount() > 0;
+    body.innerHTML = filtered
+      ? `<div class="tk-empty">${icon('search', 24)}<div style="margin-top:10px">Ninguna tarea coincide con los filtros activos.</div><button class="btn btn-ghost" style="margin-top:12px" onclick="tvResetFilters()">Limpiar filtros</button></div>`
+      : `<div class="tk-empty"><div style="font-family:var(--font-ui);font-weight:var(--fw-title);letter-spacing:var(--track-caps);color:var(--text)">— SILENCIO —</div><div style="margin-top:8px">No hay trabajo abierto en este alcance.</div></div>`;
+    return;
+  }
   if (_tv.view === 'list')      body.innerHTML = tvList(list);
   else if (_tv.view === 'kanban')   body.innerHTML = tvKanban(list);
   else if (_tv.view === 'calendar') body.innerHTML = tvCalendar(list);
@@ -326,7 +352,7 @@ function _taskCardHTML(t, selectable) {
   const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
   const sel = selectable && _tvSel.has(t.id);
   const selBox = selectable ? `<input type="checkbox" style="flex:0 0 auto;margin-right:2px" ${sel ? 'checked' : ''} onclick="tvToggleSel('${t.id}',event)">` : '';
-  return `<div class="tk-card" style="${sel ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''}" onclick="openTaskDetail('${t.id}')">
+  return `<div class="tk-card" role="button" tabindex="0" style="${sel ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''}" onclick="openTaskDetail('${t.id}')" onkeydown="if((event.key==='Enter'||event.key===' ')&&event.target===this){event.preventDefault();openTaskDetail('${t.id}')}">
     ${selBox}
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
@@ -371,7 +397,7 @@ function tvKanban(list) {
   const cols = TASK_ESTADOS.map(([est, lbl]) => {
     const arr = _sortTasks(list.filter(t => t.estado === est));
     const c = TASK_ESTADO_COLOR[est];
-    const cards = arr.map(t => `<div class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')">
+    const cards = arr.map(t => `<div class="tk-kcard" role="button" tabindex="0" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTaskDetail('${t.id}')}">
         <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
         <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span>${_subMeta(t)}</div>
       </div>`).join('') || `<div style="font-size:var(--text-xs);color:var(--text-dim);padding:6px 2px">—</div>`;
@@ -567,7 +593,7 @@ function tvWorkload() {
     const perWeek = weeks.map(w => arr.filter(t => t.dueDate && (typeof _isoWeekKey === 'function') && _isoWeekKey(t.dueDate) === w.key).length);
     return { k, total: arr.length, perWeek, noDate: arr.filter(t => !t.dueDate).length };
   }).sort((a, b) => b.total - a.total);
-  const loadColor = n => n >= 4 ? 'var(--accent2)' : n >= 2 ? 'var(--beat)' : n >= 1 ? '#4ade80' : 'var(--surface2)';
+  const loadColor = n => n >= 4 ? 'var(--accent2)' : n >= 2 ? 'var(--beat)' : n >= 1 ? 'var(--ok)' : 'var(--surface2)';
   const cols = `160px repeat(${N},1fr) 70px`;
   const header = `<div style="display:grid;grid-template-columns:${cols};gap:4px;margin-bottom:6px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);letter-spacing:var(--track-caps-sm)"><div>RESPONSABLE</div>${weeks.map(w => `<div style="text-align:center">${w.label}</div>`).join('')}<div style="text-align:center">SIN FECHA</div></div>`;
   const body = rows.map(r => {
@@ -607,7 +633,7 @@ function _tdInjectStyles() {
   .td-sub-text:hover{border-color:var(--border)} .td-sub-text:focus{border-color:var(--accent);outline:none}
   .td-sub-text.done{text-decoration:line-through;color:var(--text-muted)}
   .td-prog{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:8px}
-  .td-prog-fill{height:100%;background:#4ade80;transition:width .2s}
+  .td-prog-fill{height:100%;background:var(--ok)}
   .td-prog-n{margin-left:auto;color:var(--text-dim);font-weight:400}
   .td-cmt{padding:8px 0;border-bottom:1px solid var(--border)}
   .td-cmt-h{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}

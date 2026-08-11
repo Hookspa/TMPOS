@@ -35,7 +35,7 @@ async function getSb() {
 }
 function setSyncStatus(state, msg) {
   syncState = state;
-  const map = { off:['○','var(--text-dim)','Sin conectar'], syncing:['◍','var(--beat)','Sincronizando…'], ok:['●','#4ade80','Sincronizado'], error:['●','var(--accent2)', msg || 'Error'] };
+  const map = { off:['○','var(--text-dim)','Sin conectar'], syncing:['◍','var(--beat)','Sincronizando…'], ok:['●','var(--ok)','Sincronizado'], error:['●','var(--accent2)', msg || 'Error'] };
   const m = map[state] || map.off;
   const st = document.getElementById('sync-status'); if (st) { st.textContent = m[2]; st.style.color = m[1]; }
   const dot = document.getElementById('sync-menu-dot'); if (dot) { dot.textContent = m[0]; dot.style.color = m[1]; }
@@ -644,7 +644,7 @@ function renderTeamModal() {
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('settings',18)}</span><span class="ph-title">Marca del workspace</span><span class="ph-sub">logo · color · nombre</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
       <label style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Color de acento
-        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B30'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B30" style="width:90px;font-size:var(--text-sm);font-family:var(--font-ui)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B35'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B35" style="width:90px;font-size:var(--text-sm);font-family:var(--font-ui)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
       </label>
       <label style="flex:1;min-width:160px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Nombre de marca
         <input class="input" id="brand-name" value="${s(_brandName)}" placeholder="(opcional)" style="font-size:var(--text-sm);margin-top:3px">
@@ -982,7 +982,7 @@ async function cambiarPassword() {
   if (pass.length < 6) { st.style.color = 'var(--accent2)'; st.textContent = 'Mínimo 6 caracteres'; return; }
   const r = await sb.auth.updateUser({ password: pass });
   if (r.error) { st.style.color = 'var(--accent2)'; st.textContent = friendlyError(r.error, 'actualizar la contraseña'); }
-  else { st.style.color = '#4ade80'; st.textContent = '✓ Contraseña actualizada'; }
+  else { st.style.color = 'var(--ok)'; st.textContent = '✓ Contraseña actualizada'; }
 }
 
 // ══════════════════════════════════════════
@@ -1126,7 +1126,7 @@ function adminTeamRow(tm) {
     <select class="input" style="width:auto;padding:4px 8px;font-size:var(--text-xs)" onchange="adminSetPlan('${tm.id}',this.value)" title="Plan">${planSel}</select>
     <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs)" onclick="adminEditMembers('${tm.id}','${s(tm.name)}')">Miembros</button>
     <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs)" onclick="adminResetCounters('${tm.id}')" title="Resetear contadores">↺</button>
-    <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs);color:${suspended ? '#4ade80' : 'var(--accent2)'}" onclick="adminSetStatus('${tm.id}','${suspended ? 'active' : 'suspended'}')">${suspended ? 'Activar' : 'Suspender'}</button>
+    <button class="btn btn-ghost" style="padding:4px 8px;font-size:var(--text-xs);color:${suspended ? 'var(--ok)' : 'var(--accent2)'}" onclick="adminSetStatus('${tm.id}','${suspended ? 'active' : 'suspended'}')">${suspended ? 'Activar' : 'Suspender'}</button>
   </div>`;
 }
 async function adminRpc(fn, args, okMsg) {
@@ -1197,9 +1197,9 @@ function renderAdminKeys() {
   document.getElementById('admin-body').innerHTML = `
     <div class="empty-hint" style="margin-bottom:14px">Inventario de APIs/keys del app. Solo tú (super-admin) ves esto. La key de Anthropic es un <b style="color:var(--text-muted)">secreto del servidor</b> y nunca se expone en el navegador.</div>
     ${row('Supabase · Project URL', s(c.url), 'pública')}
-    ${row('Supabase · anon key', '<span style="color:#4ade80">configurada '+icon('check',11)+'</span> ' + (c.key ? '<span style="color:var(--text-dim)">…' + s(c.key.slice(-6)) + '</span>' : '<span style="color:var(--accent2)">falta</span>'), 'pública por diseño (la protege RLS + Auth)')}
-    ${row('Anthropic · API key', '<span style="color:#4ade80">secreto en servidor '+icon('check',11)+'</span> <span style="color:var(--text-dim)">•••• (Edge Function)</span>', 'No accesible desde el cliente. Editar: Supabase → Edge Functions → Secrets → ANTHROPIC_API_KEY')}
-    ${row('Edge Function · claude', '<span style="color:#4ade80">desplegada</span>', 'Proxy seguro a Anthropic (verify_jwt on). Inserta uso en ai_usage.')}
+    ${row('Supabase · anon key', '<span style="color:var(--ok)">configurada '+icon('check',11)+'</span> ' + (c.key ? '<span style="color:var(--text-dim)">…' + s(c.key.slice(-6)) + '</span>' : '<span style="color:var(--accent2)">falta</span>'), 'pública por diseño (la protege RLS + Auth)')}
+    ${row('Anthropic · API key', '<span style="color:var(--ok)">secreto en servidor '+icon('check',11)+'</span> <span style="color:var(--text-dim)">•••• (Edge Function)</span>', 'No accesible desde el cliente. Editar: Supabase → Edge Functions → Secrets → ANTHROPIC_API_KEY')}
+    ${row('Edge Function · claude', '<span style="color:var(--ok)">desplegada</span>', 'Proxy seguro a Anthropic (verify_jwt on). Inserta uso en ai_usage.')}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="adminTab('uso',document.querySelector('[data-atab=uso]'))">Ver uso de IA →</button>
       <button class="btn btn-ghost" style="font-size:var(--text-sm)" onclick="abrirSync()">Editar credenciales Supabase →</button>

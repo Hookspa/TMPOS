@@ -30,7 +30,7 @@ function nextRelease(artId){
 }
 // Punto de color reutilizable (reemplaza emojis de semáforo)
 function dotHTML(color, size){ return `<span style="display:inline-block;width:${size || 8}px;height:${size || 8}px;border-radius:50%;background:${color};flex:0 0 auto"></span>`; }
-function rankColor(rank){ return rank === 0 ? 'var(--accent2)' : rank === 1 ? 'var(--beat)' : rank === 3 ? '#4ade80' : 'var(--text-dim)'; }
+function rankColor(rank){ return rank === 0 ? 'var(--accent2)' : rank === 1 ? 'var(--beat)' : rank === 3 ? 'var(--ok)' : 'var(--text-dim)'; }
 
 // ══════════════════════════════════════════
 // HEATMAP DE ROSTER — carga semanal de lanzamientos (vista de sello, Tier 2 #5)
@@ -53,7 +53,7 @@ function rosterWeeks(n){
   return weeks;
 }
 // Color de carga (alineado al guardarraíl: máx 2–3/semana).
-function rosterLoadColor(n){ return n >= 3 ? 'var(--accent2)' : n === 2 ? 'var(--beat)' : n === 1 ? '#4ade80' : 'var(--surface2)'; }
+function rosterLoadColor(n){ return n >= 3 ? 'var(--accent2)' : n === 2 ? 'var(--beat)' : n === 1 ? 'var(--ok)' : 'var(--surface2)'; }
 function renderRosterHeatmap(){ const host = document.getElementById('label-roster'); if (host) host.innerHTML = rosterHeatmapHTML(); }
 function rosterHeatmapHTML(){
   const N = 10, weeks = rosterWeeks(N);
@@ -98,7 +98,8 @@ function _cockpitRisk(l) {
   const alerts = (typeof releaseAlerts === 'function') ? releaseAlerts(l) : [];
   const reds = alerts.filter(a => a.level === 'red').length, yellows = alerts.filter(a => a.level === 'yellow').length;
   const pct = (typeof releaseReady === 'function') ? releaseReady(l).pct : 0;
-  let score = overdue * 8 + blocked * 5 + reds * 10 + yellows * 3;
+  const nearDrop = d != null && d >= 0 && d <= 30;
+  let score = overdue * 8 + blocked * 5 + reds * 10 + (nearDrop ? yellows * 3 : 0);
   if (d != null) { if (d < 0) score += 15; else if (d <= 7) score += 20; else if (d <= 14) score += 10; else if (d <= 30) score += 4; }
   if (d != null && d >= 0 && d <= 21 && pct < 60) score += Math.round((60 - pct) / 3);
   return { score, d, overdue, blocked, reds, yellows, pct, alerts };
@@ -176,7 +177,7 @@ function cockpitBodyHTML() {
           <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Posponer 3 días" onclick="event.stopPropagation();cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
           <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Mover fecha límite" onclick="event.stopPropagation();cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
           <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Escalar / reasignar" onclick="event.stopPropagation();cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer;flex-wrap:wrap" onclick="cockpitOpen('${it.lid}','${it.tab}')">
+        return `<div role="button" tabindex="0" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer;flex-wrap:wrap" onclick="cockpitOpen('${it.lid}','${it.tab}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${it.lid}','${it.tab}')}">
         <span class="dot ${it.sev >= 3 ? 'dot--red' : 'dot--yellow'}"></span>
         <div style="flex:1;min-width:140px"><div style="font-size:var(--text-base)">${esc(it.text)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${taskActs}<span class="chip" style="cursor:pointer">Abrir →</span></div>
@@ -190,12 +191,12 @@ function cockpitBodyHTML() {
     const rcol = (typeof readyColor === 'function') ? readyColor(r.pct) : 'var(--accent)';
     const topAlert = (r.alerts.find(a => a.level === 'red') || r.alerts.find(a => a.level === 'yellow'));
     const dLabel = r.d == null ? 's/fecha' : (r.d < 0 ? `salió hace ${-r.d}d` : `${r.d}d`);
-    const dColor = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? '#4ade80' : (r.d <= 7 ? 'var(--accent2)' : (r.d <= 21 ? 'var(--beat)' : 'var(--text-muted)')));
+    const dColor = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? 'var(--ok)' : (r.d <= 7 ? 'var(--accent2)' : (r.d <= 21 ? 'var(--beat)' : 'var(--text-muted)')));
     const badges = [
       r.overdue ? `<span class="chip" style="cursor:default;color:var(--accent2);border-color:rgba(255,77,77,.3)">${r.overdue} vencida${r.overdue === 1 ? '' : 's'}</span>` : '',
       r.blocked ? `<span class="chip" style="cursor:default;color:var(--beat)">${r.blocked} bloqueada${r.blocked === 1 ? '' : 's'}</span>` : '',
     ].filter(Boolean).join('');
-    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    return `<div role="button" tabindex="0" onclick="cockpitOpen('${l.id}','resumen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${l.id}','resumen')}" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="flex:1.4;min-width:190px">
         <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)}</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
@@ -220,7 +221,7 @@ function cockpitBodyHTML() {
 function _cockpitState(l, r) {
   if (r.d != null && r.d < 0) return 'post';                                   // ya salió
   if (r.blocked || r.reds || r.overdue) return 'blocked';                      // hay algo rojo
-  if (r.yellows || (r.d != null && r.d >= 0 && r.d <= 14 && r.pct < 70)) return 'risk';
+  if ((r.yellows && r.d != null && r.d >= 0 && r.d <= 30) || (r.d != null && r.d >= 0 && r.d <= 14 && r.pct < 70)) return 'risk';
   return 'ok';
 }
 // Momento firma 03 (DESIGN.md v2): el silencio. All-clear como recompensa, no empty-state ilustrado.
@@ -247,7 +248,7 @@ function cockpitBoardHTML() {
     const dLabel = r.d == null ? 's/f' : (r.d < 0 ? 'live' : r.d);
     const dCol = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? 'var(--done)' : (r.d <= 7 ? 'var(--blocked)' : (r.d <= 21 ? 'var(--risk)' : 'var(--text)')));
     const act = (showAct && topAlert) ? `<button class="btn btn-primary" style="width:100%;margin-top:9px;font-size:var(--text-xs);padding:6px 8px" onclick="event.stopPropagation();cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : '';
-    return `<div onclick="cockpitOpen('${l.id}','resumen')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
+    return `<div role="button" tabindex="0" onclick="cockpitOpen('${l.id}','resumen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${l.id}','resumen')}" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
       <div style="font-size:var(--text-base);font-weight:600">${esc(l.name)}</div>
       <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);text-transform:uppercase;margin:1px 0 8px">${esc(art ? art.name : '—')}</div>
       <div class="progress-track" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
@@ -269,43 +270,6 @@ function cockpitBoardHTML() {
   // El silencio como recompensa: si nada está bloqueado ni en riesgo, el cockpit es una sola línea.
   if (!cols.blocked.items.length && !cols.risk.items.length && typeof allClearHTML === 'function') return line + allClearHTML();
   return line + `<div style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px">${['blocked', 'risk', 'ok', 'post'].map(colHTML).join('')}</div>`;
-}
-
-// ══════════════════════════════════════════
-// COCKPIT — panel de BENCHMARKS MOCKEADO (vive dentro del Dashboard → Roster → Riesgo).
-// ⚠️ ES UNA PRUEBA (Wizard of Oz) — datos SIMULADOS. Ver HANDOFF: QUITAR.
-// ══════════════════════════════════════════
-// Panel de benchmarks SIMULADO — deja crudo que es una prueba. El lado "tuyo" usa tu snapshot real
-// si existe; la comparación (mediana/p75) es INVENTADA para el discovery. NO es dato real.
-function cockpitBenchmarkMockHTML() {
-  const snaps = (typeof loadReleaseSnapshots === 'function') ? loadReleaseSnapshots() : [];
-  const mine = snaps.slice().sort((a, b) => (b.capturedAt || '').localeCompare(a.capturedAt || ''))[0] || null;
-  const myD7 = mine && mine.resultado_d7 && mine.resultado_d7.streams != null ? mine.resultado_d7.streams : null;
-  const myCycle = mine ? mine.cycle_days_mediana : null;
-  const myReady = mine ? mine.readiness_final_pct : null;
-  const fmtN = n => n == null ? '—' : Number(n).toLocaleString('es');
-  const row = (metric, mineV, med, p75, suffix) => `<tr>
-    <td style="padding:6px 8px">${metric}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);font-weight:600">${mineV == null ? '—' : fmtN(mineV) + (suffix || '')}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:var(--text-muted)">${fmtN(med) + (suffix || '')}</td>
-    <td style="padding:6px 8px;text-align:right;font-family:var(--font-ui);color:var(--text-muted)">${fmtN(p75) + (suffix || '')}</td></tr>`;
-  const banner = `<div style="display:flex;align-items:center;gap:8px;border:1px dashed var(--risk);border-radius:var(--radius-md);padding:8px 12px;margin-bottom:12px;background:rgba(232,163,61,.06)">
-    <span style="color:var(--risk)">${icon('warning', 15)}</span>
-    <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--risk);letter-spacing:var(--track-caps-sm)">PRUEBA · DATOS SIMULADOS — demo de discovery, NO son dato real. Quitar antes de producción.</div></div>`;
-  const src = mine ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">"Tu lanzamiento" = snapshot real de <b>${s(mine.releaseName) || 'tu último release'}</b>. Mediana y p75 = <b>simulados</b> (aún no hay pipeline de benchmarks).</div>`
-    : `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">Aún sin snapshot propio: cierra un release para poblar "Tu lanzamiento". Mediana y p75 = <b>simulados</b>.</div>`;
-  return `<div class="panel" style="margin-top:18px">
-    <div class="panel-head"><span class="ph-icon">${icon('chart', 18)}</span><span class="ph-title">Benchmarks del lanzamiento</span><span class="ph-sub">tu drop vs. el mercado</span></div>
-    ${banner}
-    <table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);text-transform:uppercase">
-      <th style="text-align:left;padding:6px 8px">Métrica</th><th style="text-align:right;padding:6px 8px">Tu lanzamiento</th><th style="text-align:right;padding:6px 8px">Mediana*</th><th style="text-align:right;padding:6px 8px">p75*</th></tr></thead>
-      <tbody>
-        ${row('Streams d7', myD7, 18000, 34000, '')}
-        ${row('Cycle time (mediana)', myCycle, 9, 6, 'd')}
-        ${row('Readiness al drop', myReady, 72, 88, '%')}
-      </tbody></table>
-    ${src}
-    <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:6px">* simulado</div></div>`;
 }
 
 // ══════════════════════════════════════════
@@ -359,7 +323,7 @@ function rosterHealthHTML() {
 // ══════════════════════════════════════════
 // COMPÁS — centro de mando (rebautiza el Cockpit y absorbe el Label) · toggle Roster/Artista
 // ══════════════════════════════════════════
-let compasView = 'artista';       // 'roster' | 'artista' — arranca en Artista (el dashboard familiar); Roster a un clic
+let compasView = 'roster';        // 'roster' | 'artista' — Hoy primero; panorama por artista a un clic
 let compasRosterTab = 'riesgo';   // 'riesgo' | 'salud'
 let _compasEmbedded = false;
 function setCompasView(v) { compasView = v; renderCompas(); }
@@ -376,7 +340,7 @@ function compasRestore() {
 function renderCompas() {
   const tb = document.getElementById('compas-toolbar'); const body = document.getElementById('compas-body'); if (!body) return;
   const seg = (active, opts, fn) => `<div class="view-toggle">${opts.map(o => `<button class="${active === o[0] ? 'active' : ''}" onclick="${fn}('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
-  if (tb) tb.innerHTML = seg(compasView, [['roster', 'Roster'], ['artista', 'Artista']], 'setCompasView')
+  if (tb) tb.innerHTML = seg(compasView, [['roster', 'Hoy'], ['artista', 'Panorama del artista']], 'setCompasView')
     + (compasView === 'roster' ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRosterTab, [['riesgo', 'Riesgo de lanzamientos'], ['salud', 'Salud del roster'], ['plan', 'Plan anual']], 'setCompasRosterTab')}</div>` : '')
     + ((compasView === 'roster' && compasRosterTab === 'riesgo') ? `<div class="cmp-sub" style="margin-left:8px">${seg(compasRiskView, [['tabla', 'Tabla'], ['tablero', 'Tablero']], 'setCompasRiskView')}</div>` : '');
   if (compasView === 'artista') {
@@ -392,7 +356,7 @@ function renderCompas() {
   let inner;
   if (compasRosterTab === 'plan' && typeof annualRosterHTML === 'function') inner = annualRosterHTML();
   else if (compasRosterTab === 'salud') inner = rosterHealthHTML();
-  else inner = (compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML()) + (typeof cockpitBenchmarkMockHTML === 'function' ? cockpitBenchmarkMockHTML() : ''); // el cockpit vive aquí (una sola ventana)
+  else inner = compasRiskView === 'tablero' ? cockpitBoardHTML() : cockpitBodyHTML();
   body.innerHTML = inner;
   if (typeof hydrateIcons === 'function') hydrateIcons(body);
 }

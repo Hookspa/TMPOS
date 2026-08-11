@@ -64,9 +64,9 @@ function releasePhase(l) {
   if (l.status === 'active' && l.date && new Date(l.date + 'T00:00:00') <= new Date()) phase = 'Lanzado';
   return phase;
 }
-function readyColor(pct) { return pct >= 80 ? '#4ade80' : pct >= 40 ? 'var(--beat)' : 'var(--accent2)'; }
+function readyColor(pct) { return pct >= 80 ? 'var(--ok)' : pct >= 40 ? 'var(--beat)' : 'var(--accent2)'; }
 function phaseColor(phase) {
-  return { 'Idea':'var(--text-dim)','Producción':'var(--beat)','Legal':'#e8924f','Distribución':'var(--accent)','Lanzado':'#4ade80','Post':'var(--accent-dark)' }[phase] || 'var(--text-dim)';
+  return { 'Idea':'var(--text-dim)','Producción':'var(--beat)','Legal':'#e8924f','Distribución':'var(--accent)','Lanzado':'var(--ok)','Post':'var(--done)' }[phase] || 'var(--text-dim)';
 }
 // Barra "Listo para lanzar" reutilizable
 function readyBarHTML(pct, label) {
@@ -202,7 +202,7 @@ function releaseWhatsMissing(l){
 }
 function whatsMissingHTML(l){
   const items=releaseWhatsMissing(l);
-  if(!items.length) return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span></div><div class="empty-hint" style="color:#4ade80;border-color:rgba(74,222,128,.3)">${icon('check',13)} Todo listo para lanzar</div></div>`;
+  if(!items.length) return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Qué falta para lanzar</span></div><div class="empty-hint" style="color:var(--ok);border-color:color-mix(in srgb,var(--ok) 30%,transparent)">${icon('check',13)} Todo listo para lanzar</div></div>`;
   const byArea={}; items.forEach(it=>{ (byArea[it.area]=byArea[it.area]||[]).push(it); });
   const blocking=items.filter(it=>it.blocking).length;
   const rows=Object.keys(byArea).map(area=>`<div style="margin-bottom:10px"><div class="brief-label" style="margin-bottom:4px">${esc(area)} <span style="color:var(--text-dim)">· ${byArea[area].length}</span></div>${byArea[area].slice(0,8).map(it=>`<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:5px 0;border-bottom:1px solid var(--border)"><span class="dot ${it.blocking?'dot--red':'dot--yellow'}"></span><span style="flex:1">${esc(it.label)}</span></div>`).join('')}${byArea[area].length>8?`<div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:4px">+${byArea[area].length-8} más</div>`:''}</div>`).join('');

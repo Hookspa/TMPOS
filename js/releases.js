@@ -49,6 +49,8 @@ function renderLaunchDetail() {
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const fmt = dt => `${dt.getDate()} ${months[dt.getMonth()]}`;
   const pre = l.preDays ?? 21, post = l.postDays ?? 21;
+  const dropDays = l.date && typeof diasRestantes === 'function' ? diasRestantes(l.date) : null;
+  const dropUrgent = dropDays != null && dropDays >= 0 && dropDays <= 3;
   let tlStart = `Inicio (−${pre}d)`, tlDrop = 'Lanzamiento', tlEnd = `Cierre (+${post}d)`;
   if (l.date) {
     const drop = new Date(l.date + 'T00:00:00');
@@ -82,7 +84,7 @@ function renderLaunchDetail() {
           <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:6px">TIMELINE DE CAMPAÑA</div>
           <div class="tl-bar">
             <div class="tl-seg pre" style="flex:${pre}">PRE · ${pre}d</div>
-            <div class="tl-seg day">DROP</div>
+            <div class="tl-seg day ${dropUrgent ? 'urgent' : ''}">DROP</div>
             <div class="tl-seg post" style="flex:${post}">POST · ${post}d</div>
           </div>
           <div class="tl-dates"><span>${tlStart}</span><span>${tlDrop}</span><span>${tlEnd}</span></div>
@@ -90,8 +92,8 @@ function renderLaunchDetail() {
       </div>
     </div>
 
-    <div class="mtabs" id="release-tabbar" style="margin-bottom:16px;flex-wrap:wrap">
-      ${RELEASE_TABS.map(rt=>`<div class="mtab ${rt[0]===_releaseTab?'active':''}" data-rtab="${rt[0]}" onclick="setReleaseTab('${rt[0]}')">${rt[1]}</div>`).join('')}
+    <div class="mtabs" id="release-tabbar" role="tablist" aria-label="Secciones del lanzamiento" style="margin-bottom:16px;flex-wrap:wrap">
+      ${RELEASE_TABS.map(rt=>`<button type="button" role="tab" aria-selected="${rt[0]===_releaseTab}" tabindex="${rt[0]===_releaseTab?'0':'-1'}" class="mtab ${rt[0]===_releaseTab?'active':''}" data-rtab="${rt[0]}" onclick="setReleaseTab('${rt[0]}')" onkeydown="releaseTabKey(event,'${rt[0]}')">${rt[1]}</button>`).join('')}
     </div>
     <div id="release-tab-body"></div>`;
   renderReleaseTab(_releaseTab);
@@ -101,6 +103,14 @@ function renderLaunchDetail() {
 let _releaseTab = 'resumen';
 // 10 → 7 pestañas con sentido. Las agrupadas (campana/resultados/trabajo) usan sub-pestañas.
 const RELEASE_TABS = [['resumen','Resumen'],['musica','Música'],['campana','Campaña'],['resultados','Resultados'],['negocio','Negocio'],['legal','Legal'],['archivos','Archivos'],['trabajo','Trabajo']];
+function releaseTabKey(e, current) {
+  if (!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
+  e.preventDefault();
+  const i = RELEASE_TABS.findIndex(x => x[0] === current);
+  const ni = e.key === 'Home' ? 0 : e.key === 'End' ? RELEASE_TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + RELEASE_TABS.length) % RELEASE_TABS.length;
+  setReleaseTab(RELEASE_TABS[ni][0]);
+  const next = document.querySelector(`#release-tabbar [data-rtab="${RELEASE_TABS[ni][0]}"]`); if (next) next.focus();
+}
 
 // ── Info-tip reusable: ícono ⓘ con tooltip al hover (reemplaza los blurbs grises) ──
 function _infoTipStyles(){
@@ -152,7 +162,14 @@ const LEGACY_TAB = {
   metricas:['resultados','metricas'], aprendizajes:['resultados','aprendizajes'], ia:['resultados','ia'], reportes:['resultados','reportes'],
   tareas:['trabajo','tareas'], actividad:['trabajo','actividad'], checklists:['trabajo','checklists'],
 };
-function setReleaseTab(name){ _releaseTab = name; document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name)); renderReleaseTab(name); document.querySelector('.content').scrollTop = 0; }
+function setReleaseTab(name){
+  _releaseTab = name;
+  document.querySelectorAll('#release-tabbar .mtab').forEach(b => {
+    const on = b.dataset.rtab === name; b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
+  });
+  renderReleaseTab(name); document.querySelector('.content').scrollTop = 0;
+}
 function setReleaseSubTab(group, sub){ _releaseSubTab[group]=sub; renderReleaseTab(group); }
 function renderReleaseTab(name){
   const l = launches.find(x=>x.id===currentLaunchId); if(!l) return;
@@ -682,7 +699,7 @@ function renderIdeas() {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <span style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">Cantidad</span>
         <select class="input" id="gen-count" style="width:auto" onchange="updateCostLine()">${(ideas.length >= 12 ? [6,8,10,12,16,20,24] : [6,8,10,12]).map(n => `<option ${n===8?'selected':''}>${n}</option>`).join('')}</select>
-        ${ideas.length >= 12 ? `<span style="font-size:var(--text-2xs);color:#4ade80;font-family:var(--font-ui)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">Selecciona 12+ referencias para generar hasta 24</span>`}
+        ${ideas.length >= 12 ? `<span style="font-size:var(--text-2xs);color:var(--ok);font-family:var(--font-ui)">${icon('check',11)} hasta 24 (tienes ${ideas.length} referencias)</span>` : `<span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui)">Selecciona 12+ referencias para generar hasta 24</span>`}
         <button class="btn btn-primary" onclick="generarIdeasPlantilla()">${icon('zap',13)} Generar (plantillas)</button>
         <button class="btn btn-ghost" onclick="generarIdeasIA()" style="border-color:color-mix(in srgb, var(--accent) 35%, transparent);color:var(--accent)">${icon('ai',13)} Generar con IA</button>
       </div>
@@ -886,7 +903,7 @@ function aiHintHTML(prompt, expectedOut) {
   if (typeof isAdmin === 'function' && !isAdmin()) return '';
   const e = aiCostHint(prompt, expectedOut);
   const perDollar = e.cost > 0 ? Math.max(1, Math.floor(1 / e.cost)) : '∞';
-  return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
+  return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:var(--ok);display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
 }
 function usageBadge(u, ai) {
   if (!u) return '';
@@ -935,7 +952,7 @@ function updateCostLine() {
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const est = estimateCost(a, count);
   const perDollar = est.cost > 0 ? Math.max(1, Math.floor(1 / est.cost)) : '∞';
-  el.innerHTML = `IA: ${est.ai.key ? '<span style="color:#4ade80;display:inline-flex;align-items:center;gap:3px">key configurada '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — configúrala en '+icon('settings',12)+' API</span>'} · modelo <strong>${s(est.ai.model)}</strong><br>Estimado por generación: ≈ ${est.inTok} tok entrada + ${est.outTok} tok salida ≈ <strong style="color:var(--accent)">$${est.cost.toFixed(4)}</strong> (~${perDollar} generaciones por US$1)`;
+  el.innerHTML = `IA: ${est.ai.key ? '<span style="color:var(--ok);display:inline-flex;align-items:center;gap:3px">key configurada '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — configúrala en '+icon('settings',12)+' API</span>'} · modelo <strong>${s(est.ai.model)}</strong><br>Estimado por generación: ≈ ${est.inTok} tok entrada + ${est.outTok} tok salida ≈ <strong style="color:var(--accent)">$${est.cost.toFixed(4)}</strong> (~${perDollar} generaciones por US$1)`;
 }
 function parseIdeasJSON(text) {
   const t = s(text);
@@ -1485,7 +1502,7 @@ function renderSidebarArtist() {
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
     + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</div>`) : '')
     + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
-    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:var(--text-2xs);color:${cloudEnabled()?'#4ade80':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
+    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:var(--text-2xs);color:${cloudEnabled()?'var(--ok)':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
     + (authed() ? `<div class="artist-menu-item" onclick="signOutTempo()" style="color:var(--accent2)">${icon('logout',14)} Salir</div>` : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
   renderMoreSheet();
 }
@@ -1533,7 +1550,7 @@ function renderMoreSheet() {
     html += `<div class="more-sheet-item" onclick="abrirCuenta();cerrarMoreSheet()"><span class="icon">${icon('settings', 19)}</span><span>Mi cuenta</span></div>`;
     if (!_restrictedArtist) html += `<div class="more-sheet-item" onclick="abrirTeam();cerrarMoreSheet()"><span class="icon">${icon('team', 19)}</span><span>Mi equipo · ${s(_teamName)}</span></div>`;
     if (isAdmin()) html += `<div class="more-sheet-item" onclick="abrirAdmin();cerrarMoreSheet()"><span class="icon" style="color:var(--accent)">${icon('wrench', 19)}</span><span style="color:var(--accent)">Backend admin</span></div>`;
-    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:var(--text-xs);color:${cloudEnabled() ? '#4ade80' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
+    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:var(--text-xs);color:${cloudEnabled() ? 'var(--ok)' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
     html += `<div class="more-sheet-item" onclick="signOutTempo()"><span class="icon" style="color:var(--accent2)">${icon('logout', 19)}</span><span style="color:var(--accent2)">Cerrar sesión</span></div>`;
   } else {
     html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span>Sincronización</span></div>`;
@@ -1646,7 +1663,7 @@ function awPanelHTML(step) {
       <div class="wiz-field" style="margin:0"><label>Palabra 2</label><input class="input" value="${s(awData.aes.w2)}" oninput="awData.aes.w2=this.value"></div>
       <div class="wiz-field" style="margin:0"><label>Palabra 3</label><input class="input" value="${s(awData.aes.w3)}" oninput="awData.aes.w3=this.value"></div>
     </div>
-    <div class="wiz-field"><label>Color dominante</label><input class="input" value="${s(awData.aes.color)}" oninput="awData.aes.color=this.value" placeholder="Ej. dorado y negro, #FF6B30"></div>`;
+    <div class="wiz-field"><label>Color dominante</label><input class="input" value="${s(awData.aes.color)}" oninput="awData.aes.color=this.value" placeholder="Ej. dorado y negro, #FF6B35"></div>`;
   if (step===5) return `<h2>FAN IDEAL</h2><div class="sub">Describe en ~5 líneas a la persona que más conecta contigo.</div>
     <div class="wiz-field"><textarea class="textarea" style="min-height:150px" oninput="awData.fan=this.value" placeholder="Edad, qué siente, qué escucha, dónde vive, qué le mueve…">${s(awData.fan)}</textarea></div>`;
   // step 6

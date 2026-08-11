@@ -90,7 +90,7 @@ function releaseInversionHTML(l){
   if(!canDo('ver_finanzas') && !canDo('editar_finanzas')) return `<div class="empty-hint">No tienes acceso a las finanzas de este release.</div>`;
   const editable = canDo('editar_finanzas');
   const fs = financeSummary(l), byCat = expensesByCat(l);
-  const estadoColor = { no_recuperado:'var(--accent2)', parcial:'var(--beat)', recuperado:'#4ade80' }[fs.estado];
+  const estadoColor = { no_recuperado:'var(--accent2)', parcial:'var(--beat)', recuperado:'var(--ok)' }[fs.estado];
   const card = (label, val, sub, col) => `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="${col ? `color:${col}` : ''}">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
   // "Plan vs real" unificado: las PLATAFORMAS del Plan de Medios (b.lines) son las categorías.
   // Cada línea → plan = monto de la línea, real = gastos con esa plataforma; + gastos huérfanos; + total.
@@ -141,7 +141,7 @@ function releaseInversionHTML(l){
       ${card('Inversión total', money(fs.inversion), `${(l.expenses || []).length} gasto(s)`)}
       ${card('Ingresos', money(fs.ingresos), '')}
       ${card('Recoupment', fs.recoupPct + '%', fs.estado.replace('_', ' '), estadoColor)}
-      ${card('ROI', fs.roi == null ? '—' : fs.roi + '%', fs.roi == null ? 'sin inversión' : '', fs.roi == null ? '' : (fs.roi >= 0 ? '#4ade80' : 'var(--accent2)'))}
+      ${card('ROI', fs.roi == null ? '—' : fs.roi + '%', fs.roi == null ? 'sin inversión' : '', fs.roi == null ? '' : (fs.roi >= 0 ? 'var(--ok)' : 'var(--accent2)'))}
     </div>
     <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Recoupment</span><span class="ph-sub">ingresos vs inversión</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${fs.recoupPct}%;background:${estadoColor}"></div></div>

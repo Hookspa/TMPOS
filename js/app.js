@@ -94,7 +94,7 @@ function toggleBancoTranslate() {
   renderBanco();
 }
 
-const CAT_PALETTE = ['#FF6B30','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
+const CAT_PALETTE = ['#FF6B35','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
 let paletteIdx = 0;
 function catColor(c) {
@@ -703,7 +703,7 @@ function customBadgeHTML(r) {
   const community = r.community || r.owned === false;
   const shared = !!r.shared;
   const label = community ? (s(r.author) ? 'COMUNIDAD' : 'COMUNIDAD') : (shared ? 'COMPARTIDA' : 'PRIVADA');
-  const col = community ? '#a78bfa' : (shared ? '#4ade80' : 'var(--text-dim)');
+  const col = community ? '#a78bfa' : (shared ? 'var(--ok)' : 'var(--text-dim)');
   const ico = community ? 'star' : (shared ? 'eye' : 'lock');
   return `<span title="${community ? ('De la comunidad' + (s(r.author)?(' · '+s(r.author)):'')) : (shared ? 'Compartida con la comunidad' : 'Privada (solo tú)')}"
     style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:var(--text-2xs);font-family:var(--font-ui);letter-spacing:var(--track-caps-sm);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
@@ -910,7 +910,7 @@ function openRefBoxdrop(idx) {
       style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
     <button onclick="abrirModalCal(${idx})"
       style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
-    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${r.shared?'rgba(74,222,128,0.4)':'var(--border)'};background:${r.shared?'rgba(74,222,128,0.08)':'transparent'};color:${r.shared?'#4ade80':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:#4ade80;cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
+    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${r.shared?'color-mix(in srgb,var(--ok) 40%,transparent)':'var(--border)'};background:${r.shared?'color-mix(in srgb,var(--ok) 8%,transparent)':'transparent'};color:${r.shared?'var(--ok)':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:var(--ok);cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
     ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
     <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
     ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
@@ -1012,7 +1012,7 @@ function confirmarCal() {
   target.cal = target.cal || [];
   target.cal.push(item);
   saveLaunches();
-  document.getElementById('mc-status').style.color = '#4ade80';
+  document.getElementById('mc-status').style.color = 'var(--ok)';
   document.getElementById('mc-status').textContent = `✓ Agregado a ${s(target.name)}`;
   if (typeof renderCalendar === 'function' && (document.querySelector('.page.active') || {}).id === 'page-calendario') renderCalendar();
   setTimeout(() => { document.getElementById('modal-cal').classList.remove('open'); }, 800);
@@ -1573,7 +1573,7 @@ async function renderShares() {
     host.innerHTML = rows.map(r => {
       const exp = r.expires_at ? Date.parse(r.expires_at) : null;
       const expired = exp && exp < now;
-      const estado = r.revoked ? ['REVOCADO', 'var(--accent2)'] : expired ? ['EXPIRADO', 'var(--text-dim)'] : ['ACTIVO', '#4ade80'];
+      const estado = r.revoked ? ['REVOCADO', 'var(--accent2)'] : expired ? ['EXPIRADO', 'var(--text-dim)'] : ['ACTIVO', 'var(--ok)'];
       const fecha = new Date(r.created_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
       const expLbl = r.expires_at ? `expira ${new Date(r.expires_at).toLocaleDateString('es', { day: '2-digit', month: 'short' })}` : 'sin expiración';
       const active = !r.revoked && !expired;
@@ -2121,9 +2121,9 @@ function renderObjetivos() {
     let progHTML = '';
     if (pr.actual != null) {
       const pct = pr.pct, barW = pct == null ? 0 : Math.min(100, pct);
-      const col = pct == null ? 'var(--text-dim)' : (pct >= 100 ? '#4ade80' : pct >= 60 ? 'var(--accent)' : 'var(--beat)');
+      const col = pct == null ? 'var(--text-dim)' : (pct >= 100 ? 'var(--ok)' : pct >= 60 ? 'var(--risk)' : 'var(--blocked)');
       progHTML = `<div style="margin-top:6px;max-width:240px">
-        <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${col};transition:width .3s"></div></div>
+        <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${col}"></div></div>
         <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:3px">logrado ${fmtNum(pr.actual)}${pct != null ? ` · <span style="color:${col}">${pct}%</span>` : ' (objetivo relativo)'}</div></div>`;
     }
     return `<div class="goal-row${cls}">
@@ -2408,7 +2408,7 @@ function renderAprendizajes() {
   const L = art.learnings || [];
   if (!L.length) { host.innerHTML = `<div class="empty-hint">Aún no hay aprendizajes para ${esc(art.name)}. Usa “Analizar con IA” (revisa tus lanzamientos y métricas) o registra uno manualmente.</div>`; return; }
   host.innerHTML = L.map((it, i) => {
-    const sigCol = it.type === 'good' ? '#4ade80' : (it.type === 'bad' ? 'var(--accent2)' : '');
+    const sigCol = it.type === 'good' ? 'var(--ok)' : (it.type === 'bad' ? 'var(--accent2)' : '');
     const sigLabel = it.type === 'good' ? 'Funcionó' : (it.type === 'bad' ? 'No funcionó' : '');
     const sig = sigCol ? `<span class="learn-sig-dot" style="background:${sigCol}"></span><span style="color:${sigCol}">${sigLabel}</span> · ` : '';
     return `<div class="learn-card">
@@ -2581,7 +2581,7 @@ function metricCardHTML(e, allEntries) {
   return `<div class="stat-card">
     <div class="stat-label">${s(e.metric)}</div>
     <div class="stat-value">${fmtNum(e.value)}</div>
-    <div class="stat-trend" style="color:${pm.color}">${pm.icon} ${pm.name}${delta!=null?` · <span style="color:${delta>=0?'#4ade80':'var(--accent2)'}">${delta>=0?'↑':'↓'} ${Math.abs(delta)}%</span>`:''}</div>
+    <div class="stat-trend" style="color:${pm.color}">${pm.icon} ${pm.name}${delta!=null?` · <span style="color:${delta>=0?'var(--ok)':'var(--accent2)'}">${delta>=0?'↑':'↓'} ${Math.abs(delta)}%</span>`:''}</div>
     <div class="stat-sub">${s(e.date)}${e.source && e.source!=='seed' ? ' · ' + s(e.source) : ''}</div>
     ${spark}
   </div>`;
@@ -2614,7 +2614,7 @@ function screenshotsStripHTML() {
                          (a ? a.screenshots : []).map(x => Object.assign({scope:a.name}, x)));
   if (!shots.length) return '';
   return `<div class="section-header" style="margin-top:24px"><div class="section-title">CAPTURAS DE RESPALDO</div></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">${shots.map(sc => `<a href="${safeUrl(sc.dataUrl)}" target="_blank" title="${esc(sc.label)} · ${esc(sc.scope)} · ${esc(sc.date)}"><img src="${safeUrl(sc.dataUrl)}" class="screenshot-thumb" loading="lazy"></a>`).join('')}</div>`;
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${shots.map(sc => `<a href="${safeUrl(sc.dataUrl)}" target="_blank" title="${esc(sc.label)} · ${esc(sc.scope)} · ${esc(sc.date)}"><img src="${safeUrl(sc.dataUrl)}" class="screenshot-thumb" loading="lazy" alt="${esc(sc.label || 'Captura de métricas')}"></a>`).join('')}</div>`;
 }
 
 // ── Sub-pestañas ──
@@ -2822,7 +2822,7 @@ function handleMetricScreenshot(e) {
       c.getContext('2d').drawImage(img, 0, 0, cw, ch);
       pendingShot = c.toDataURL('image/jpeg', 0.6);
       const pv = document.getElementById('shot-preview');
-      if (pv) pv.innerHTML = `<img src="${pendingShot}" style="max-width:200px;border-radius:6px;border:1px solid var(--border)">`;
+      if (pv) pv.innerHTML = `<img src="${pendingShot}" alt="Vista previa de la captura pendiente" style="max-width:200px;border-radius:6px;border:1px solid var(--border)">`;
     };
     img.src = ev.target.result;
   };
@@ -2893,7 +2893,7 @@ function handleCSVFile(e) {
         setReferencias(parsed);
       }
       bancoCargado = true;
-      document.getElementById('csv-status').style.color = '#4ade80';
+      document.getElementById('csv-status').style.color = 'var(--ok)';
       document.getElementById('csv-status').textContent = append
         ? `✓ ${added} nuevas (${referencias.length} en total)`
         : `✓ ${parsed.length} referencias cargadas`;
@@ -3082,7 +3082,7 @@ function artistLaunches() { return launches.filter(l => l.artistId === currentAr
 // Campañas evergreen / always-on del artista (viven como launches type:'evergreen').
 function artistEvergreen() { return launches.filter(l => l.artistId === currentArtistId && l.type === 'evergreen'); }
 // ── Campañas del calendario: release activo + todas las evergreen del artista (cada una con color) ──
-const CAMPAIGN_PALETTE = ['#FF6B30','#38bdf8','#a78bfa','#4ade80','#FFAA00','#f472b6','#22d3ee','#fb923c'];
+const CAMPAIGN_PALETTE = ['#FF6B35','#38bdf8','#a78bfa','#2ECC71','#FFAA00','#f472b6','#22d3ee','#fb923c'];
 let _calHidden = {}; // { launchId: true } campañas ocultas en el calendario
 function campColorFor(l, i) { return (l.type === 'evergreen' && l.color) ? l.color : CAMPAIGN_PALETTE[i % CAMPAIGN_PALETTE.length]; }
 function calCampaigns() {
@@ -3439,8 +3439,20 @@ function renderOnAir() {
   const blocked = onAirBlockedCount();
   const dotCol = blocked ? 'var(--blocked)' : 'var(--ok)';
   const dropPart = drop ? ` · PRÓXIMO DROP: «${esc(up(drop.name))}» — T−${p2(diasRestantes(drop.date))}` : ' · SIN DROPS PROGRAMADOS';
-  const blockedPart = blocked ? ` · <span style="color:var(--blocked)">${blocked} BLOQUEADO${blocked === 1 ? '' : 'S'}</span>` : '';
+  const blockedPart = blocked ? ` · <span style="color:var(--blocked)">${blocked} BLOQUEADO${blocked === 1 ? '' : 'S'} · ABRIR COLA →</span>` : '';
   el.innerHTML = `<span class="oa-dot" style="background:${dotCol}"></span>${stamp}${dropPart}${blockedPart}`;
+  if (blocked) {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-label', `${blocked} bloqueo${blocked === 1 ? '' : 's'}. Abrir cola de hoy`);
+    el.title = 'Abrir la cola operativa de hoy';
+    el.style.cursor = 'pointer';
+    el.onclick = () => { if (typeof compasView !== 'undefined') compasView = 'roster'; if (typeof compasRosterTab !== 'undefined') compasRosterTab = 'riesgo'; if (typeof showPage === 'function') showPage('compas'); };
+    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } };
+  } else {
+    el.removeAttribute('role'); el.removeAttribute('tabindex'); el.removeAttribute('aria-label'); el.removeAttribute('title');
+    el.style.cursor = 'default'; el.onclick = null; el.onkeydown = null;
+  }
 }
 
 // ── DASHBOARD (per-artista, datos reales) ──

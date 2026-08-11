@@ -553,7 +553,7 @@ async function labelCopyPDF() {
 }
 
 // ── Legal (por canción) ──
-const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'var(--accent)', aprobado:'#4ade80' };
+const LEGAL_STATE_COLOR = { pendiente:'var(--accent2)', enviado:'var(--beat)', firmado:'var(--risk)', aprobado:'var(--ok)' };
 function trackLegalHTML(t) {
   if (typeof reconcileLegalConflicts === 'function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
   const legal = t.legal || [];
