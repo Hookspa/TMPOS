@@ -14,6 +14,14 @@
 # Backups JSON (artistos-backup-*.json).
 # OJO: ignora tambien package.json/manifest.json futuros -> whitelistealos con !package.json
 *.json
+!package.json
+!package-lock.json
+
+# Infraestructura de pruebas de regresión (runtime público, sin artefactos locales)
+node_modules/
+test-results/
+playwright-report/
+blob-report/
 
 # Entregables estrategicos y de negocio - NUNCA al repo publico
 # (investor deck, modelo financiero, CEO/Council reviews, specs)
