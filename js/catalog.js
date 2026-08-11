@@ -166,6 +166,28 @@
     };
   }
 
+  function createCatalogIncident(state, context) {
+    const currentState = state || {};
+    const details = context || {};
+    const clean = (value, fallback, maximum) => {
+      const text = String(value == null ? '' : value).trim();
+      return (text || fallback).slice(0, maximum);
+    };
+    const error = currentState.error || {};
+    const status = Number(error.status);
+    return Object.freeze({
+      incidentId: clean(details.incidentId, 'catalog-unknown', 100),
+      version: clean(details.version, 'unknown', 40),
+      workspaceId: clean(details.workspaceId, 'anonymous', 100),
+      occurredAt: clean(details.occurredAt, new Date(0).toISOString(), 40),
+      status: clean(currentState.status, 'unknown', 20),
+      httpStatus: Number.isInteger(status) ? status : null,
+      attempt: Number.isInteger(currentState.attempts) ? currentState.attempts : 0,
+      online: details.online === true,
+      errorCode: clean(error.code, 'UNKNOWN', 60),
+    });
+  }
+
   function createCatalogLoader(options) {
     const config = options || {};
     const fetchImpl = config.fetch || (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
@@ -211,7 +233,12 @@
         try {
           const response = await fetchImpl(url, { cache: 'no-cache', signal: controller.signal });
           if (loadGeneration !== generation) return Object.freeze({ status: 'cancelled', attempts: attempt, url });
-          if (!response || !response.ok) throw new Error(`HTTP ${response ? response.status : 'sin respuesta'}`);
+          if (!response || !response.ok) {
+            const httpError = new Error(`HTTP ${response ? response.status : 'sin respuesta'}`);
+            httpError.code = 'HTTP_ERROR';
+            httpError.status = response && Number.isInteger(response.status) ? response.status : null;
+            throw httpError;
+          }
           const text = await response.text();
           if (loadGeneration !== generation) return Object.freeze({ status: 'cancelled', attempts: attempt, url });
           const validation = validateCatalogText(text, { minimumRows: config.minimumRows || 1 });
@@ -306,6 +333,7 @@
 
   return {
     CATALOG_HEADER,
+    createCatalogIncident,
     createCatalogLoader,
     migrateLegacyReferenceKeys,
     parseCatalogShape,

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  createCatalogIncident,
   createCatalogLoader,
   migrateLegacyReferenceKeys,
   parseCsvStrict,
@@ -63,9 +64,38 @@ test('el cargador reintenta con backoff controlado y termina en degraded', async
 
   assert.equal(result.status, 'degraded');
   assert.equal(result.attempts, 3);
+  assert.equal(result.error.code, 'HTTP_ERROR');
+  assert.equal(result.error.status, 503);
   assert.equal(calls, 3);
   assert.deepEqual(delays, [100, 200]);
   loader.dispose();
+});
+
+test('el diagnóstico técnico contiene contexto útil sin incluir el mensaje crudo', () => {
+  const error = new Error('token-secreto-no-debe-salir');
+  error.code = 'HTTP_ERROR';
+  error.status = 503;
+
+  const incident = createCatalogIncident({ status: 'degraded', attempts: 3, error }, {
+    incidentId: 'cat-test-1',
+    version: 'v0.78.0-alpha',
+    workspaceId: 'workspace-1',
+    occurredAt: '2026-08-11T15:00:00.000Z',
+    online: false,
+  });
+
+  assert.deepEqual(incident, {
+    incidentId: 'cat-test-1',
+    version: 'v0.78.0-alpha',
+    workspaceId: 'workspace-1',
+    occurredAt: '2026-08-11T15:00:00.000Z',
+    status: 'degraded',
+    httpStatus: 503,
+    attempt: 3,
+    online: false,
+    errorCode: 'HTTP_ERROR',
+  });
+  assert.doesNotMatch(JSON.stringify(incident), /token-secreto/);
 });
 
 test('el cargador aborta una descarga que supera el timeout', async () => {
@@ -401,8 +431,9 @@ test('el catálogo canónico conserva las 6,066 referencias y app.html ya no con
   const rows = parseCsvStrict(artifact.csv);
 
   assert.doesNotMatch(html, /id=["']bank-csv["']/);
-  ['catalog', 'app', 'releases', 'team', 'init'].forEach(script => {
-    assert.match(html, new RegExp(`src=["']js/${script}\\.js\\?v=20260811b["']`));
+  const scriptVersions = { catalog: '20260811c', app: '20260811c', releases: '20260811b', team: '20260811b', init: '20260811b' };
+  Object.entries(scriptVersions).forEach(([script, version]) => {
+    assert.match(html, new RegExp(`src=["']js/${script}\\.js\\?v=${version}["']`));
   });
   assert.deepEqual(artifact.stats, {
     rowCount: 6066,

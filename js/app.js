@@ -20,6 +20,8 @@ function ideaSelected(r) { const a = activeLaunch(); return !!(a && a.ideas && a
 let bancoCargado  = false;
 let catalogLoaderState = { status: 'idle', attempts: 0 };
 let _catalogLoader = null;
+let _catalogUrl = 'refs_02.csv';
+let _catalogRetrying = false;
 let activeForFilter = 'all';
 let activeCatFilter = 'all';
 let paginaActual  = 1;
@@ -188,6 +190,8 @@ const DEMO = [
   {_idx:5,id:6,title:"Reacción del productor",hook:"La cara cuando escuchó el take...",for:["lanzamiento"],cat:["bts","humor"],link:"",comentarios:"Humaniza el proceso",icon:"headphones"},
   {_idx:6,id:7,title:"Duet con fans",hook:"Cántalo conmigo",for:["single","ep","álbum"],cat:["engagement"],link:"",comentarios:"Genera UGC",icon:"mic"},
   {_idx:7,id:8,title:"POV: eres el artista en estudio",hook:"POV: son las 3am",for:["single","lanzamiento"],cat:["pov","humor"],link:"",comentarios:"Trending TikTok",icon:"eye"},
+  {_idx:8,id:9,title:"Responder un comentario con música",hook:"Me preguntaron cómo nació este sonido…",for:["single","lanzamiento"],cat:["engagement","storytelling"],link:"",comentarios:"Convierte preguntas reales en contenido",icon:"chat"},
+  {_idx:9,id:10,title:"Versión acústica en una toma",hook:"Así suena sin producción",for:["single","ep","álbum"],cat:["performance","awareness"],link:"",comentarios:"Muestra interpretación y contraste",icon:"sound"},
 ];
 function setReferencias(arr) { referencias = arr || []; referencias.forEach((r, i) => { r._idx = i; }); }
 setReferencias(DEMO);
@@ -239,6 +243,8 @@ function applyCatalogReady(state) {
 
   mergeCustomRefs();
   bancoCargado = true;
+  _catalogRetrying = false;
+  renderCatalogStatus();
   if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
     renderFiltros();
     renderBanco();
@@ -246,10 +252,13 @@ function applyCatalogReady(state) {
 }
 function handleCatalogLoaderState(state) {
   catalogLoaderState = state;
+  if (state.status === 'loading') renderCatalogStatus();
   if (state.status === 'ready') applyCatalogReady(state);
   if (state.status === 'degraded') {
     // DEMO + referencias propias siguen disponibles hasta que la reconexión automática funcione.
     bancoCargado = true;
+    _catalogRetrying = false;
+    renderCatalogStatus();
     if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
       renderFiltros();
       renderBanco();
@@ -258,6 +267,7 @@ function handleCatalogLoaderState(state) {
 }
 function loadCatalogBank(url) {
   if (!window.TempoCatalog) throw new Error('TempoCatalog no está disponible');
+  _catalogUrl = url || _catalogUrl;
   if (!_catalogLoader) {
     _catalogLoader = TempoCatalog.createCatalogLoader({
       minimumRows: 6066,
@@ -268,7 +278,92 @@ function loadCatalogBank(url) {
       onState: handleCatalogLoaderState,
     });
   }
-  return _catalogLoader.load(url);
+  return _catalogLoader.load(_catalogUrl);
+}
+function renderCatalogStatus() {
+  const host = document.getElementById('catalog-status'); if (!host) return;
+  if (catalogLoaderState.status === 'loading' && _catalogRetrying) {
+    host.innerHTML = `<div class="catalog-state" role="status" aria-busy="true">
+      <span class="catalog-state-icon" style="color:var(--text-muted)">${icon('refresh',16)}</span>
+      <div class="catalog-state-copy"><div class="catalog-state-title">Reintentando la carga del catálogo…</div></div>
+    </div>`;
+    return;
+  }
+  if (catalogLoaderState.status !== 'degraded') { host.innerHTML = ''; return; }
+  host.innerHTML = `<div class="catalog-state catalog-state--degraded" role="alert">
+    <span class="catalog-state-icon">${icon('warning',17)}</span>
+    <div class="catalog-state-copy">
+      <div class="catalog-state-title">El catálogo completo no está disponible</div>
+      <div class="catalog-state-detail">Puedes seguir trabajando con 10 referencias de emergencia y tus referencias personales. Reintentaremos también cuando vuelva la conexión.</div>
+    </div>
+    <div class="catalog-state-actions">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="retryCatalogBank()">${icon('refresh',12)} Reintentar</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="contactCatalogSupport()">Contactar soporte</button>
+    </div>
+  </div>`;
+}
+function retryCatalogBank() {
+  _catalogRetrying = true;
+  renderCatalogStatus();
+  return loadCatalogBank(_catalogUrl);
+}
+function catalogAppVersion() {
+  const label = s((document.querySelector('.logo > span') || {}).textContent);
+  return (label.match(/v[\w.-]+/i) || ['unknown'])[0];
+}
+function catalogIncidentDiagnostic() {
+  const incidentId = (window.crypto && crypto.randomUUID)
+    ? `catalog-${crypto.randomUUID()}`
+    : `catalog-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return TempoCatalog.createCatalogIncident(catalogLoaderState, {
+    incidentId,
+    version: catalogAppVersion(),
+    workspaceId: (typeof _teamId !== 'undefined' && _teamId) ? _teamId : 'anonymous',
+    occurredAt: new Date().toISOString(),
+    online: navigator.onLine,
+  });
+}
+async function copyCatalogDiagnostic(diagnostic) {
+  const text = JSON.stringify(diagnostic, null, 2);
+  try { if (navigator.clipboard) { await navigator.clipboard.writeText(text); return true; } } catch (e) {}
+  try {
+    const area = document.createElement('textarea'); area.value = text; area.setAttribute('readonly', '');
+    area.style.position = 'fixed'; area.style.opacity = '0'; document.body.appendChild(area); area.select();
+    const copied = document.execCommand('copy'); area.remove(); return copied;
+  } catch (e) { return false; }
+}
+async function contactCatalogSupport() {
+  const diagnostic = catalogIncidentDiagnostic();
+  const authenticated = typeof authed === 'function' && authed();
+  if (authenticated) {
+    const dedupeKey = `ao_catalog_incident:${diagnostic.version}:${diagnostic.workspaceId}`;
+    try {
+      const prior = JSON.parse(localStorage.getItem(dedupeKey) || 'null');
+      if (prior && prior.incidentId) {
+        uiToast('Reporte técnico ya enviado · ' + prior.incidentId);
+        return { status: 'deduplicated', diagnostic: prior };
+      }
+    } catch (e) {}
+    try {
+      const sb = await getSb();
+      if (!sb) throw new Error('Supabase no disponible');
+      const result = await sb.from('audit_log').insert({
+        team_id: diagnostic.workspaceId,
+        actor: (_user && (_user.email || _user.id)) || 'desconocido',
+        action: 'reportar',
+        target_type: 'catalog_incident',
+        target_id: diagnostic.incidentId,
+        label: JSON.stringify(diagnostic),
+      });
+      if (result && result.error) throw new Error(result.error.message || 'No se pudo registrar');
+      try { localStorage.setItem(dedupeKey, JSON.stringify(diagnostic)); } catch (e) {}
+      uiToast('Reporte enviado al equipo técnico · ' + diagnostic.incidentId);
+      return { status: 'reported', diagnostic };
+    } catch (e) {}
+  }
+  const copied = await copyCatalogDiagnostic(diagnostic);
+  uiToast(copied ? 'Diagnóstico copiado · compártelo con soporte' : 'No se pudo copiar el diagnóstico');
+  return { status: copied ? 'copied' : 'copy_failed', diagnostic };
 }
 function persistCustomEdit(r) {
   if (!r || !r.custom || r.owned === false) return; // las de la comunidad (de otros) no se persisten local
@@ -594,7 +689,7 @@ function getUniqueTags(key) {
 }
 function iniciarBanco() {
   activeForFilter = 'all'; activeCatFilter = 'all'; paginaActual = 1;
-  renderFiltros(); renderBanco();
+  renderCatalogStatus(); renderFiltros(); renderBanco();
 }
 function renderFiltros() {
   const forTags = getUniqueTags('for');
@@ -649,6 +744,7 @@ function renderBancoContext() {
     + `<div style="margin:-10px 0 18px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps-sm);display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
 }
 function renderBanco() {
+  renderCatalogStatus();
   renderBancoContext();
   renderBancoToolbar();
   const grid = document.getElementById('refs-grid');

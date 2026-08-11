@@ -65,6 +65,15 @@ test('Banco conserva su composición', async ({ page }, testInfo) => {
   await expect(page).toHaveScreenshot('banco.png', { animations: 'disabled', caret: 'hide' });
 });
 
+test('Banco degradado conserva una señal operativa clara', async ({ page }, testInfo) => {
+  await page.route('**/refs_02.csv', route => route.fulfill({ status: 503, contentType: 'text/plain', body: 'no disponible' }));
+  await openLocalWorkspace(page);
+  await expect.poll(() => page.evaluate(() => catalogLoaderState.status), { timeout: 15_000 }).toBe('degraded');
+  await openWorkspace(page, 'banco', testInfo.project.name === 'mobile-dark');
+  await expect(page.locator('#catalog-status [role="alert"]')).toBeVisible();
+  await expect(page).toHaveScreenshot('banco-degraded.png', { animations: 'disabled', caret: 'hide' });
+});
+
 test('la ficha de lanzamiento conserva su composición', async ({ page }, testInfo) => {
   await openLocalWorkspace(page);
   await openWorkspace(page, 'lanzamientos', testInfo.project.name === 'mobile-dark');
