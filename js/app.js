@@ -644,12 +644,12 @@ function renderBanco() {
   const cards = slice.map(r => {
     const sel = ideaSelected(r);
     return `
-    <div class="ref-page-card fade-in" onclick="openRefBoxdrop(${r._idx})">
+    <article class="ref-page-card fade-in">
       <div class="ref-page-thumb">
         ${(() => { const th = refThumbImmediate(r); const iid = 'rthumb-' + r._idx;
           return th
           ? `<img id="${iid}" class="ref-thumb-img" src="${s(th)}" alt="${esc(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
-          : `<img id="${iid}" class="ref-thumb-img" alt="${esc(r.title)}" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
+          : `<img id="${iid}" class="ref-thumb-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.custom ? customBadgeHTML(r) : ''}
@@ -660,13 +660,14 @@ function renderBanco() {
         ${r.hook ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(trText(r.hook))}"</div>` : ''}
         <div style="margin-bottom:3px;display:flex;flex-wrap:wrap">${catBadgeHTML(r.cat, true) || '<span style="font-size:var(--text-2xs);color:var(--text-dim)">sin cat</span>'}</div>
         <div style="display:flex;flex-wrap:wrap">${forBadgeHTML(r.for, true)}</div>
+        <div class="card-actions"><button type="button" class="card-open" onclick="openRefBoxdrop(${r._idx})">Ver detalle ${icon('link',10)}</button></div>
       </div>
-    </div>`;
+    </article>`;
   }).join('');
   // Tarjeta "+ Crear post desde cero" siempre al inicio (con "Cargar más" el inicio siempre está visible).
-  const addCard = `<div class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
-        <div style="text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<div style="font-size:var(--text-xs);font-family:var(--font-ui);margin-top:8px;letter-spacing:var(--track-caps)">CREAR POST<br>DESDE CERO</div></div>
-      </div>`;
+  const addCard = `<button type="button" class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
+        <span style="display:block;text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<span style="display:block;font-size:var(--text-xs);font-family:var(--font-ui);margin-top:8px;letter-spacing:var(--track-caps)">CREAR POST<br>DESDE CERO</span></span>
+      </button>`;
   const restantes = filtered.length - shown;
   const paginacion = `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 4px 0;border-top:1px solid var(--border);margin-top:8px;flex-wrap:wrap;gap:10px">
@@ -917,9 +918,9 @@ function openRefBoxdrop(idx) {
     ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#boxdrop .boxdrop-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
   document.getElementById('tab-brief').classList.add('active');
-  document.querySelectorAll('.boxdrop-tab')[0].classList.add('active');
+  const briefTab=document.querySelector('#boxdrop .boxdrop-tab'); if(briefTab){ briefTab.classList.add('active'); briefTab.setAttribute('aria-selected','true'); }
   document.getElementById('boxdrop').classList.add('open');
   // Traducción al español del brief (refs del banco/comunidad) → al llegar, re-abre con el texto traducido.
   if (bancoTranslate && !editable) {
@@ -1227,11 +1228,11 @@ function renderCalGrid() {
       const est = (ci.production && ci.production.estado) || 'pendiente';
       const estIcon = ESTADO_ICON[est] || '';
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
-      const delX = canEditCal ? `<button onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
+      const delX = canEditCal ? `<button type="button" onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
       const drag = canEditCal ? `draggable="true" ondragstart="calDragStart(event,'${ci._campId}','${ci.id}')" ondragend="calDragEnd(event)"` : '';
-      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:var(--text-2xs);font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:2px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<span onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</span></div>`;
+      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:var(--text-2xs);font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:1px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<button type="button" onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0;border:0;background:transparent;color:inherit;text-align:left;padding:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</button></div>`;
     }).join('');
-    const dropBadge = isDrop ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);letter-spacing:var(--track-caps);margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} DROP</div>` : '';
+    const dropBadge = isDrop ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);letter-spacing:var(--track-caps);margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} ESTRENO</div>` : '';
     const div = document.createElement('div');
     div.className = 'cal-day' + (isToday ? ' today' : '') + (outMonth ? '' : ' addable');
     if (calRange === '1m') div.style.minHeight = '78px';
@@ -1252,10 +1253,10 @@ function renderCalGrid() {
   renderCampaignsBar();
   if (sideRefs) sideRefs.innerHTML = referencias.slice(0, 6).map((r) => {
     const cats = (r.cat||[]).filter(Boolean); const col = catColor(cats[0]);
-    return `<div class="ref-item" onclick="openRefBoxdrop(${r._idx})">
-      <div style="width:26px;height:26px;border-radius:4px;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s(r.icon)||'pin',15)}</div>
-      <div class="ref-info"><div class="ref-title">${esc(r.title)}</div><div class="ref-meta">${cats.map(up).join(' · ') || '—'}</div></div>
-    </div>`;
+    return `<button type="button" class="ref-item" onclick="openRefBoxdrop(${r._idx})">
+      <span style="width:26px;height:26px;border-radius:4px;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s(r.icon)||'pin',15)}</span>
+      <span class="ref-info"><span class="ref-title" style="display:block">${esc(r.title)}</span><span class="ref-meta" style="display:block">${cats.map(up).join(' · ') || '—'}</span></span>
+    </button>`;
   }).join('');
 }
 
@@ -1267,12 +1268,13 @@ function renderCampaignsBar() {
   const rows = camps.map(c => {
     const hidden = !!_calHidden[c.id];
     const del = c.isEvergreen && canEditC ? `<button class="goal-btn reject" style="padding:2px 5px" title="Eliminar campaña" onclick="event.stopPropagation();borrarCampania('${c.id}')">${icon('close',10)}</button>` : '';
-    const tag = c.isEvergreen ? 'always-on' : 'release';
-    return `<div style="display:flex;align-items:center;gap:8px;opacity:${hidden?0.4:1};cursor:pointer" onclick="toggleCampaign('${c.id}')" title="${hidden?'Mostrar':'Ocultar'} en el calendario">
-      <span style="width:11px;height:11px;border-radius:3px;background:${c.color};display:inline-block;flex-shrink:0;${hidden?'opacity:.5':''}"></span>
-      <span style="flex:1;min-width:0;font-size:var(--text-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s(c.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${tag}</span></span>
-      <span style="color:var(--text-dim);display:flex">${icon(hidden?'eye':'eye',11)}</span>
-      ${del}
+    const tag = c.isEvergreen ? 'always-on' : 'lanzamiento';
+    return `<div style="display:flex;align-items:center;gap:8px;opacity:${hidden?0.4:1}">
+      <button type="button" aria-pressed="${!hidden}" onclick="toggleCampaign('${c.id}')" title="${hidden?'Mostrar':'Ocultar'} en el calendario" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer">
+        <span style="width:11px;height:11px;border-radius:3px;background:${c.color};display:inline-block;flex-shrink:0;${hidden?'opacity:.5':''}"></span>
+        <span style="flex:1;min-width:0;font-size:var(--text-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s(c.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${tag}</span></span>
+        <span style="color:var(--text-dim);display:flex">${icon('eye',11)}</span>
+      </button>${del}
     </div>`;
   }).join('');
   el.innerHTML = (rows || '<div style="font-size:var(--text-2xs);color:var(--text-dim)">Sin campañas.</div>') +
@@ -1314,8 +1316,8 @@ function donutSVG(segments, size, thickness, centerLabel, centerSub) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${thickness}"></circle>
     ${arcs}
-    ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Inter, sans-serif" font-weight="700" font-size="${Math.round(size*0.28)}">${centerLabel}</text>` : ''}
-    ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Inter, sans-serif" font-size="${size*0.08}">${centerSub}</text>` : ''}
+    ${centerLabel ? `<text x="${cx}" y="${cy - (centerSub?6:0)}" text-anchor="middle" dominant-baseline="central" fill="var(--text)" font-family="Overpass, sans-serif" font-weight="700" font-size="${Math.round(size*0.28)}">${centerLabel}</text>` : ''}
+    ${centerSub ? `<text x="${cx}" y="${cy + size*0.13}" text-anchor="middle" dominant-baseline="central" fill="var(--text-muted)" font-family="Overpass, sans-serif" font-size="${size*0.08}">${centerSub}</text>` : ''}
   </svg>`;
 }
 function kanbanCardHTML(launchId, ci) {
@@ -1323,12 +1325,13 @@ function kanbanCardHTML(launchId, ci) {
   const est = (ci.production && ci.production.estado) || 'pendiente';
   const fecha = ci.fecha ? `${MESES_CAL[new Date(ci.fecha+'T00:00:00').getMonth()]} ${new Date(ci.fecha+'T00:00:00').getDate()}` : '—';
   const canEditCal = (typeof canDo !== 'function') || canDo('edit_launch');
-  const delX = canEditCal ? `<button class="kc-del" onclick="event.stopPropagation();deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
-  return `<div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" onclick="openProduction('${launchId}','${ci.id}')" style="position:relative">
+  const delX = canEditCal ? `<button type="button" class="kc-del" onclick="deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
+  return `<article class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" style="position:relative">
     ${delX}
     <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${esc(ci.title)}</div>
     <div class="kc-meta">${fecha} · ${ESTADO_ICON[est] || ''} ${est}</div>
-  </div>`;
+    <div class="card-actions"><button type="button" class="card-open" onclick="openProduction('${launchId}','${ci.id}')">Abrir ${icon('link',10)}</button></div>
+  </article>`;
 }
 function renderKanban() {
   const board = document.getElementById('cal-board');
@@ -1456,7 +1459,8 @@ function buildCalDoc(printMode) {
     .x-out{opacity:.35} .x-daynum{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--mut);margin-bottom:5px}
     .x-chip{display:block;width:100%;text-align:left;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:4px 6px;font-size:10px;margin-bottom:4px;cursor:pointer;font-family:inherit;line-height:1.3}
     .x-chip:hover{background:var(--bd)}
-    .x-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto}
+    .x-ov{display:none;position:fixed;inset:0;width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border:0;background:rgba(0,0,0,.7);color:inherit;z-index:99;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto}
+    .x-ov[open]{display:flex}.x-ov::backdrop{background:transparent}
     .x-modal{background:var(--surf);border:1px solid var(--bd);border-radius:8px;max-width:680px;width:100%;padding:22px}
     .x-close{float:right;background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;line-height:1}
     .x-detail,.x-card{} .x-card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:18px;margin-bottom:14px;break-inside:avoid}
@@ -1483,7 +1487,7 @@ function buildCalDoc(printMode) {
     <div class="wrap">
       <div class="top">
         <span class="brand">TEMPO OS</span>
-        <div><h1 class="h1">${_esc(title)}</h1><div class="sub">PLAN DE CONTENIDO${drop ? ' · DROP ' + _esc(drop) : ''} · ${pieces.length} pieza(s)</div></div>
+        <div><h1 class="h1">${_esc(title)}</h1><div class="sub">PLAN DE CONTENIDO${drop ? ' · ESTRENO ' + _esc(drop) : ''} · ${pieces.length} pieza(s)</div></div>
         <button class="btn" onclick="window.print()">Guardar como PDF</button>
       </div>
       <div class="x-cal">${pieces.length ? _calGridHTML(pieces) : '<div class="sub">No hay contenido programado en este calendario.</div>'}
@@ -1491,12 +1495,13 @@ function buildCalDoc(printMode) {
       </div>
       <div class="x-print" style="display:none">${flat}</div>
     </div>
-    <div class="x-ov" id="ov" onclick="if(event.target===this)oc()"><div class="x-modal"><button class="x-close" onclick="oc()">×</button><div id="ov-body"></div></div></div>
+    <dialog class="x-ov" id="ov" aria-label="Detalle de contenido" onclick="if(event.target===this)oc()"><div class="x-modal"><button type="button" class="x-close" aria-label="Cerrar detalle" onclick="oc()">×</button><div id="ov-body"></div></div></dialog>
     <div class="x-hide">${detailBlocks}</div>
     <script>
-      function op(id){var d=document.getElementById('p-'+id);if(!d)return;document.getElementById('ov-body').innerHTML=d.innerHTML;document.getElementById('ov').style.display='flex';}
-      function oc(){document.getElementById('ov').style.display='none';}
-      document.addEventListener('keydown',function(e){if(e.key==='Escape')oc();});
+      var ovPriorFocus=null;
+      function op(id){var d=document.getElementById('p-'+id),o=document.getElementById('ov');if(!d||!o)return;ovPriorFocus=document.activeElement;document.getElementById('ov-body').innerHTML=d.innerHTML;if(!o.open)o.showModal();}
+      function oc(){var o=document.getElementById('ov');if(o&&o.open)o.close();}
+      document.getElementById('ov').addEventListener('close',function(){var p=ovPriorFocus;ovPriorFocus=null;if(p&&p.isConnected)setTimeout(function(){p.focus();},0);});
       ${printMode ? 'window.addEventListener("load",function(){setTimeout(function(){window.print();},500);});' : ''}
     <\/script>`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1655,7 +1660,7 @@ function openProduction(launchId, itemId) {
   const col = catColor(ci.cat);
   badge.style.cssText = `margin:0;font-size:var(--text-2xs);padding:3px 9px;border-radius:2px;font-family:var(--font-ui);background:${col}22;color:${col};border:1px solid ${col}44`;
   badge.textContent = up(ci.cat || 'pieza');
-  document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => t.classList.toggle('active', t.dataset.ptab === 'brief'));
+  document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => { const on=t.dataset.ptab==='brief'; t.classList.toggle('active',on); t.setAttribute('aria-selected',String(on)); });
   renderProd();
   document.getElementById('prod-modal').classList.add('open');
 }
@@ -1666,8 +1671,7 @@ function closeProdDirect() {
 }
 function prodTab(name, el) {
   prodActiveTab = name;
-  document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
+  document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => { const on=t===el; t.classList.toggle('active',on); t.setAttribute('aria-selected',String(on)); });
   renderProd();
 }
 function prodSet(field, val) {
@@ -1828,7 +1832,7 @@ function prodContentHTML(ci, p) {
       ${c && c.at ? `<span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">generado ${new Date(c.at).toLocaleString()}</span>` : ''}
     </div>
     ${aiHintHTML(promptStr, 1000)}
-    <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, script y hashtags a partir del ADN del artista + el Campaign DNA + esta pieza.</div>'}</div>
+    <div id="prod-content-result" style="margin-top:14px">${c ? contentResultHTML(c) : '<div class="empty-hint">Aún no hay contenido. Genera caption, guion y hashtags a partir del ADN del artista, el ADN de campaña y esta pieza.</div>'}</div>
     ${p.contentPrev ? `<div class="section-header" style="margin-top:22px"><div class="section-title" style="color:var(--text-dim)">GENERACIÓN ANTERIOR${p.contentPrev.at ? ` · ${new Date(p.contentPrev.at).toLocaleDateString()}` : ''}</div></div>
       <div style="font-size:var(--text-xs);color:var(--text-dim);margin-bottom:10px;font-family:var(--font-ui)">${icon('clock',12)} Se conserva para que la complementes. Solo se reemplaza al regenerar.</div>
       ${contentResultPrevHTML(p.contentPrev)}` : ''}`;
@@ -1883,10 +1887,10 @@ function contentResultHTML(c) {
   viewContent = c;
   const tags = (c.hashtags || []);
   return `<div class="content-result">
-    <div class="ctabs">
-      <span class="ctab active" data-ctab="caption" onclick="contentTab('caption',this)">Caption</span>
-      <span class="ctab" data-ctab="script" onclick="contentTab('script',this)">Script</span>
-      <span class="ctab" data-ctab="hashtags" onclick="contentTab('hashtags',this)">Hashtags</span>
+    <div class="ctabs" role="tablist" aria-label="Contenido generado">
+      <button type="button" role="tab" aria-selected="true" class="ctab active" data-ctab="caption" onclick="contentTab('caption',this)">Caption</button>
+      <button type="button" role="tab" aria-selected="false" class="ctab" data-ctab="script" onclick="contentTab('script',this)">Script</button>
+      <button type="button" role="tab" aria-selected="false" class="ctab" data-ctab="hashtags" onclick="contentTab('hashtags',this)">Hashtags</button>
     </div>
     <div data-cpane="caption">
       ${contentBlock('Hook (primeros 3s)', 'hook')}
@@ -1921,7 +1925,7 @@ function contentBlock(label, key, pre) {
 function contentTab(name, el) {
   const wrap = el.closest('.content-result'); if (!wrap) return;
   wrap.querySelectorAll('[data-cpane]').forEach(p => p.style.display = p.dataset.cpane === name ? '' : 'none');
-  wrap.querySelectorAll('.ctab').forEach(t => t.classList.toggle('active', t.dataset.ctab === name));
+  wrap.querySelectorAll('.ctab').forEach(t => { const on=t.dataset.ctab===name; t.classList.toggle('active',on); t.setAttribute('aria-selected',String(on)); });
 }
 // Feedback de copia unificado para TODOS los generadores de IA: portapapeles + botón que
 // confirma ("✓ Copiado") + toast. Una sola fuente para que copiar se sienta igual en todos
@@ -1995,7 +1999,7 @@ function closePOW(e) { if (e.target === document.getElementById('pow-modal')) cl
 function closePOWDirect() { document.getElementById('pow-modal').classList.remove('open'); }
 function renderPOW() {
   const d = powData(); const body = document.getElementById('pow-body');
-  if (!d.a) { body.innerHTML = '<div class="empty-hint" style="margin:0">Selecciona un lanzamiento con calendario para generar el POW.</div>'; return; }
+  if (!d.a) { body.innerHTML = '<div class="empty-hint" style="margin:0">Selecciona un lanzamiento con calendario para generar el plan de la semana.</div>'; return; }
   const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;
   body.innerHTML = `
     <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:18px">${up(d.art.name)} · ${up(d.a.name)} · SEMANA DEL ${powDMd(d.now.mon)} AL ${powDMd(d.now.sun)}</div>
@@ -2081,7 +2085,7 @@ async function powPDF() {
   if (d.metrics.length) d.metrics.forEach(m => pline(`-  ${m.metric}: ${fmtNum(m.value)}`, 11, [80,80,80], 3));
   else pline('Sin metricas.', 11, [80,80,80], 3);
   if (powRecommendation) { y += 10; pline('Recomendacion IA', 14, [0,0,0], 6); pline(powRecommendation, 11, [80,80,80], 4); }
-  doc.save(`POW-${s(d.art.name)}-${todayISO()}.pdf`.replace(/\s+/g, '_'));
+  doc.save(`plan_semana-${s(d.art.name)}-${todayISO()}.pdf`.replace(/\s+/g, '_'));
 }
 
 // ══════════════════════════════════════════
@@ -2132,8 +2136,8 @@ function renderObjetivos() {
       <div class="goal-target"><input class="goal-target-input" value="${s(g.target)}" title="Edita el objetivo manualmente" onclick="event.stopPropagation()" onchange="goalSetTarget(${i},this.value)"><small>OBJETIVO</small></div>
       <div class="goal-ai">${s(g.ai || (g.source === 'manual' ? 'manual' : ''))}</div>
       <div class="goal-actions">
-        <div class="goal-btn accept${accOn}" title="Aceptar" onclick="goalSetStatus(${i},'accepted')">${icon('check',13)}</div>
-        <div class="goal-btn reject${rejOn}" title="Quitar" onclick="goalSetStatus(${i},'rejected')">${icon('close',13)}</div>
+        <button type="button" class="goal-btn accept${accOn}" title="Aceptar" aria-label="Aceptar objetivo" onclick="goalSetStatus(${i},'accepted')">${icon('check',13)}</button>
+        <button type="button" class="goal-btn reject${rejOn}" title="Quitar" aria-label="Rechazar objetivo" onclick="goalSetStatus(${i},'rejected')">${icon('close',13)}</button>
       </div>
     </div>`;
   }).join('');
@@ -2620,7 +2624,7 @@ function screenshotsStripHTML() {
 // ── Sub-pestañas ──
 function metricasTab(name) {
   ['resumen','importar','instrucciones'].forEach(n => { const p = document.getElementById('mtab-'+n); if (p) p.style.display = n===name ? '' : 'none'; });
-  document.querySelectorAll('.mtab').forEach(t => t.classList.toggle('active', t.dataset.mtab === name));
+  document.querySelectorAll('#page-metricas .mtab[data-mtab]').forEach(t => { const on=t.dataset.mtab===name; t.classList.toggle('active',on); t.setAttribute('aria-selected',String(on)); });
 }
 
 function renderMetricas() {
@@ -2860,10 +2864,10 @@ function guardarScreenshotMetricas() {
 function closeBoxdrop(e) { if (e.target === document.getElementById('boxdrop')) closeBoxdropDirect(); }
 function closeBoxdropDirect() { document.getElementById('boxdrop').classList.remove('open'); }
 function switchTab(name, el) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.boxdrop-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#boxdrop .tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#boxdrop .boxdrop-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
   document.getElementById('tab-' + name).classList.add('active');
-  el.classList.add('active');
+  el.classList.add('active'); el.setAttribute('aria-selected','true');
 }
 
 // ══════════════════════════════════════════
@@ -3133,14 +3137,14 @@ function renderCampanias() {
     const isEv = l.type === 'evergreen';
     const col = isEv ? (l.color || 'var(--beat)') : 'var(--muted)';
     const st = isEv ? 'always-on' : ((STATUS_MAP[l.status] || {}).word || l.status);
-    return `<div onclick="goToCampaign('${l.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<article style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span>
       <div style="flex:1;min-width:200px">
-        <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${isEv ? 'ALWAYS-ON' : 'RELEASE'}</span></div>
+        <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)} <span style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${isEv ? 'SIEMPRE ACTIVA' : 'LANZAMIENTO'}</span></div>
         <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${art ? esc(art.name) : '—'} · ${esc(st)} · ${pieces} pieza${pieces === 1 ? '' : 's'}${next ? ` · próxima: ${powDM(next.fecha)}` : ''}</div>
       </div>
-      <span class="chip" style="cursor:default">Ver →</span>
-    </div>`;
+      <button type="button" class="card-open" onclick="goToCampaign('${l.id}')">Abrir ${icon('link',10)}</button>
+    </article>`;
   }).join('');
 }
 function goToCampaign(id) {
@@ -3308,11 +3312,11 @@ function setLaunchStatus(id, st) {
   const l = launches.find(x => x.id === id); if (!l || !STATUS_MAP[st]) return;
   const prev = l.status; if (prev === st) return;
   l.status = st; saveLaunches();
-  if (typeof logActivity === 'function') logActivity('status_changed', `Release → ${STATUS_MAP[st].word}: ${s(l.name)}`, { artistId: l.artistId, releaseId: l.id });
+  if (typeof logActivity === 'function') logActivity('status_changed', `Lanzamiento → ${STATUS_MAP[st].word}: ${s(l.name)}`, { artistId: l.artistId, releaseId: l.id });
   // B3 (captura "ahora"): al CERRAR un release, captura el snapshot del rollup operativo (idempotente).
   if ((st === 'complete' || st === 'cerrado') && typeof captureReleaseSnapshot === 'function') captureReleaseSnapshot(id, { silent: true });
   if (typeof runAutomations === 'function') runAutomations();
-  if (typeof renderReleaseTab === 'function' && currentLaunchId === id) renderReleaseTab('resumen');
+  if (typeof renderReleaseTab === 'function' && currentLaunchId === id) renderReleaseTab(typeof _releaseTab === 'string' ? _releaseTab : 'resumen');
   renderAllLaunches();
 }
 // Dropdown de estado del release (editable) o badge estático según permiso. Reusable (header + resumen).
@@ -3320,7 +3324,7 @@ function statusDropdownHTML(l, extra) {
   const st = STATUS_MAP[l.status] || STATUS_MAP.planning;
   const editable = (typeof canDo === 'function') ? canDo('edit_launch') : true;
   if (!editable) return `<span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>`;
-  return `<select class="status-select ${st.cls}" style="${extra || ''}" title="Cambiar estado del release" onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k => `<option value="${k}" ${l.status === k ? 'selected' : ''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
+  return `<select class="status-select ${st.cls}" style="${extra || ''}" title="Cambiar estado del lanzamiento" onchange="setLaunchStatus('${l.id}',this.value)">${Object.keys(STATUS_MAP).map(k => `<option value="${k}" ${l.status === k ? 'selected' : ''}>${STATUS_MAP[k].word}</option>`).join('')}</select>`;
 }
 const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
@@ -3357,15 +3361,16 @@ function launchCardHTML(l) {
   const redAlerts = (typeof releaseAlerts === 'function') ? releaseAlerts(l).filter(a => a.level === 'red').length : 0;
   const alertBadge = redAlerts ? `<span class="launch-alert-badge" title="${redAlerts} alerta(s) sin resolver">${icon('warning', 11)}</span>` : '';
   return `
-    <div class="launch-card fade-in" onclick="openLaunch('${l.id}')">
-      <button class="del-btn" title="Eliminar" onclick="event.stopPropagation();borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
+    <article class="launch-card fade-in">
+      <button type="button" class="del-btn" title="Eliminar" onclick="borrarLanzamiento('${l.id}')">${icon('close',12)}</button>
       ${coverHTML(l, alertBadge)}
       <div class="launch-info">
         <div class="launch-name">${esc(l.name)}</div>
         <div class="launch-date">${launchDateLabel(l)}</div>
         <span class="launch-status ${st.cls}"><span class="status-dot"></span>${st.word}</span>
+        <div class="card-actions"><button type="button" class="card-open" onclick="openLaunch('${l.id}')">Abrir ${icon('link',10)}</button></div>
       </div>
-    </div>`;
+    </article>`;
 }
 
 function renderLaunches() {
@@ -3373,7 +3378,7 @@ function renderLaunches() {
   if (!grid) return;
   const sel = document.getElementById('launch-sort'); if (sel) sel.value = launchSortMode();
   grid.innerHTML =
-    `<div class="launch-card add" onclick="abrirWizard()"><div class="plus">+</div><div style="font-size:var(--text-sm)">Nuevo Lanzamiento</div></div>`
+    `<button type="button" class="launch-card add" onclick="abrirWizard()"><span class="plus">+</span><span style="font-size:var(--text-sm)">Nuevo Lanzamiento</span></button>`
     + sortLaunches(artistLaunches()).map(launchCardHTML).join('');
 }
 function renderDashLaunches() {
@@ -3405,7 +3410,7 @@ function diasRestantes(iso) {
   const d = new Date(iso + 'T00:00:00');
   return Math.round((d - today) / 86400000);
 }
-// Momento firma 01 (DESIGN.md v2): countdown como instrumento. T−NN en Inter tabular-nums +
+// Momento firma 01 (DESIGN.md v2): countdown como instrumento. T−NN en Overpass tabular-nums +
 // regla de ticks; a T−3 o menos, numeral+ticks en naranja (único acento de la tarjeta).
 function dropClockHTML(l, large) {
   const d = (l && l.date) ? diasRestantes(l.date) : null;
@@ -3438,7 +3443,7 @@ function renderOnAir() {
   const drop = drops[0];
   const blocked = onAirBlockedCount();
   const dotCol = blocked ? 'var(--blocked)' : 'var(--ok)';
-  const dropPart = drop ? ` · PRÓXIMO DROP: «${esc(up(drop.name))}» — T−${p2(diasRestantes(drop.date))}` : ' · SIN DROPS PROGRAMADOS';
+  const dropPart = drop ? ` · PRÓXIMO LANZAMIENTO: «${esc(up(drop.name))}» — T−${p2(diasRestantes(drop.date))}` : ' · SIN LANZAMIENTOS PROGRAMADOS';
   const blockedPart = blocked ? ` · <span style="color:var(--blocked)">${blocked} BLOQUEADO${blocked === 1 ? '' : 'S'} · ABRIR COLA →</span>` : '';
   el.innerHTML = `<span class="oa-dot" style="background:${dotCol}"></span>${stamp}${dropPart}${blockedPart}`;
   if (blocked) {
@@ -3517,7 +3522,7 @@ async function renderDashTrend(art, ls) {
   const ctx = cv.getContext('2d');
   // Sin esto Chart.js dibuja sus ticks en su default (Helvetica/Arial): una tercera
   // tipografía en pantalla que nadie eligió. DESIGN.md §Typography: dos familias.
-  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.font.family = "'Overpass', system-ui, sans-serif";
   Chart.defaults.font.weight = 500;
   if (_dashChart) { try { _dashChart.destroy(); } catch (e) {} }
   _dashChart = new Chart(ctx, {
@@ -3539,10 +3544,10 @@ function renderDashSignals(art) {
   const f = artistFinance(art.id), legal = artistLegalPending(art.id), alerts = artistAlertCount(art.id), next = nextRelease(art.id);
   const rec = f.inv ? Math.min(100, Math.round(f.ing / f.inv * 100)) : null;
   host.innerHTML =
-    sigTile('flag', next ? 'accent' : '', next ? (diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy') : '—', next ? 'Próximo: ' + s(next.name) : 'Sin próximos drops') +
+    sigTile('flag', next ? 'accent' : '', next ? (diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy') : '—', next ? 'Próximo: ' + s(next.name) : 'Sin próximos lanzamientos') +
     sigTile('warning', alerts ? 'warn' : 'ok', alerts || '0', alerts ? 'alerta' + (alerts > 1 ? 's' : '') + ' abiertas' : 'sin alertas') +
     sigTile('file', legal ? 'beat' : 'ok', legal || '0', legal ? 'documentos legales pendientes' : 'legal al día') +
-    sigTile('finance', (rec != null && rec >= 100) ? 'ok' : 'accent', rec != null ? rec + '%' : '—', 'recoup · ROI ' + (f.roi != null ? f.roi + '%' : '—'));
+    sigTile('finance', (rec != null && rec >= 100) ? 'ok' : 'accent', rec != null ? rec + '%' : '—', 'recuperación · ROI ' + (f.roi != null ? f.roi + '%' : '—'));
 }
 
 // Onboarding del Caso 1: checklist de arranque para el artista que abre y no tiene
@@ -3550,7 +3555,7 @@ function renderDashSignals(art) {
 function dashOnboardingHTML(art) {
   return `<div class="onb fade-in">
     <div class="onb-title">EMPIEZA AQUÍ${art ? ' · ' + esc(up(art.name)) : ''}</div>
-    <div class="onb-sub">Tres pasos para tener tu primer drop corriendo dentro de Tempo.</div>
+    <div class="onb-sub">Tres pasos para poner en marcha tu primer lanzamiento en Tempo.</div>
     <div class="onb-steps">
       <div class="onb-step">
         <span class="onb-num">1</span>
@@ -3570,7 +3575,7 @@ function dashOnboardingHTML(art) {
       <div class="onb-step locked">
         <span class="onb-num">3</span>
         <div class="onb-step-body">
-          <div class="onb-step-title">Genera el contenido del drop</div>
+          <div class="onb-step-title">Genera el contenido del lanzamiento</div>
           <div class="onb-step-desc">Caption, guión y hashtags por pieza, listos para publicar. (Se desbloquea con tu lanzamiento.)</div>
         </div>
       </div>
@@ -3645,7 +3650,7 @@ function renderDashboard() {
       <div class="stat-label">Lanzamientos</div>
       <div class="stat-value">${ls.length}</div>
       <div class="stat-trend" style="color:var(--beat)">${counts.active} en campaña · ${counts.planning} planeando${counts.complete ? ' · ' + counts.complete + ' lanzados' : ''}</div>
-      <div class="stat-sub">${nextDrop ? `Próximo: ${s(nextDrop.name)} en ${diasRestantes(nextDrop.date)}d` : 'Sin próximos drops'}</div>
+      <div class="stat-sub">${nextDrop ? `Próximo: ${s(nextDrop.name)} en ${diasRestantes(nextDrop.date)}d` : 'Sin próximos lanzamientos'}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Contenido Programado</div>
@@ -3654,7 +3659,7 @@ function renderDashboard() {
       <div class="stat-sub">${ideasCount} ideas · ${allCal.length} piezas en calendario</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Recoupment</div>
+      <div class="stat-label">Recuperación</div>
       <div class="stat-value">${recoup != null ? recoup + '%' : '—'}</div>
       <div class="kpi-delta ${roi != null ? (roi >= 0 ? 'up' : 'down') : 'flat'}">${roi != null ? icon(roi >= 0 ? 'trend' : 'trend', 12) + ' ROI ' + roi + '%' : 'sin inversión'}</div>
       <div class="stat-sub">${art ? 'inv ' + money(artistFinance(art.id).inv) : '—'}</div>
@@ -3675,11 +3680,12 @@ function renderDashboard() {
         const estado = (ci.production && ci.production.estado) || 'pendiente';
         const urgent = dr <= 2 && estado !== 'publicado';
         const dlabel = dr === 0 ? 'HOY' : (dr === 1 ? 'MAÑANA' : (() => { const d = new Date(ci.fecha + 'T00:00:00'); return `${MESES_CAL[d.getMonth()]} ${d.getDate()}`; })());
-        return `<div onclick="openProduction('${ci.launchId}','${ci.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;cursor:pointer;">
+        return `<article style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;">
           <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
           <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${esc(ci.title)}</span>
           <div style="margin-left:auto;font-size:var(--text-2xs);color:var(--text-muted);font-family:var(--font-ui)">${s(ci.launch)}</div>
-        </div>`;
+          <button type="button" class="card-open" onclick="openProduction('${ci.launchId}','${ci.id}')">Abrir ${icon('link',10)}</button>
+        </article>`;
       }).join('');
     }
   }

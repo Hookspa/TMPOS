@@ -301,10 +301,10 @@ function openNewTask() {
     <div class="field-grid" style="margin-bottom:6px">
       <div class="field"><label>Artista <span style="color:var(--text-dim)">(opcional)</span></label>
         <select class="input" id="nt-artist" onchange="ntFillReleases()"><option value="">— Ninguno —</option>${arts.map(a => `<option value="${a.id}">${s(a.name)}</option>`).join('')}</select></div>
-      <div class="field"><label>Release <span style="color:var(--text-dim)">(opcional)</span></label>
+      <div class="field"><label>Lanzamiento <span style="color:var(--text-dim)">(opcional)</span></label>
         <select class="input" id="nt-release"><option value="">— Ninguno —</option></select></div>
     </div>
-    <div class="empty-hint" style="margin:4px 0 14px">Puedes crear la tarea sin artista ni release (queda como tarea suelta del workspace) y linkearla solo a un módulo.</div>
+    <div class="empty-hint" style="margin:4px 0 14px">Puedes crear la tarea sin artista ni lanzamiento; quedará como tarea suelta del equipo y vinculada solo a un módulo.</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="cerrarNewTask()">Cancelar</button>
       <button class="btn btn-primary" onclick="submitNewTask()">Crear tarea</button>
@@ -352,19 +352,20 @@ function _taskCardHTML(t, selectable) {
   const blocked = (typeof taskIsBlocked === 'function') && taskIsBlocked(t);
   const sel = selectable && _tvSel.has(t.id);
   const selBox = selectable ? `<input type="checkbox" style="flex:0 0 auto;margin-right:2px" ${sel ? 'checked' : ''} onclick="tvToggleSel('${t.id}',event)">` : '';
-  return `<div class="tk-card" role="button" tabindex="0" style="${sel ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''}" onclick="openTaskDetail('${t.id}')" onkeydown="if((event.key==='Enter'||event.key===' ')&&event.target===this){event.preventDefault();openTaskDetail('${t.id}')}">
+  return `<article class="tk-card" style="${sel ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''}">
     ${selBox}
     <div class="tk-main">
       <div class="tk-title ${done ? 'done' : ''}">${blocked ? `<span style="color:var(--accent2)" title="${(typeof blockedReason === 'function') ? blockedReason(t) : 'Bloqueada'}">${icon('lock', 12)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
       <div class="tk-meta">${icon('releases', 11)} ${_relNameOf(t)}${t.departamento ? ' · ' + _priLabelDept(t.departamento) : ''}${!t.responsable ? ' · <span style="color:var(--accent2)">sin responsable</span>' : ''}${_subMeta(t)}</div>
     </div>
-    <div class="tk-right" onclick="event.stopPropagation()">
+    <div class="tk-right">
       ${priChip(t.priority)}
       ${du.label ? `<span class="tk-due ${du.cls}">${du.label}</span>` : ''}
       ${(typeof assigneeSelectHTML === 'function') ? assigneeSelectHTML(t.responsable, `onchange="setTaskRespInline('${t.id}',this.value)"`, 'padding:5px 7px;font-size:var(--text-xs);width:auto;max-width:130px') : ''}
       <select class="input" style="padding:5px 7px;font-size:var(--text-xs);width:auto" onchange="setTaskEstadoInline('${t.id}',this.value)">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
+      <button type="button" class="card-open" onclick="openTaskDetail('${t.id}')">Abrir ${icon('link',10)}</button>
     </div>
-  </div>`;
+  </article>`;
 }
 function _priLabelDept(d) { const x = TASK_DEPTS.find(s2 => s2[0] === d); return x ? x[1] : d; }
 function tvList(list) {
@@ -397,10 +398,11 @@ function tvKanban(list) {
   const cols = TASK_ESTADOS.map(([est, lbl]) => {
     const arr = _sortTasks(list.filter(t => t.estado === est));
     const c = TASK_ESTADO_COLOR[est];
-    const cards = arr.map(t => `<div class="tk-kcard" role="button" tabindex="0" draggable="true" ondragstart="tvDragStart(event,'${t.id}')" onclick="openTaskDetail('${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTaskDetail('${t.id}')}">
+    const cards = arr.map(t => `<article class="tk-kcard" draggable="true" ondragstart="tvDragStart(event,'${t.id}')">
         <div class="ktitle">${((typeof taskIsBlocked === 'function') && taskIsBlocked(t)) ? `<span style="color:var(--accent2)">${icon('lock', 11)}</span> ` : ''}${s(t.titulo) || '(sin título)'}</div>
         <div class="kmeta">${priChip(t.priority)} ${_dueInfo(t).label ? `<span class="tk-due ${_dueInfo(t).cls}">${_dueInfo(t).label}</span>` : ''} <span style="color:var(--text-dim)">${_relNameOf(t)}</span>${_subMeta(t)}</div>
-      </div>`).join('') || `<div style="font-size:var(--text-xs);color:var(--text-dim);padding:6px 2px">—</div>`;
+        <div class="card-actions"><button type="button" class="card-open" onclick="openTaskDetail('${t.id}')">Abrir ${icon('link',10)}</button></div>
+      </article>`).join('') || `<div style="font-size:var(--text-xs);color:var(--text-dim);padding:6px 2px">—</div>`;
     return `<div class="tk-col" data-est="${est}" ondragover="tvDragOver(event,this)" ondragleave="this.classList.remove('drop')" ondrop="tvDrop(event,this,'${est}')">
       <div class="tk-col-head"><span class="dot" style="width:8px;height:8px;background:${c}"></span>${lbl}<span class="cnt">${arr.length}</span></div>${cards}</div>`;
   }).join('');
@@ -426,7 +428,7 @@ function tvCalendar(list) {
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const arr = byDay[d] || [];
-    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<div class="pill" style="background:${c}22;color:${c}" onclick="openTaskDetail('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</div>`; }).join('') + (arr.length > 3 ? `<div style="font-size:var(--text-2xs);color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
+    const pills = arr.slice(0, 3).map(t => { const c = TASK_PRI_COLOR[t.priority] || 'var(--accent)'; return `<button type="button" class="pill" style="background:${c}22;color:${c}" onclick="openTaskDetail('${t.id}')" title="${s(t.titulo)}">${s(t.titulo)}</button>`; }).join('') + (arr.length > 3 ? `<div style="font-size:var(--text-2xs);color:var(--text-dim)">+${arr.length - 3} más</div>` : '');
     cells += `<div class="cell ${iso === todayISO2 ? 'today' : ''}"><div class="dnum">${d}</div>${pills}</div>`;
   }
   return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -500,15 +502,15 @@ function tvQueFalta() {
     ].join('');
     const ph = (typeof releasePhase === 'function') ? releasePhase(l) : '';
     return `<div class="qf-rel">
-      <div class="qf-rel-h" onclick="openLaunch('${l.id}')">
+      <button type="button" class="qf-rel-h semantic-row-button" onclick="openLaunch('${l.id}')">
         <span class="dot" style="width:9px;height:9px;background:${(typeof phaseColor === 'function') ? phaseColor(ph) : 'var(--accent)'}"></span>
         <strong style="font-size:var(--text-md)">${s(l.name)}</strong>
         <span style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">${_artNameOf({ artistId: l.artistId })} · ${ph}${l.date ? ' · ' + (diasRestantes(l.date) >= 0 ? 'en ' + diasRestantes(l.date) + 'd' : 'ya salió') : ''}</span>
         <span style="margin-left:auto;font-size:var(--text-xs);color:var(--accent)">Abrir ${icon('link', 11)}</span>
-      </div>${items}</div>`;
+      </button>${items}</div>`;
   }).filter(Boolean).join('');
-  if (!blocks) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Nada pendiente accionable. Todos los releases en orden.</div></div>`;
-  return `<div class="empty-hint" style="margin-bottom:14px">Lo que bloquea o falta para cada lanzamiento — accionable, cruzando todos los releases${_tv.artistId ? ' del artista filtrado' : ''}.</div>${blocks}`;
+  if (!blocks) return `<div class="tk-empty">${icon('check', 28)}<div style="margin-top:10px">Nada pendiente accionable. Todos los lanzamientos están en orden.</div></div>`;
+  return `<div class="empty-hint" style="margin-bottom:14px">Lo que bloquea o falta para cada lanzamiento, cruzando todos los lanzamientos${_tv.artistId ? ' del artista filtrado' : ''}.</div>${blocks}`;
 }
 
 // ══════════════════════════════════════════
@@ -523,8 +525,8 @@ function _treeInjectStyles() {
   st.textContent = `
   .tree-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
   .tree-row:hover{background:var(--surface2)}
-  .tree-caret{width:14px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:var(--text-xs);flex:0 0 auto}
-  .tree-name{flex:1;cursor:pointer;font-size:var(--text-base);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tree-caret{width:18px;padding:0;border:0;background:transparent;text-align:center;cursor:pointer;color:var(--text-muted);font-size:var(--text-xs);flex:0 0 auto}
+  .tree-name{flex:1;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font-size:var(--text-base);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tree-name:hover{color:var(--accent)}
   .tree-badge{font-size:var(--text-2xs);font-family:var(--font-ui);background:var(--surface2);color:var(--text-muted);border-radius:8px;padding:1px 7px;flex:0 0 auto}`;
   document.head.appendChild(st);
@@ -540,9 +542,9 @@ function tvTree() {
     const aOpen = _treeOpen.has('a:' + a.id);
     return `<div>
       <div class="tree-row" style="font-weight:600">
-        <span class="tree-caret" onclick="tvTreeToggle('a:${a.id}')">${rels.length ? (aOpen ? '▾' : '▸') : '·'}</span>
+        ${rels.length ? `<button type="button" class="tree-caret" aria-expanded="${aOpen}" onclick="tvTreeToggle('a:${a.id}')">${aOpen ? '▾' : '▸'}</button>` : '<span class="tree-caret">·</span>'}
         <span class="artist-avatar" style="width:22px;height:22px;font-size:var(--text-2xs);flex:0 0 auto">${up(a.name).slice(0, 1)}</span>
-        <span class="tree-name" onclick="setActiveArtist('${a.id}');showPage('lanzamientos')">${esc(a.name)}</span>
+        <button type="button" class="tree-name" onclick="setActiveArtist('${a.id}');showPage('lanzamientos')">${esc(a.name)}</button>
         ${aTasks ? `<span class="tree-badge">${aTasks}</span>` : ''}
       </div>
       ${aOpen ? rels.map(l => {
@@ -552,9 +554,9 @@ function tvTree() {
         const ph = (typeof releasePhase === 'function') ? releasePhase(l) : '';
         return `<div style="margin-left:22px">
           <div class="tree-row">
-            <span class="tree-caret" onclick="tvTreeToggle('r:${l.id}')">${trks.length ? (rOpen ? '▾' : '▸') : '·'}</span>
+            ${trks.length ? `<button type="button" class="tree-caret" aria-expanded="${rOpen}" onclick="tvTreeToggle('r:${l.id}')">${rOpen ? '▾' : '▸'}</button>` : '<span class="tree-caret">·</span>'}
             <span class="dot" style="width:8px;height:8px;flex:0 0 auto;background:${(typeof phaseColor === 'function') ? phaseColor(ph) : 'var(--accent)'}"></span>
-            <span class="tree-name" onclick="openLaunch('${l.id}')">${esc(l.name)}</span>
+            <button type="button" class="tree-name" onclick="openLaunch('${l.id}')">${esc(l.name)}</button>
             <span style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);flex:0 0 auto">${ph}</span>
             ${rTasks ? `<span class="tree-badge">${rTasks}</span>` : ''}
           </div>
@@ -563,7 +565,7 @@ function tvTree() {
             return `<div style="margin-left:22px"><div class="tree-row">
               <span class="tree-caret">·</span>
               <span class="dot" style="width:6px;height:6px;flex:0 0 auto;background:var(--text-dim)"></span>
-              <span class="tree-name" onclick="openLaunch('${l.id}');setTimeout(()=>{if(typeof openTrack==='function')openTrack('${tr.id}')},60)">${esc(tr.title || '(track)')}</span>
+              <button type="button" class="tree-name" onclick="openLaunch('${l.id}');setTimeout(()=>{if(typeof openTrack==='function')openTrack('${tr.id}')},60)">${esc(tr.title || '(track)')}</button>
               ${tTasks ? `<span class="tree-badge">${tTasks}</span>` : ''}
             </div></div>`;
           }).join('') : ''}
@@ -571,7 +573,7 @@ function tvTree() {
       }).join('') : ''}
     </div>`;
   }).join('');
-  return `<div class="empty-hint" style="margin-bottom:12px">Tu roster como árbol — Artista → Release → Track. El número es tareas abiertas. Click para navegar.</div>${html}`;
+  return `<div class="empty-hint" style="margin-bottom:12px">Tu roster como árbol: artista → lanzamiento → canción. El número indica las tareas abiertas. Haz clic para navegar.</div>${html}`;
 }
 
 // ══════════════════════════════════════════
@@ -656,18 +658,16 @@ function openTaskDetail(id) {
   _tdId = id; _tdTab = 'coment';
   let ov = document.getElementById('td-overlay');
   if (!ov) {
-    ov = document.createElement('div'); ov.id = 'td-overlay'; ov.className = 'boxdrop-overlay';
+    ov = document.createElement('dialog'); ov.id = 'td-overlay'; ov.className = 'boxdrop-overlay';
     ov.onclick = e => { if (e.target === ov) closeTaskDetail(); };
     document.body.appendChild(ov);
   }
-  document.addEventListener('keydown', _tdEsc);
   ov.classList.add('open');
   tdRender();
 }
-function _tdEsc(e) { if (e.key === 'Escape') closeTaskDetail(); }
 function closeTaskDetail() {
   const ov = document.getElementById('td-overlay'); if (ov) ov.classList.remove('open');
-  _tdId = null; document.removeEventListener('keydown', _tdEsc);
+  _tdId = null;
   if (typeof tvRenderBody === 'function') tvRenderBody();
   if (typeof updateTaskBadge === 'function') updateTaskBadge();
 }
@@ -680,7 +680,7 @@ function tdPatch(patch) {
 function tdRender() {
   const ov = document.getElementById('td-overlay'); const t = _tdTask(); if (!ov || !t) return;
   const editable = (typeof canDo === 'function') ? canDo('gestionar_tareas') : true;
-  ov.innerHTML = `<div class="boxdrop" style="width:880px" onclick="event.stopPropagation()">
+  ov.innerHTML = `<div class="boxdrop" style="width:880px">
     <div class="boxdrop-header">
       <input class="td-title-input" value="${esc(t.titulo)}" placeholder="Título de la tarea" ${editable ? '' : 'disabled'} onchange="tdPatch({titulo:this.value})">
       <select class="input" style="width:auto;padding:6px 9px;font-size:var(--text-sm)" ${editable ? '' : 'disabled'} onchange="tdPatch({estado:this.value})">${TASK_ESTADOS.map(x => `<option value="${x[0]}" ${t.estado === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select>
@@ -710,8 +710,8 @@ function tdMain(t, editable) {
     </div>
     <div class="td-block">
       <div class="boxdrop-tabs" style="padding:0;margin-bottom:12px">
-        <div class="boxdrop-tab ${_tdTab === 'coment' ? 'active' : ''}" onclick="tdTab('coment')">Comentarios</div>
-        <div class="boxdrop-tab ${_tdTab === 'activ' ? 'active' : ''}" onclick="tdTab('activ')">Actividad</div>
+        <button type="button" class="boxdrop-tab ${_tdTab === 'coment' ? 'active' : ''}" onclick="tdTab('coment')">Comentarios</button>
+        <button type="button" class="boxdrop-tab ${_tdTab === 'activ' ? 'active' : ''}" onclick="tdTab('activ')">Actividad</button>
       </div>
       ${_tdTab === 'coment' ? tdComments(t, editable) : tdActivity(t)}
     </div>`;
@@ -740,12 +740,12 @@ function tdSide(t, editable) {
     ${row('Fecha inicio', `<input type="date" class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" value="${s(t.startDate)}" ${dis} onchange="tdPatch({startDate:this.value})">`)}
     ${row('Fecha límite', `<input type="date" class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" value="${s(t.dueDate)}" ${dis} onchange="tdPatch({dueDate:this.value})">`)}
     ${row('Recurrencia', `<select class="input" style="width:100%;font-size:var(--text-sm);padding:6px 8px" ${dis} onchange="tdPatch({recurrence:this.value})"><option value="" ${!t.recurrence ? 'selected' : ''}>Ninguna</option><option value="weekly" ${t.recurrence === 'weekly' ? 'selected' : ''}>Semanal</option><option value="monthly" ${t.recurrence === 'monthly' ? 'selected' : ''}>Mensual</option></select>${t.recurrence ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);margin-top:3px">Al completarla se crea la siguiente.</div>` : ''}`)}
-    ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <span style="cursor:pointer;opacity:.6" onclick="tdDelTag(${i})">×</span>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
+    ${row('Tags', `<div class="td-tags">${tags.map((tg, i) => `<span class="tk-chip" style="background:var(--surface2)">${esc(tg)}${editable ? ` <button type="button" aria-label="Quitar tag ${esc(tg)}" style="cursor:pointer;opacity:.6;border:0;background:transparent;color:inherit;padding:0" onclick="tdDelTag(${i})">×</button>` : ''}</span>`).join('')}${editable ? `<button class="td-tag-add" onclick="tdAddTag()">+ tag</button>` : ''}</div>`)}
     ${row('Dependencias', `<button class="btn btn-ghost" style="width:100%;font-size:var(--text-sm);padding:6px 8px;${deps.length ? 'color:var(--accent)' : ''}" ${dis} onclick="openDepsPicker('${t.id}')">${icon('link', 12)} ${deps.length ? deps.length + ' dependencia(s)' : 'Agregar'}</button>`)}
-    ${row('Adjuntos', `<div>${atts.map((a, i) => `<div class="td-att"><a href="${_url((a && a.url) || '#')}" target="_blank" rel="noopener">${esc((a && a.name) || 'archivo')}</a>${editable ? `<span style="cursor:pointer;opacity:.6" onclick="tdDelAtt(${i})">×</span>` : ''}</div>`).join('')}${editable ? `<button class="td-tag-add" style="margin-top:4px" onclick="tdAddAtt()">+ adjunto</button>` : ''}</div>`)}
+    ${row('Adjuntos', `<div>${atts.map((a, i) => `<div class="td-att"><a href="${_url((a && a.url) || '#')}" target="_blank" rel="noopener">${esc((a && a.name) || 'archivo')}</a>${editable ? `<button type="button" aria-label="Quitar adjunto ${esc((a && a.name) || 'archivo')}" style="cursor:pointer;opacity:.6;border:0;background:transparent;color:inherit;padding:0" onclick="tdDelAtt(${i})">×</button>` : ''}</div>`).join('')}${editable ? `<button class="td-tag-add" style="margin-top:4px" onclick="tdAddAtt()">+ adjunto</button>` : ''}</div>`)}
     <div class="td-prop" style="border:0;margin-top:4px">
       <div class="td-prop-l">Contexto</div>
-      <div style="font-size:var(--text-sm);line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en release ${icon('link', 11)}</button>` : ''}</div>
+      <div style="font-size:var(--text-sm);line-height:1.5;color:var(--text-muted)">${esc(_artNameOf(t) ? _artNameOf(t) + ' · ' : '')}${esc(_relNameOf(t))}${t.releaseId ? `<br><button class="btn btn-ghost" style="font-size:var(--text-xs);padding:4px 8px;margin-top:6px" onclick="tdOpenInRelease()">Abrir en lanzamiento ${icon('link', 11)}</button>` : ''}</div>
     </div>
     ${editable ? `<button class="btn btn-ghost" style="width:100%;font-size:var(--text-xs);padding:6px 8px;margin-top:10px" onclick="tdSaveAsTemplate()">${icon('checklist', 12)} Guardar como plantilla</button>` : ''}`;
 }

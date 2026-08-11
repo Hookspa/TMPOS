@@ -62,21 +62,21 @@ function rosterHeatmapHTML(){
   const overloaded = weeks.filter(w => w.releases.length >= 3).length;
   // Tira tipo heatmap: una celda por semana, coloreada por carga.
   const cells = weeks.map(w => { const n = w.releases.length; const col = rosterLoadColor(n);
-    return `<div title="${fmt(w.start)}–${fmt(w.end)} · ${n} release${n!==1?'s':''}" style="flex:1;min-width:52px;border-radius:8px;border:1px solid var(--border);background:${col};${n>=2?'color:#1a1a1a':'color:var(--text-muted)'};padding:8px 6px;text-align:center">
+    return `<div title="${fmt(w.start)}–${fmt(w.end)} · ${n} lanzamiento${n!==1?'s':''}" style="flex:1;min-width:52px;border-radius:8px;border:1px solid var(--border);background:${col};${n>=2?'color:#1a1a1a':'color:var(--text-muted)'};padding:8px 6px;text-align:center">
       <div style="font-size:var(--text-2xs);font-family:var(--font-ui);opacity:.85">${fmt(w.start)}</div>
       <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-lg);line-height:var(--lh-tight)">${n}</div>
     </div>`; }).join('');
   // Detalle: semanas con releases, con chips clicables y aviso de sobrecarga.
   const detail = weeks.filter(w => w.releases.length).map(w => { const n = w.releases.length; const col = rosterLoadColor(n);
     const chips = w.releases.map(r => { const art = (typeof artists !== 'undefined') ? artists.find(a => a.id === r.artistId) : null;
-      return `<span class="chip" style="cursor:pointer" onclick="openLaunch('${r.id}')">${art ? esc(art.name) + ' · ' : ''}${esc(r.name)}</span>`; }).join(' ');
+      return `<button type="button" class="chip" onclick="openLaunch('${r.id}')">${art ? esc(art.name) + ' · ' : ''}${esc(r.name)}</button>`; }).join(' ');
     const warn = n >= 3 ? `<span style="color:var(--accent2);font-size:var(--text-xs);font-family:var(--font-ui)">sobrecargada · máx 2–3</span>`
               : (n === 2 ? `<span style="color:var(--beat);font-size:var(--text-xs);font-family:var(--font-ui)">al límite</span>` : '');
-    return `<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:8px;padding:12px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'6px':'0'};flex-wrap:wrap"><span style="font-size:var(--text-base);font-weight:600">${fmt(w.start)} – ${fmt(w.end)}</span><span style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">${n} release${n!==1?'s':''}</span>${warn}</div>
+    return `<div style="border:1px solid var(--border);border-left-color:${col};border-radius:8px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'6px':'0'};flex-wrap:wrap"><span style="font-size:var(--text-base);font-weight:600">${fmt(w.start)} – ${fmt(w.end)}</span><span style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">${n} lanzamiento${n!==1?'s':''}</span>${warn}</div>
       ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>` : ''}
-    </div>`; }).join('') || `<div class="empty-hint">No hay releases con fecha en las próximas ${N} semanas.</div>`;
-  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:14px"><span class="dot dot--red"></span><span>${overloaded} semana${overloaded>1?'s':''} con 3+ releases — riesgo de auto-canibalización y carga del equipo.</span></div>` : '';
+    </div>`; }).join('') || `<div class="empty-hint">No hay lanzamientos con fecha en las próximas ${N} semanas.</div>`;
+  const banner = overloaded ? `<div style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);padding:8px 12px;border-radius:8px;background:rgba(255,77,77,.08);margin-bottom:14px"><span class="dot dot--red"></span><span>${overloaded} semana${overloaded>1?'s':''} con 3+ lanzamientos — riesgo de auto-canibalización y carga del equipo.</span></div>` : '';
   return banner + `<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">${cells}</div>` + detail;
 }
 
@@ -122,7 +122,7 @@ function cockpitActionItems() {
       out.push({ sev: 3, kind: 'alert', lid: l.id, tab: 'resumen', art: an, rel: l.name, text: s(a.text), ord: 4000 }));
     const d = (l.date && typeof diasRestantes === 'function') ? diasRestantes(l.date) : null;
     const pct = (typeof releaseReady === 'function') ? releaseReady(l).pct : 0;
-    if (d != null && d >= 0 && d <= 7 && pct < 70) out.push({ sev: 3, kind: 'drop', lid: l.id, tab: 'resumen', art: an, rel: l.name, text: `Drop en ${d}d con readiness ${pct}%`, ord: d });
+    if (d != null && d >= 0 && d <= 7 && pct < 70) out.push({ sev: 3, kind: 'drop', lid: l.id, tab: 'resumen', art: an, rel: l.name, text: `Estreno en ${d}d con preparación al ${pct}%`, ord: d });
   });
   out.sort((a, b) => b.sev - a.sev || a.ord - b.ord);
   return out;
@@ -174,14 +174,14 @@ function cockpitBodyHTML() {
       <div class="panel-head"><span class="ph-icon">${icon('warning', 18)}</span><span class="ph-title">Se cae esta semana</span><span class="ph-sub">${items.length} cosa${items.length === 1 ? '' : 's'} que necesitan acción</span></div>
       ${items.map(it => {
         const taskActs = (it.kind === 'task' && it.tid) ? `
-          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Posponer 3 días" onclick="event.stopPropagation();cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Mover fecha límite" onclick="event.stopPropagation();cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Escalar / reasignar" onclick="event.stopPropagation();cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
-        return `<div role="button" tabindex="0" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;cursor:pointer;flex-wrap:wrap" onclick="cockpitOpen('${it.lid}','${it.tab}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${it.lid}','${it.tab}')}">
+          <button type="button" class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Posponer 3 días" onclick="cockpitSnooze('${it.tid}',3)">${icon('clock', 10)} Posponer</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Mover fecha límite" onclick="cockpitReschedule('${it.tid}')">${icon('calendar', 10)} Mover</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="font-size:var(--text-2xs);padding:2px 7px" title="Escalar / reasignar" onclick="cockpitEscalate('${it.tid}')">${icon('invite', 10)} Escalar</button>` : '';
+        return `<article style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${it.sev >= 3 ? 'rgba(255,77,77,.07)' : 'rgba(255,170,0,.07)'};margin-bottom:6px;flex-wrap:wrap">
         <span class="dot ${it.sev >= 3 ? 'dot--red' : 'dot--yellow'}"></span>
         <div style="flex:1;min-width:140px"><div style="font-size:var(--text-base)">${esc(it.text)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${esc(it.art)} · ${esc(it.rel)}</div></div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${taskActs}<span class="chip" style="cursor:pointer">Abrir →</span></div>
-      </div>`; }).join('')}
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${taskActs}<button type="button" class="card-open" onclick="cockpitOpen('${it.lid}','${it.tab}')">Abrir ${icon('link',10)}</button></div>
+      </article>`; }).join('')}
     </div>` : `<div class="panel" style="margin:0 0 18px"><div style="display:flex;align-items:center;gap:8px;font-size:var(--text-base)"><span class="dot dot--green"></span> Nada urgente esta semana. Todo bajo control.</div></div>`;
   // ── Tabla de lanzamientos (una fila c/u, ordenada por riesgo) ──
   const rowsHTML = rows.map(({ l, r }) => {
@@ -196,7 +196,7 @@ function cockpitBodyHTML() {
       r.overdue ? `<span class="chip" style="cursor:default;color:var(--accent2);border-color:rgba(255,77,77,.3)">${r.overdue} vencida${r.overdue === 1 ? '' : 's'}</span>` : '',
       r.blocked ? `<span class="chip" style="cursor:default;color:var(--beat)">${r.blocked} bloqueada${r.blocked === 1 ? '' : 's'}</span>` : '',
     ].filter(Boolean).join('');
-    return `<div role="button" tabindex="0" onclick="cockpitOpen('${l.id}','resumen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${l.id}','resumen')}" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    return `<article style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="flex:1.4;min-width:190px">
         <div style="font-size:var(--text-md);font-weight:600">${esc(l.name)}</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);margin-top:2px">${esc(art ? art.name : '—')}${art && art.genre ? ' · ' + esc(art.genre) : ''}</div>
@@ -209,7 +209,8 @@ function cockpitBodyHTML() {
       </div>
       <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${badges}</div>
       <div style="flex:0 0 auto;min-width:130px;display:flex;justify-content:flex-end">${(typeof dropClockHTML === 'function') ? dropClockHTML(l) : ''}</div>
-    </div>`;
+      <button type="button" class="card-open" onclick="cockpitOpen('${l.id}','resumen')">Abrir ${icon('link',10)}</button>
+    </article>`;
   }).join('');
   return countLine + queue + rowsHTML;
 }
@@ -235,7 +236,7 @@ function cockpitBoardHTML() {
     blocked: { label: 'Bloqueado', color: 'var(--blocked)', items: [] },
     risk:    { label: 'En riesgo', color: 'var(--risk)',    items: [] },
     ok:      { label: 'En tiempo', color: 'var(--ok)',      items: [] },
-    post:    { label: 'Post-drop', color: 'var(--done)',    items: [] },
+    post:    { label: 'Después del estreno', color: 'var(--done)', items: [] },
   };
   list.map(l => ({ l, r: _cockpitRisk(l) }))
     .sort((a, b) => b.r.score - a.r.score || ((a.r.d == null ? 9999 : a.r.d) - (b.r.d == null ? 9999 : b.r.d)))
@@ -247,15 +248,15 @@ function cockpitBoardHTML() {
     const topAlert = r.alerts.find(a => a.level === 'red') || r.alerts.find(a => a.level === 'yellow');
     const dLabel = r.d == null ? 's/f' : (r.d < 0 ? 'live' : r.d);
     const dCol = r.d == null ? 'var(--text-dim)' : (r.d < 0 ? 'var(--done)' : (r.d <= 7 ? 'var(--blocked)' : (r.d <= 21 ? 'var(--risk)' : 'var(--text)')));
-    const act = (showAct && topAlert) ? `<button class="btn btn-primary" style="width:100%;margin-top:9px;font-size:var(--text-xs);padding:6px 8px" onclick="event.stopPropagation();cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : '';
-    return `<div role="button" tabindex="0" onclick="cockpitOpen('${l.id}','resumen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cockpitOpen('${l.id}','resumen')}" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
+    const act = (showAct && topAlert) ? `<button type="button" class="btn btn-primary" style="width:100%;font-size:var(--text-xs);padding:6px 8px" onclick="cockpitOpen('${l.id}','resumen')">→ Resolver</button>` : `<button type="button" class="card-open" onclick="cockpitOpen('${l.id}','resumen')">Abrir ${icon('link',10)}</button>`;
+    return `<article style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:11px;margin-bottom:9px">
       <div style="font-size:var(--text-base);font-weight:600">${esc(l.name)}</div>
       <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);text-transform:uppercase;margin:1px 0 8px">${esc(art ? art.name : '—')}</div>
       <div class="progress-track" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:${r.pct}%;background:${rcol}"></div></div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px">
         <div style="font-size:var(--text-xs);color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topAlert ? esc(topAlert.text) : esc(phase)}">${topAlert ? esc(topAlert.text) : esc(phase)}</div>
         <div style="font-family:var(--font-ui);font-weight:700;font-variant-numeric:tabular-nums;font-size:var(--text-lg);line-height:.9;color:${dCol};flex:0 0 auto">${esc(String(dLabel))}</div>
-      </div>${act}</div>`;
+      </div><div class="card-actions">${act}</div></article>`;
   };
   const colHTML = (key) => {
     const c = cols[key];
@@ -289,7 +290,7 @@ function rosterHealthHTML() {
     card('Necesitan atención', need, need ? 'priorízalos' : 'todo en orden', need ? 'var(--accent2)' : '') +
     card('Próximos a salir', proximos, '≤ 30 días') +
     card('Legal pendiente', legalPend, legalPend ? 'requiere acción' : 'al día', legalPend ? 'var(--beat)' : '') +
-    card('Recoupment', fin.inv ? Math.min(100, Math.round(fin.ing / fin.inv * 100)) + '%' : '—', `inv ${money(fin.inv)} · ing ${money(fin.ing)}`) +
+    card('Recuperación', fin.inv ? Math.min(100, Math.round(fin.ing / fin.inv * 100)) + '%' : '—', `inv ${money(fin.inv)} · ing ${money(fin.ing)}`) +
     `</div>`;
   const list = perf.map(({ art, p }) => {
     const col = rankColor(p.rank);
@@ -302,7 +303,7 @@ function rosterHealthHTML() {
       legal ? `<span class="chip" style="cursor:default;color:var(--beat)">legal: ${legal}</span>` : '',
       next ? `<span class="chip" style="cursor:default">próximo: ${s(next.name)} · ${diasRestantes(next.date) >= 0 ? 'en ' + diasRestantes(next.date) + 'd' : 'hoy'}</span>` : '',
     ].filter(Boolean).join(' ');
-    return `<div data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')" style="cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    return `<article style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div class="artist-avatar" style="width:40px;height:40px;font-size:var(--text-md)">${up(art.name).slice(0, 1)}</div>
       <div style="flex:1;min-width:200px">
         <div style="font-size:var(--text-md);font-weight:600;display:flex;align-items:center;gap:8px">${dotHTML(col, 10)} ${esc(art.name)}</div>
@@ -314,7 +315,8 @@ function rosterHealthHTML() {
         <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-2xl);letter-spacing:var(--track-tight);color:${col}">${p.avg != null ? p.avg + '%' : '—'}</div>
         <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(p.label)}${p.totalGoals ? ` · ${p.met}/${p.totalGoals} metas` : ''}</div>
       </div>
-    </div>`;
+      <button type="button" class="card-open" data-artist-id="${esc(art.id)}" onclick="setActiveArtist(this.dataset.artistId);showPage('lanzamientos')">Abrir ${icon('link',10)}</button>
+    </article>`;
   }).join('');
   const heat = `<div class="section-header" style="margin-top:8px"><div class="section-title">Carga semanal del roster</div></div>` + rosterHeatmapHTML();
   return stats + heat + `<div class="section-header" style="margin-top:18px"><div class="section-title">Artistas</div></div>` + list;

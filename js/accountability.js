@@ -48,10 +48,10 @@ function renderNotifPanel() {
   const ICONS = NOTIF_ICON_MAP(); // mapa local (evita TDZ del const top-level)
   const list = (typeof myNotifications === 'function') ? myNotifications() : [];
   const unread = list.filter(n => !n.isRead).length;
-  const rows = list.length ? list.slice(0, 40).map(n => `<div class="notif-item ${n.isRead ? '' : 'unread'}" onclick="openNotif('${n.id}')">
-      <div class="notif-ic">${icon(ICONS[n.type] || 'info', 15)}</div>
-      <div style="flex:1;min-width:0"><div class="nt">${s(n.title)}</div>${n.body ? `<div class="nb">${s(n.body)}</div>` : ''}<div class="ntime">${_ago(n.createdAt)}</div></div>
-    </div>`).join('') : `<div class="notif-empty">${icon('bell', 26)}<div style="margin-top:8px">Sin notificaciones</div></div>`;
+  const rows = list.length ? list.slice(0, 40).map(n => `<button type="button" class="notif-item ${n.isRead ? '' : 'unread'}" onclick="openNotif('${n.id}')">
+      <span class="notif-ic">${icon(ICONS[n.type] || 'info', 15)}</span>
+      <span style="flex:1;min-width:0"><span class="nt" style="display:block">${s(n.title)}</span>${n.body ? `<span class="nb" style="display:block">${s(n.body)}</span>` : ''}<span class="ntime" style="display:block">${_ago(n.createdAt)}</span></span>
+    </button>`).join('') : `<div class="notif-empty">${icon('bell', 26)}<div style="margin-top:8px">Sin notificaciones</div></div>`;
   p.innerHTML = `<div class="notif-head"><span>Notificaciones</span>${unread ? `<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:var(--text-2xs)" onclick="event.stopPropagation();markAllNotifsRead()">Marcar leídas</button>` : ''}</div>${rows}`;
   if (typeof hydrateIcons === 'function') hydrateIcons(p);
 }
@@ -142,7 +142,7 @@ function _renderMentions(body) {
 function commentsPanelHTML(scope) {
   const all = (typeof commentsOf === 'function') ? commentsOf(scope) : [];
   const list = all.filter(c => (c.canal || 'general') === _cmtCanal);
-  const tabs = COMMENT_CANALES.map(([k, lbl]) => { const cnt = all.filter(c => (c.canal || 'general') === k).length; return `<div class="cmt-tab ${k === 'interno-privado' ? 'priv' : ''} ${_cmtCanal === k ? 'active' : ''}" onclick="setCmtCanal('${k}')">${lbl}${cnt ? ` · ${cnt}` : ''}</div>`; }).join('');
+  const tabs = COMMENT_CANALES.map(([k, lbl]) => { const cnt = all.filter(c => (c.canal || 'general') === k).length; return `<button type="button" class="cmt-tab ${k === 'interno-privado' ? 'priv' : ''} ${_cmtCanal === k ? 'active' : ''}" onclick="setCmtCanal('${k}')">${lbl}${cnt ? ` · ${cnt}` : ''}</button>`; }).join('');
   const thread = list.length ? list.map(c => `<div class="cmt">
       <div class="cmt-av">${_initials(c.author)}</div>
       <div class="cmt-body"><div class="cmt-meta">${s(c.author)} · ${_ago(c.createdAt)}</div><div class="cmt-text">${_renderMentions(c.body)}</div></div>
@@ -268,7 +268,7 @@ function requestApproval(launchId, gate) {
   const ap = createApproval({ artistId: l.artistId, releaseId: l.id, trackId: null }, gate);
   updateApprovalEstado(ap.id, 'en_revision');
   // notificar a quienes pueden aprobar (manager/owner) — en demo, al creador del release
-  if (typeof renderReleaseTab === 'function') renderReleaseTab('resumen');
+  if (typeof renderReleaseTab === 'function') renderReleaseTab((typeof _releaseTab!=='undefined'&&_releaseTab==='trabajo')?'trabajo':'resumen');
   renderNotifBadge();
   if (typeof uiToast === 'function') uiToast('Aprobación solicitada');
 }
@@ -278,7 +278,7 @@ async function decideApprovalUI(id, estado) {
   let note = '';
   if (estado === 'rechazado') { note = await uiPrompt('Motivo del rechazo (opcional):', { title: 'Rechazar aprobación' }) || ''; }
   decideApproval(id, estado, note);
-  if (typeof renderReleaseTab === 'function') renderReleaseTab('resumen');
+  if (typeof renderReleaseTab === 'function') renderReleaseTab((typeof _releaseTab!=='undefined'&&_releaseTab==='trabajo')?'trabajo':'resumen');
   renderNotifBadge();
   if (typeof uiToast === 'function') uiToast(estado === 'aprobado' ? 'Aprobado' : 'Rechazado');
 }

@@ -4,7 +4,7 @@
 // post = fecha+postDays), cero doble captura. Además, "canciones tentativas" viven en
 // a.plan.tentatives para bosquejar el año antes de crear el lanzamiento.
 // Diseño (DESIGN.md): barras neutras grafito, el drop usa color=ESTADO (no naranja),
-// fechas en Inter tabular-nums, grilla hairline de 12 meses, radios ≤8px.
+// fechas en Overpass tabular-nums, grilla hairline de 12 meses, radios ≤8px.
 // ══════════════════════════════════════════
 let _planYear = new Date().getFullYear();
 let planView = 'artista';          // 'artista' | 'roster'
@@ -161,7 +161,7 @@ function tentativesEditorHTML(a) {
   </div>`).join('');
   return `<div class="panel">
     <div class="panel-head"><span class="ph-icon">${icon('plus', 18)}</span><span class="ph-title">Canciones tentativas</span><span class="ph-sub">bosqueja el año · conviértelas en lanzamiento cuando estén listas</span></div>
-    <div class="empty-hint" style="margin-bottom:10px">Fechas objetivo de canciones que aún no son lanzamientos. Aparecen en el Gantt con borde punteado; al concretarse, "A lanzamiento" crea el release y la quita de aquí.</div>
+    <div class="empty-hint" style="margin-bottom:10px">Fechas objetivo de canciones que aún no son lanzamientos. Aparecen en el Gantt con borde punteado; al concretarse, "A lanzamiento" crea el lanzamiento y quita la fecha tentativa.</div>
     ${rows || '<div class="empty-hint">Sin canciones tentativas.</div>'}
     ${canEdit ? `<button class="btn btn-ghost" style="margin-top:8px" onclick="addTentative()">+ Canción tentativa</button>` : ''}</div>`;
 }

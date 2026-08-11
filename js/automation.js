@@ -126,9 +126,9 @@ function openTemplatePicker(launchId) {
       <div style="display:flex;align-items:center;gap:10px"><input type="radio" name="tpl" value="${t.id}" ${t.id === (l.type || 'single') ? 'checked' : ''}><strong style="font-size:var(--text-base)">${t.name}</strong><span style="margin-left:auto;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${t.tasks.length} tareas · ${t.calendar.length} piezas</span></div>
       <div style="font-size:var(--text-sm);color:var(--text-muted);margin-top:5px;margin-left:24px">${t.desc}</div>
     </label>`).join('');
-  const warn = l.templateApplied ? `<div class="empty-hint" style="margin-bottom:12px;border-color:var(--beat);color:var(--text-muted)">${icon('warning',13)} Ya aplicaste una plantilla a este release. Aplicar otra <b>agrega</b> tareas/piezas (no reemplaza).</div>` : '';
+  const warn = l.templateApplied ? `<div class="empty-hint" style="margin-bottom:12px;border-color:var(--beat);color:var(--text-muted)">${icon('warning',13)} Ya aplicaste una plantilla a este lanzamiento. Aplicar otra <b>agrega</b> tareas y piezas; no reemplaza las existentes.</div>` : '';
   const noDate = !l.date ? `<div class="empty-hint" style="margin-bottom:12px">Sin fecha de lanzamiento: las tareas se crean sin fecha límite (puedes editarlas luego).</div>` : '';
-  _autoModal('Aplicar plantilla de proyecto', `${warn}${noDate}<div style="margin-bottom:6px;font-size:var(--text-sm);color:var(--text-muted)">Genera tareas por área (con fechas relativas al drop) + un esqueleto de calendario de contenido.</div>${cards}`,
+  _autoModal('Aplicar plantilla de proyecto', `${warn}${noDate}<div style="margin-bottom:6px;font-size:var(--text-sm);color:var(--text-muted)">Genera tareas por área, con fechas relativas al estreno, y una base para el calendario de contenido.</div>${cards}`,
     `<button class="btn btn-ghost" onclick="closeAutoModal()">Cancelar</button><button class="btn btn-primary" onclick="confirmApplyTemplate('${launchId}')">Aplicar plantilla</button>`);
 }
 function confirmApplyTemplate(launchId) {
@@ -136,7 +136,7 @@ function confirmApplyTemplate(launchId) {
   const n = applyProjectTemplate(launchId, id);
   closeAutoModal();
   if (typeof uiToast === 'function') uiToast(`Plantilla aplicada · ${n} tareas creadas`);
-  if (typeof renderReleaseTab === 'function') renderReleaseTab('resumen');
+  if (typeof renderReleaseTab === 'function') renderReleaseTab(typeof _releaseTab === 'string' ? _releaseTab : 'resumen');
   if (typeof updateTaskBadge === 'function') updateTaskBadge();
   runAutomations();
 }
@@ -156,7 +156,7 @@ function openDepsPicker(taskId) {
   if (!requireCan('gestionar_tareas')) return;
   const t = taskById(taskId); if (!t) return;
   const sibs = tasks.filter(x => x.id !== t.id && x.releaseId === t.releaseId);
-  if (!sibs.length) { if (typeof uiAlert === 'function') uiAlert('No hay otras tareas en este release para depender de ellas.'); return; }
+  if (!sibs.length) { if (typeof uiAlert === 'function') uiAlert('No hay otras tareas en este lanzamiento para crear una dependencia.'); return; }
   const rows = sibs.map(x => `<label style="display:flex;align-items:center;gap:9px;padding:8px 4px;border-bottom:1px solid var(--hairline);cursor:pointer">
       <input type="checkbox" value="${x.id}" ${(t.deps || []).includes(x.id) ? 'checked' : ''}>
       <span style="flex:1;font-size:var(--text-base)">${s(x.titulo)}</span>

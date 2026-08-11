@@ -56,12 +56,12 @@ function renderLaunchDetail() {
     const drop = new Date(l.date + 'T00:00:00');
     const start = new Date(drop); start.setDate(start.getDate() - pre);
     const end = new Date(drop);   end.setDate(end.getDate() + post);
-    tlStart = fmt(start); tlDrop = `DROP ${fmt(drop)}`; tlEnd = fmt(end);
+    tlStart = fmt(start); tlDrop = `ESTRENO ${fmt(drop)}`; tlEnd = fmt(end);
   }
 
   host.innerHTML = `
     <div style="margin-bottom:16px">
-      <span style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer" onclick="showPage('lanzamientos')">← Lanzamientos</span>
+      <button type="button" class="link-muted" style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer;border:0;background:transparent;padding:0" onclick="showPage('lanzamientos')">← Lanzamientos</button>
     </div>
 
     <div class="launch-hero">
@@ -84,7 +84,7 @@ function renderLaunchDetail() {
           <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:6px">TIMELINE DE CAMPAÑA</div>
           <div class="tl-bar">
             <div class="tl-seg pre" style="flex:${pre}">PRE · ${pre}d</div>
-            <div class="tl-seg day ${dropUrgent ? 'urgent' : ''}">DROP</div>
+            <div class="tl-seg day ${dropUrgent ? 'urgent' : ''}">ESTRENO</div>
             <div class="tl-seg post" style="flex:${post}">POST · ${post}d</div>
           </div>
           <div class="tl-dates"><span>${tlStart}</span><span>${tlDrop}</span><span>${tlEnd}</span></div>
@@ -92,17 +92,25 @@ function renderLaunchDetail() {
       </div>
     </div>
 
-    <div class="mtabs" id="release-tabbar" role="tablist" aria-label="Secciones del lanzamiento" style="margin-bottom:16px;flex-wrap:wrap">
-      ${RELEASE_TABS.map(rt=>`<button type="button" role="tab" aria-selected="${rt[0]===_releaseTab}" tabindex="${rt[0]===_releaseTab?'0':'-1'}" class="mtab ${rt[0]===_releaseTab?'active':''}" data-rtab="${rt[0]}" onclick="setReleaseTab('${rt[0]}')" onkeydown="releaseTabKey(event,'${rt[0]}')">${rt[1]}</button>`).join('')}
+    <div class="release-nav">
+      <div class="mtabs" id="release-tabbar" role="tablist" aria-label="Secciones principales del lanzamiento" style="flex-wrap:wrap">
+        ${RELEASE_TABS.map(rt=>`<button type="button" role="tab" aria-controls="release-tab-body" aria-selected="${rt[0]===_releaseTab}" tabindex="${rt[0]===_releaseTab?'0':'-1'}" class="mtab ${rt[0]===_releaseTab?'active':''}" data-rtab="${rt[0]}" onclick="setReleaseTab('${rt[0]}')" onkeydown="releaseTabKey(event,'${rt[0]}')">${rt[1]}</button>`).join('')}
+      </div>
+      <div class="release-more-wrap">
+        <button type="button" class="mtab release-more-trigger ${RELEASE_MORE.some(x=>x[0]===_releaseTab)?'active':''}" id="release-more-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="release-more-menu" onclick="toggleReleaseMore(event)" onkeydown="releaseMoreKey(event)">Más <span aria-hidden="true">▾</span></button>
+        <div class="release-more-menu" id="release-more-menu" role="menu" onkeydown="releaseMoreMenuKey(event)" hidden>
+          ${RELEASE_MORE.map(rt=>`<button type="button" role="menuitem" class="release-more-item ${rt[0]===_releaseTab?'active':''}" data-rmore="${rt[0]}" ${rt[0]===_releaseTab?'aria-current="page"':''} onclick="selectReleaseMore('${rt[0]}')"><span>${rt[1]}</span><span aria-hidden="true">›</span></button>`).join('')}
+        </div>
+      </div>
     </div>
-    <div id="release-tab-body"></div>`;
+    <div id="release-tab-body" role="tabpanel" tabindex="0"></div>`;
   renderReleaseTab(_releaseTab);
 }
 
-// ── Ficha de RELEASE con pestañas (Sprint 1 · reagrupadas v0.31) ──
+// ── Ficha de RELEASE: cuatro destinos diarios + secundarios en "Más" (v0.79) ──
 let _releaseTab = 'resumen';
-// 10 → 7 pestañas con sentido. Las agrupadas (campana/resultados/trabajo) usan sub-pestañas.
-const RELEASE_TABS = [['resumen','Resumen'],['musica','Música'],['campana','Campaña'],['resultados','Resultados'],['negocio','Negocio'],['legal','Legal'],['archivos','Archivos'],['trabajo','Trabajo']];
+const RELEASE_TABS = [['resumen','Hoy'],['musica','Música'],['campana','Campaña'],['trabajo','Trabajo']];
+const RELEASE_MORE = [['resultados','Resultados'],['negocio','Negocio'],['legal','Legal'],['archivos','Archivos']];
 function releaseTabKey(e, current) {
   if (!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
   e.preventDefault();
@@ -111,6 +119,31 @@ function releaseTabKey(e, current) {
   setReleaseTab(RELEASE_TABS[ni][0]);
   const next = document.querySelector(`#release-tabbar [data-rtab="${RELEASE_TABS[ni][0]}"]`); if (next) next.focus();
 }
+function releaseMoreOpen(open) {
+  const trigger = document.getElementById('release-more-trigger');
+  const menu = document.getElementById('release-more-menu');
+  if (!trigger || !menu) return;
+  menu.hidden = !open; trigger.setAttribute('aria-expanded', String(open));
+  if (open) { const active = menu.querySelector('.active') || menu.querySelector('[role="menuitem"]'); if (active) active.focus(); }
+}
+function toggleReleaseMore(e) { if (e) e.stopPropagation(); const menu=document.getElementById('release-more-menu'); releaseMoreOpen(!!menu && menu.hidden); }
+function selectReleaseMore(name) { releaseMoreOpen(false); setReleaseTab(name); }
+function releaseMoreKey(e) {
+  if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); releaseMoreOpen(true); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); releaseMoreOpen(true); const items=document.querySelectorAll('#release-more-menu [role="menuitem"]'); if(items.length) items[items.length-1].focus(); }
+  else if (e.key === 'Escape') { e.preventDefault(); releaseMoreOpen(false); }
+}
+function releaseMoreMenuKey(e) {
+  const items=[...e.currentTarget.querySelectorAll('[role="menuitem"]')]; const i=items.indexOf(document.activeElement);
+  if(e.key==='Escape'){ e.preventDefault(); releaseMoreOpen(false); const trigger=document.getElementById('release-more-trigger'); if(trigger) trigger.focus(); }
+  else if(e.key==='Tab'){ releaseMoreOpen(false); }
+  else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key) && items.length){
+    e.preventDefault(); const next=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length; items[next].focus();
+  }
+}
+document.addEventListener('click', e => {
+  if (!e.target || typeof e.target.closest !== 'function' || !e.target.closest('.release-more-wrap')) releaseMoreOpen(false);
+});
 
 // ── Info-tip reusable: ícono ⓘ con tooltip al hover (reemplaza los blurbs grises) ──
 function _infoTipStyles(){
@@ -129,9 +162,9 @@ function infoTip(text){ _infoTipStyles(); return `<span class="info-tip" tabinde
 function secInfo(label, text){ return `<div class="sec-label">${esc(label)}${text ? infoTip(text) : ''}</div>`; }
 // Sub-pestañas: [id, etiqueta, ícono]. id 'reportes'/'actividad' = panel HTML; el resto = página global embebida.
 const TAB_GROUPS = {
-  campana:    [['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar'],['marketing','Plan de marketing','megaphone']],
-  resultados: [['metricas','Métricas','metrics'],['aprendizajes','Aprendizajes','learnings'],['ia','IA estratégica','ai'],['reportes','Reportes','report']],
-  trabajo:    [['tareas','Tareas','checklist'],['checklists','Checklists','checklist'],['actividad','Actividad','activity']],
+  campana:    [['estrategia','Estrategia','dna'],['objetivos','Objetivos','goals'],['ideas','Ideas','ideas'],['calendario','Calendario','calendar'],['marketing','Plan de marketing','megaphone']],
+  resultados: [['metricas','Métricas','metrics'],['aprendizajes','Aprendizajes','learnings'],['ia','IA estratégica','ai'],['reportes','Reportes','report'],['cierre','Cierre','save']],
+  trabajo:    [['tareas','Tareas','checklist'],['checklists','Checklists','checklist'],['aprobaciones','Aprobaciones','check'],['actividad','Actividad','activity']],
 };
 // Funciones de render de cada página global embebible.
 const EMBED_RENDER = { objetivos:'renderObjetivos', ideas:'renderIdeas', calendario:'renderCalendar', metricas:'renderMetricas', aprendizajes:'renderAprendizajes', ia:'renderIA' };
@@ -160,14 +193,26 @@ const LEGACY_TAB = {
   marketing:['campana','objetivos'], contenido:['campana','ideas'], data:['resultados','metricas'],
   objetivos:['campana','objetivos'], ideas:['campana','ideas'], calendario:['campana','calendario'],
   metricas:['resultados','metricas'], aprendizajes:['resultados','aprendizajes'], ia:['resultados','ia'], reportes:['resultados','reportes'],
-  tareas:['trabajo','tareas'], actividad:['trabajo','actividad'], checklists:['trabajo','checklists'],
+  cierre:['resultados','cierre'], snapshot:['resultados','cierre'],
+  estrategia:['campana','estrategia'],
+  tareas:['trabajo','tareas'], actividad:['trabajo','actividad'], checklists:['trabajo','checklists'], aprobaciones:['trabajo','aprobaciones'],
 };
-function setReleaseTab(name){
-  _releaseTab = name;
+function syncReleaseNav(name){
   document.querySelectorAll('#release-tabbar .mtab').forEach(b => {
     const on = b.dataset.rtab === name; b.classList.toggle('active', on);
     b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
   });
+  const inMore = RELEASE_MORE.some(x=>x[0]===name);
+  const trigger = document.getElementById('release-more-trigger');
+  if(trigger) trigger.classList.toggle('active', inMore);
+  document.querySelectorAll('#release-more-menu [data-rmore]').forEach(b=>{
+    const on=b.dataset.rmore===name; b.classList.toggle('active',on);
+    if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
+  });
+}
+function setReleaseTab(name){
+  _releaseTab = name;
+  releaseMoreOpen(false); syncReleaseNav(name);
   renderReleaseTab(name); document.querySelector('.content').scrollTop = 0;
 }
 function setReleaseSubTab(group, sub){ _releaseSubTab[group]=sub; renderReleaseTab(group); }
@@ -180,7 +225,7 @@ function renderReleaseTab(name){
     if (Array.isArray(map)) { _releaseSubTab[map[0]] = map[1]; name = map[0]; }
     else name = map;
     _releaseTab = name;
-    document.querySelectorAll('#release-tabbar .mtab').forEach(b=>b.classList.toggle('active', b.dataset.rtab===name));
+    syncReleaseNav(name);
   }
   if(name!=='campana' && name!=='resultados' && name!=='trabajo') releaseRestorePages(); // pestañas simples no embeben
   if(name==='resumen') host.innerHTML = releaseResumenHTML(l);
@@ -197,12 +242,15 @@ function renderReleaseGroup(group, l){
   releaseRestorePages(); // saca cualquier nodo embebido ANTES de reescribir el host (si no, se destruye)
   const subs = TAB_GROUPS[group];
   const sub = _releaseSubTab[group] && subs.some(x=>x[0]===_releaseSubTab[group]) ? _releaseSubTab[group] : subs[0][0];
-  const bar = `<div class="mtabs" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">${subs.map(x=>`<div class="mtab ${x[0]===sub?'active':''}" style="font-size:var(--text-xs);padding:6px 12px" onclick="setReleaseSubTab('${group}','${x[0]}')">${icon(x[2],13)} ${x[1]}</div>`).join('')}</div>`;
+  const bar = `<div class="mtabs" role="tablist" aria-label="${group==='campana'?'Campaña':group==='resultados'?'Resultados':'Trabajo'}" style="margin-bottom:14px;flex-wrap:wrap;gap:6px">${subs.map(x=>`<button type="button" role="tab" aria-selected="${x[0]===sub}" class="mtab ${x[0]===sub?'active':''}" style="font-size:var(--text-xs);padding:6px 12px" onclick="setReleaseSubTab('${group}','${x[0]}')">${icon(x[2],13)} ${x[1]}</button>`).join('')}</div>`;
   host.innerHTML = bar + `<div id="release-sub-body"></div>`;
   const body = document.getElementById('release-sub-body');
-  if(sub==='reportes'){ releaseRestorePages(); body.innerHTML = releaseReportesHTML(l); }
+  if(sub==='estrategia'){ releaseRestorePages(); body.innerHTML = releaseResumenContentHTML(l); }
+  else if(sub==='reportes'){ releaseRestorePages(); body.innerHTML = releaseReportesHTML(l); }
+  else if(sub==='cierre'){ releaseRestorePages(); body.innerHTML = (typeof snapshotPanelHTML==='function') ? snapshotPanelHTML(l) : ''; }
   else if(sub==='tareas'){ releaseRestorePages(); body.innerHTML = tareasPanelHTML('release'); }
   else if(sub==='checklists'){ releaseRestorePages(); body.innerHTML = (typeof releaseChecklistsHTML==='function') ? releaseChecklistsHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(body); }
+  else if(sub==='aprobaciones'){ releaseRestorePages(); body.innerHTML = (typeof approvalsPanelHTML==='function') ? approvalsPanelHTML(l) : ''; }
   else if(sub==='marketing'){ releaseRestorePages(); body.innerHTML = (typeof releaseMarketingHTML==='function') ? releaseMarketingHTML(l) : ''; if(l.marketingPlan && l.marketingPlan.path && typeof mktLoadViewer==='function') setTimeout(()=>mktLoadViewer(),0); if(typeof hydrateIcons==='function') hydrateIcons(body); }
   else if(sub==='actividad'){ releaseRestorePages(); body.innerHTML = (typeof releaseActividadHTML==='function') ? releaseActividadHTML(l) : ''; if(typeof hydrateIcons==='function') hydrateIcons(body); }
   else embedPageInto(body, sub); // objetivos/ideas/calendario/metricas/aprendizajes/ia
@@ -210,7 +258,7 @@ function renderReleaseGroup(group, l){
 // ── Legal y titularidad del release (agrega Label Copy + documentos legales por canción) ──
 function releaseLegalHTML(l){
   const ts = (typeof tracksOfLaunch==='function') ? tracksOfLaunch(l) : [];
-  if(!ts.length) return `${secInfo('Legal y titularidad', 'Estado de titularidad y documentos legales por canción.')}<div class="empty-hint">Este release no tiene canciones todavía. Agrégalas en la pestaña <b>Música</b>.</div>`;
+  if(!ts.length) return `${secInfo('Legal y titularidad', 'Estado de titularidad y documentos legales por canción.')}<div class="empty-hint">Este lanzamiento no tiene canciones todavía. Agrégalas en la pestaña <b>Música</b>.</div>`;
   const canLegal = (typeof canDo==='function') && canDo('editar_legal');
   const cards = ts.map(t=>{
     if (typeof reconcileLegalConflicts==='function') reconcileLegalConflicts(t); // auto-cierra/reabre docs ruteados
@@ -279,7 +327,7 @@ function releaseAssetsHTML(l){
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="quitarAsset('${a.id}')">${icon('close',12)}</button>`:''}
     </div>`;
   }).join('');
-  const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('link',18)}</span><span class="ph-title">Agregar asset</span></div>
+  const form = editable ? `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('link',18)}</span><span class="ph-title">Agregar archivo</span></div>
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
         <div class="field"><label>Nombre</label><input class="input" id="asset-label" placeholder="Ej. Cover final 3000px"></div>
         <div class="field"><label>Tipo</label><select class="input" id="asset-tipo">${ASSET_TIPOS.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
@@ -288,7 +336,7 @@ function releaseAssetsHTML(l){
       <div class="field" style="margin-top:8px"><label>Link (Drive / Dropbox / WeTransfer / URL)</label><input class="input" id="asset-url" placeholder="https://…" onkeydown="if(event.key==='Enter')agregarAsset()"></div>
       <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted);cursor:pointer"><input type="checkbox" id="asset-private"> ${icon('lock',12)} Privado (solo gestión; se audita quién lo abre)</label>
     </div>` : '';
-  return `${secInfo('Archivos del release', 'No subimos archivos: guardamos los enlaces (Drive, Dropbox, WeTransfer, URL). Los marcados como privados solo los ven roles de gestión, y se audita quién los abre o copia.')}${rows||'<div class="empty-hint">Sin assets aún.</div>'}${form}`;
+  return `${secInfo('Archivos del lanzamiento', 'No subimos archivos: guardamos los enlaces (Drive, Dropbox, WeTransfer, URL). Los marcados como privados solo los ven roles de gestión, y se audita quién los abre o copia.')}${rows||'<div class="empty-hint">Sin archivos aún.</div>'}${form}`;
 }
 function agregarAsset(){
   if(!requireCan('editar_assets')) return;
@@ -297,9 +345,9 @@ function agregarAsset(){
   const url=(document.getElementById('asset-url').value||'').trim();
   const tipo=(document.getElementById('asset-tipo')||{}).value||'otro';
   const priv=!!(document.getElementById('asset-private')||{}).checked;
-  if(!url){ uiAlert('Pega el link del asset.'); return; }
+  if(!url){ uiAlert('Pega el enlace del archivo.'); return; }
   l.assets=l.assets||[]; l.assets.push({ id:'as-'+Date.now(), tipo, url, label, private:priv });
-  saveLaunches(); renderReleaseTab('assets'); uiToast('✓ Asset agregado');
+  saveLaunches(); renderReleaseTab('assets'); uiToast('✓ Archivo agregado');
 }
 function toggleAssetPrivate(id){
   if(!requireCan('editar_assets')) return;
@@ -326,7 +374,7 @@ function quitarAsset(id){
   l.assets=(l.assets||[]).filter(a=>a.id!==id); saveLaunches(); renderReleaseTab('assets');
 }
 function releaseLinkTabHTML(title, desc, links){
-  return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span>${infoTip(s(desc) + ' Estas secciones ya están filtradas a este lanzamiento; ábrelas con los botones de abajo.')}<span class="ph-sub" style="margin-left:auto">de este release</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-title">${title}</span>${infoTip(s(desc) + ' Estas secciones ya están filtradas a este lanzamiento; ábrelas con los botones de abajo.')}<span class="ph-sub" style="margin-left:auto">de este lanzamiento</span></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">${links.map(x=>`<button class="btn btn-ghost" onclick="showPage('${x[1]}')">${x[0]}</button>`).join('')}</div></div>`;
 }
 function releaseReportesHTML(l){
@@ -339,19 +387,20 @@ function releaseTracklistHTML(l){
   const editable = canDo('editar_crm');
   const rows = ts.map((t,idx)=>{ const rd=trackReady(t), pct=rd.total?Math.round(rd.done/rd.total*100):0, ph=trackPhase(t);
     const otros = (typeof releasesOfTrack==='function') ? releasesOfTrack(t.id).filter(r=>r.id!==l.id) : [];
-    const shared = otros.length ? `<span style="color:var(--beat)" title="También en: ${otros.map(r=>s(r.name)).join(', ')}">· también en ${otros.length} release(s)</span>` : '';
-    return `<div class="panel" onclick="openTrack('${t.id}')" style="display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer">
+    const shared = otros.length ? `<span style="color:var(--beat)" title="También en: ${otros.map(r=>s(r.name)).join(', ')}">· también en ${otros.length} lanzamiento(s)</span>` : '';
+    return `<article class="panel" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
       <div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-xl);color:var(--text-dim);width:26px;text-align:center">${idx+1}</div>
       <div style="flex:1"><div style="font-size:var(--text-md);font-weight:600">${s(t.title)||'(sin título)'}${t.version?` <span style="color:var(--text-muted);font-size:var(--text-sm)">· ${s(t.version)}</span>`:''}</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">ISRC ${s(t.isrc)||'— por asignar'} · <span style="color:${phaseColor(ph)}">${ph}</span> ${shared}</div></div>
       <div style="text-align:right;min-width:60px"><div style="font-family:var(--font-ui);font-weight:var(--fw-num);font-variant-numeric:tabular-nums;font-size:var(--text-lg);color:${readyColor(pct)}">${pct}%</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">LISTO</div></div>
-      ${(!single && editable) ? `<button class="goal-btn reject" title="Quitar del tracklist (no borra la canción)" onclick="event.stopPropagation();removeTrackFromRelease('${t.id}')">${icon('close',12)}</button>` : `<span style="color:var(--text-dim);font-size:var(--text-lg)">›</span>`}
-    </div>`; }).join('');
+      <button type="button" class="card-open" onclick="openTrack('${t.id}')">Abrir ${icon('link',10)}</button>
+      ${(!single && editable) ? `<button type="button" class="goal-btn reject" title="Quitar de la lista (no borra la canción)" onclick="removeTrackFromRelease('${t.id}')">${icon('close',12)}</button>` : ''}
+    </article>`; }).join('');
   const addBtns = (!single && editable) ? `<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="abrirTrackPicker()">+ Agregar single existente</button>
       <button class="btn btn-ghost" onclick="nuevaCancionEnRelease()">+ Nueva canción</button></div>` : '';
-  const header = single ? '' : secInfo('Tracklist · ' + s(l.type), 'Agrega canciones nuevas o reusa singles ya lanzados: se referencian por su ISRC, no se duplican, y su historia queda en su release original.');
-  return `${header}${rows||'<div class="empty-hint">Sin tracks.</div>'}${addBtns}`;
+  const header = single ? '' : secInfo('Lista de canciones · ' + s(l.type), 'Agrega canciones nuevas o reusa sencillos ya lanzados: se referencian por su ISRC, no se duplican, y su historia queda en su lanzamiento original.');
+  return `${header}${rows||'<div class="empty-hint">Sin canciones.</div>'}${addBtns}`;
 }
 // Releases que referencian un track (para mostrar "también en…" y para el picker)
 function releasesOfTrack(trackId){ return launches.filter(l => (l.tracklist||[]).some(r => r.trackId === trackId)); }
@@ -365,13 +414,13 @@ function addTrackToRelease(trackId){
   saveLaunches();
   if(document.getElementById('modal-track-picker').classList.contains('open')) renderTrackPicker((document.getElementById('tp-search')||{}).value||'');
   if(_releaseTab === 'tracklist') renderReleaseTab('tracklist');
-  uiToast('✓ Canción agregada al tracklist');
+  uiToast('✓ Canción agregada a la lista');
 }
 function removeTrackFromRelease(trackId){
   if(!requireCan('editar_crm')) return;
   const l = launches.find(x => x.id === currentLaunchId); if(!l) return;
   l.tracklist = (l.tracklist||[]).filter(r => r.trackId !== trackId).map((r,i)=>({ trackId:r.trackId, order:i }));
-  saveLaunches(); renderReleaseTab('tracklist'); uiToast('✓ Quitada del tracklist');
+  saveLaunches(); renderReleaseTab('tracklist'); uiToast('✓ Canción quitada de la lista');
 }
 async function nuevaCancionEnRelease(){
   if(!requireCan('editar_crm')) return;
@@ -397,6 +446,26 @@ function renderTrackPicker(filter){
     </div>`; }).join('');
   document.getElementById('tp-body').innerHTML = rows || `<div class="empty-hint">No hay otras canciones de este artista para agregar${f?' con ese filtro':''}.</div>`;
 }
+function openReleaseWork(sub){ _releaseSubTab.trabajo=sub||'tareas'; setReleaseTab('trabajo'); }
+function releaseTodayAttentionHTML(l){
+  const alerts=(typeof releaseAlerts==='function'?releaseAlerts(l):[]).slice().sort((a,b)=>(a.level==='red'?0:1)-(b.level==='red'?0:1));
+  const missing=(typeof releaseWhatsMissing==='function'?releaseWhatsMissing(l):[]);
+  const rows=alerts.slice(0,3).map(x=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span class="dot ${x.level==='red'?'dot--red':'dot--yellow'}"></span><span style="flex:1;font-size:var(--text-sm)">${x.text}</span>${x.action?`<button type="button" class="btn btn-ghost btn-sm" onclick="${x.action.fn}">${x.action.label}</button>`:''}</div>`);
+  if(rows.length<3) missing.slice(0,3-rows.length).forEach(it=>rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span class="dot ${it.blocking?'dot--red':'dot--yellow'}"></span><span style="flex:1;font-size:var(--text-sm)">${esc(it.label)}</span></div>`));
+  if(!rows.length) return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('check',18)}</span><span class="ph-title">Necesita atención</span></div><div class="empty-hint" style="color:var(--ok);border-color:color-mix(in srgb,var(--ok) 30%,transparent)">${icon('check',13)} Nada accionable ahora.</div></div>`;
+  const total=Math.max(alerts.length,missing.length);
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('warning',18)}</span><span class="ph-title">Necesita atención</span><span class="ph-sub">mostrando ${Math.min(3,total)} de ${total}</span></div>${rows.join('')}<button type="button" class="btn btn-ghost" style="margin-top:12px" onclick="openReleaseWork('${missing.some(x=>x.type==='task')?'tareas':'checklists'}')">Ver trabajo completo →</button></div>`;
+}
+function releaseTodayApprovalsHTML(l){
+  const aprs=(typeof approvalsOfRelease==='function')?approvalsOfRelease(l.id):[];
+  const latest={}; aprs.forEach(a=>{ if(!latest[a.gate]||a.createdAt>latest[a.gate].createdAt) latest[a.gate]=a; });
+  const gates=(typeof APPROVAL_GATES!=='undefined')?APPROVAL_GATES:[];
+  const pending=gates.filter(([g])=>latest[g]&&['pendiente','en_revision'].includes(latest[g].estado));
+  const approved=gates.filter(([g])=>latest[g]&&latest[g].estado==='aprobado').length;
+  const unrequested=gates.filter(([g])=>!latest[g]).length;
+  const labels=pending.slice(0,3).map(([,label])=>`<span class="chip" style="cursor:default">${esc(label)}</span>`).join('');
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('check',18)}</span><span class="ph-title">Aprobaciones</span><span class="ph-sub">${pending.length} por revisar · ${approved} aprobadas · ${unrequested} sin solicitar</span></div>${labels?`<div class="chips">${labels}</div>`:'<div class="empty-hint">No hay aprobaciones esperando decisión.</div>'}<button type="button" class="btn btn-ghost" style="margin-top:12px" onclick="openReleaseWork('aprobaciones')">Gestionar aprobaciones →</button></div>`;
+}
 function releaseResumenHTML(l) {
   const rr = releaseReady(l), phase = releasePhase(l);
   const editable = canDo('edit_launch');
@@ -409,24 +478,20 @@ function releaseResumenHTML(l) {
   const phaseWarning = hasRedAlert ? `<span style="color:var(--accent2);display:inline-flex;margin-right:4px" title="Hay alertas sin resolver">${icon('warning',12)}</span>` : '';
   const statusPanel = `
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('rocket',18)}</span><span class="ph-title">Estado del release</span>
+      <div class="panel-head"><span class="ph-icon">${icon('rocket',18)}</span><span class="ph-title">Estado del lanzamiento</span>
         <span class="ph-sub">${phaseWarning}macro-fase: <b style="color:${phaseColor(phase)}">${phase}</b></span>${statusSel}</div>
       ${readyBarHTML(rr.pct, 'LISTO PARA LANZAR')}
-      <div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:6px">${rr.done}/${rr.total} ítems (tracks + release) · la <b style="color:var(--text-muted)">producción de contenido</b> es la barra de abajo (campaña)</div>
-      ${alertsHTML(l)}
+      <div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:6px">${rr.done}/${rr.total} ítems (canciones + lanzamiento) · producción y estrategia viven en <b style="color:var(--text-muted)">Campaña → Estrategia</b></div>
       ${(typeof spacingHTML==='function') ? spacingHTML(l) : ''}
       ${tplBtn}
     </div>`;
-  const aprPanel = (typeof approvalsPanelHTML==='function') ? approvalsPanelHTML(l) : '';
-  const missingPanel = (typeof whatsMissingHTML==='function') ? whatsMissingHTML(l) : '';
-  const snapPanel = (typeof snapshotPanelHTML==='function') ? snapshotPanelHTML(l) : '';
-  return statusPanel + aprPanel + missingPanel + snapPanel + releaseIdentityHTML(l) + releaseChecklistPanelHTML(l) + releaseResumenContentHTML(l);
+  return statusPanel + releaseTodayAttentionHTML(l) + releaseTodayApprovalsHTML(l);
 }
 // Identidad del release (UPC / distribuidora / notas)
 function setReleaseField(path, val, cap){ if(cap && !requireCan(cap)) return; const l=launches.find(x=>x.id===currentLaunchId); if(!l) return; setPath(l, path, val); saveLaunches(); }
 function releaseIdentityHTML(l){
   const f=(label,path,val,ph)=>`<div class="field" style="margin-bottom:12px"><label>${label}</label><input class="input" value="${s(val)}" placeholder="${ph||''}" onchange="setReleaseField('${path}',this.value,'editar_crm')"></div>`;
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Identidad del release</span></div>
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('tag',18)}</span><span class="ph-title">Identidad del lanzamiento</span></div>
     ${f('UPC','upc',l.upc,'Código del proyecto (EP/álbum)')}
     ${f('Distribuidora','distributor',l.distributor,'DistroKid, The Orchard, Believe…')}
     <div class="field"><label>Notas</label><textarea class="textarea" onchange="setReleaseField('notes',this.value,'editar_crm')">${s(l.notes)}</textarea></div>
@@ -438,7 +503,7 @@ function toggleReleaseCheck(group, key){
   const l=launches.find(x=>x.id===currentLaunchId); if(!l) return;
   l.releaseChecklist=l.releaseChecklist||{}; l.releaseChecklist[group]=l.releaseChecklist[group]||{};
   l.releaseChecklist[group][key]=!l.releaseChecklist[group][key];
-  saveLaunches(); renderReleaseTab('resumen'); // actualiza barra "Listo para lanzar"
+  saveLaunches(); renderReleaseTab(_releaseTab==='trabajo'?'trabajo':'resumen'); // actualiza barra sin sacar al usuario de Trabajo
 }
 function releaseChecklistPanelHTML(l){
   const editable=canDo('editar_crm'); const rc=l.releaseChecklist||{};
@@ -446,7 +511,7 @@ function releaseChecklistPanelHTML(l){
       <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted);letter-spacing:var(--track-caps);margin-bottom:2px">${(CHECKLIST_GROUP_LABEL[g]||g).toUpperCase()}</div>
       ${RELEASE_CHECKLIST[g].map(([k,label])=>{ const on=!!(rc[g]&&rc[g][k]); return `<label style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);cursor:${editable?'pointer':'default'};font-size:var(--text-base)"><input type="checkbox" ${on?'checked':''} ${editable?'':'disabled'} onchange="toggleReleaseCheck('${g}','${k}')"> ${label}</label>`; }).join('')}
     </div>`).join('');
-  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Checklist del release</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
+  return `<div class="panel"><div class="panel-head"><span class="ph-icon">${icon('checklist',18)}</span><span class="ph-title">Checklist del lanzamiento</span><span class="ph-sub">suma a "Listo para lanzar"</span></div>${groups}</div>`;
 }
 function releaseResumenContentHTML(l) {
   const d = l.dna || {}, c = l.content || {}, b = l.budget || {};
@@ -470,7 +535,7 @@ function releaseResumenContentHTML(l) {
     </div>`; })()}
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">Estrategia narrativa</span></div>
+      <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">ADN de campaña</span><span class="ph-sub">Estrategia narrativa</span></div>
       <div class="dna-grid">
         <div class="dna-field"><div class="brief-label">¿De qué trata?</div>${dnaVal(d.about)}</div>
         <div class="dna-field"><div class="brief-label">Emoción</div>${dnaVal(d.emotion)}</div>
@@ -499,7 +564,7 @@ function releaseResumenContentHTML(l) {
     <div class="panel">
       <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Ideas Seleccionadas</span><span class="ph-sub">${(l.ideas||[]).length} referencias</span></div>
       ${(l.ideas||[]).length
-        ? `<div class="chips">${l.ideas.slice(0,8).map((it, idx) => `<span class="chip on" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="openIdeaCard(${idx})" title="Abrir la idea">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</span>`).join('')}${l.ideas.length>8?`<span class="chip" style="cursor:pointer" onclick="setReleaseTab('ideas')" title="Ver todas">+${l.ideas.length-8} más</span>`:''}</div>`
+        ? `<div class="chips">${l.ideas.slice(0,8).map((it, idx) => `<button type="button" class="chip on" style="display:inline-flex;align-items:center;gap:5px" onclick="openIdeaCard(${idx})" title="Abrir la idea">${icon(ICONS[s(it.icon)]?s(it.icon):'star',12)} ${s(it.title).slice(0,28)}</button>`).join('')}${l.ideas.length>8?`<button type="button" class="chip" onclick="setReleaseTab('ideas')" title="Ver todas">+${l.ideas.length-8} más</button>`:''}</div>`
         : `<div class="empty-hint">Sin ideas aún. Selecciónalas con ${icon('star',12)} en el Banco de Referencias.</div>`}
       <button class="btn btn-ghost" style="margin-top:14px;width:100%" onclick="setReleaseTab('ideas')">${icon('ideas',13)} Abrir Generador de Ideas</button>
     </div>`;
@@ -555,7 +620,7 @@ function mediaPlanPanelHTML(l) {
     <div class="panel-head"><span class="ph-icon">${icon('finance', 18)}</span><span class="ph-title">Plan de Medios</span></div>
     <div class="brief-label" style="margin-bottom:6px">Tipos de medio</div>
     <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-4)">
-      ${MEDIA_TYPES.map(([k, lab]) => `<span class="chip${b.media[k] ? ' on' : ''}" style="cursor:${canE ? 'pointer' : 'default'}" ${canE ? `onclick="budgetToggleMedia('${l.id}','${k}')"` : ''} title="Medios ${lab.toLowerCase()}">${lab}</span>`).join('')}
+      ${MEDIA_TYPES.map(([k, lab]) => canE ? `<button type="button" class="chip${b.media[k] ? ' on' : ''}" aria-pressed="${!!b.media[k]}" onclick="budgetToggleMedia('${l.id}','${k}')" title="Medios ${lab.toLowerCase()}">${lab}</button>` : `<span class="chip${b.media[k] ? ' on' : ''}" style="cursor:default" title="Medios ${lab.toLowerCase()}">${lab}</span>`).join('')}
     </div>
     <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--space-3)">
       <div class="brief-label">Presupuesto total</div>
@@ -612,15 +677,16 @@ function renderIdeas() {
   const ideasHTML = ideas.length
     ? ideas.map((it, i) => {
         const col = catColor((it.cat||[])[0]);
-        return `<div class="idea-card" style="cursor:pointer" onclick="openIdeaCard(${i})" title="Abrir la tarjeta para ver toda la info">
-          <button class="del-btn" style="position:absolute;top:10px;right:10px;opacity:1;background:var(--surface2)" onclick="event.stopPropagation();quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
+        return `<article class="idea-card" title="Idea seleccionada">
+          <button type="button" class="del-btn" style="position:absolute;top:10px;right:10px;opacity:1;background:var(--surface2)" onclick="quitarIdea(${i})" title="Quitar">${icon('close',12)}</button>
           <span class="idea-cat" style="background:${col}18;color:${col}">${up((it.cat||[])[0]||'idea')}</span>
           <div class="idea-title">${s(it.title)}</div>
           ${it.hook ? `<div class="idea-hook">"${s(it.hook)}"</div>` : ''}
-          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${safeUrl(it.link)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
-        </div>`;
+          <div class="idea-meta">${(it.for||[]).map(f=>s(f)).join(' · ')||'—'}${it.link ? ` · <a href="${safeUrl(it.link)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">↗ ref</a>` : ''}</div>
+          <div class="card-actions"><button type="button" class="card-open" onclick="openIdeaCard(${i})">Abrir ${icon('link',10)}</button></div>
+        </article>`;
       }).join('')
-    : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <span style="color:var(--accent);cursor:pointer" onclick="showPage('banco')">Banco de Referencias</span> y marca ideas con la estrella ${icon('star',12)} para este lanzamiento.</div>`;
+    : `<div class="empty-hint" style="grid-column:1/-1">Aún no hay ideas seleccionadas. Ve al <button type="button" class="link-muted" style="color:var(--accent);border:0;background:transparent;padding:0;cursor:pointer" onclick="showPage('banco')">Banco de Referencias</button> y marca ideas con la estrella ${icon('star',12)} para este lanzamiento.</div>`;
 
   host.innerHTML = `
     <div class="field-grid" style="align-items:start;margin-bottom:18px">
@@ -630,17 +696,17 @@ function renderIdeas() {
         <button class="btn btn-ghost" style="margin-top:6px" onclick="showPage('adn')">Editar ADN →</button>
       </div>
       <div class="panel" style="margin:0">
-        <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">Campaign DNA</span><span class="ph-sub">${s(a.name)}</span></div>
+        <div class="panel-head"><span class="ph-icon">${icon('dna',18)}</span><span class="ph-title">ADN de campaña</span><span class="ph-sub">${s(a.name)}</span></div>
         ${dnaBits.map(([k,v]) => `<div style="margin-bottom:10px"><div class="brief-label">${k}</div>${chip(v)}</div>`).join('')}
-        <button class="btn btn-ghost" style="margin-top:6px" onclick="abrirWizard('${a.id}')">Editar Campaign DNA →</button>
+        <button class="btn btn-ghost" style="margin-top:6px" onclick="abrirWizard('${a.id}')">Editar ADN de campaña →</button>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el DNA, las ideas y el pitch</span>${infoTip('La letra es la semilla: alimenta el Campaign DNA (Concepto, Emoción, Mensaje, Keywords), las ideas de contenido y el pitch editorial.')}</div>
+      <div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">La canción (semilla)</span><span class="ph-sub">La letra alimenta el ADN, las ideas y el pitch</span>${infoTip('La letra es la semilla: alimenta el ADN de campaña (concepto, emoción, mensaje y palabras clave), las ideas de contenido y el pitch editorial.')}</div>
       <textarea class="textarea" id="letra-input" placeholder="Pega o escribe aquí la letra de la canción…" style="min-height:130px;width:100%;font-size:var(--text-base);line-height:1.5" onchange="setLaunchLetra(this.value)">${s(a.letra)}</textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar Campaign DNA</button>
+        <button class="btn btn-primary" onclick="generarDNADesdeLetra()">${icon('ai',13)} Generar ADN de campaña</button>
         <button class="btn btn-ghost" onclick="traducirLetra()">${icon('ai',13)} Traducir</button>
         <button class="btn btn-ghost" onclick="extraerHooks()">${icon('ai',13)} Extraer ganchos</button>
       </div>
@@ -652,7 +718,7 @@ function renderIdeas() {
     </div>
 
     ${(() => { const pe = a.pitchEditorial || {}; const sLen = s(pe.spotify).length; return `<div class="panel">
-      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Pitch editorial</span><span class="ph-sub">Spotify for Artists · máx 500 car.</span>${infoTip('Genera el pitch para el editor de Spotify (máx 500 car.) y una versión más corta para Apple Music, usando el ADN del artista, el Campaign DNA y la letra.')}</div>
+      <div class="panel-head"><span class="ph-icon">${icon('star',18)}</span><span class="ph-title">Pitch editorial</span><span class="ph-sub">Spotify for Artists · máx 500 car.</span>${infoTip('Genera el pitch para el editor de Spotify (máx 500 car.) y una versión más corta para Apple Music, usando el ADN del artista, el ADN de campaña y la letra.')}</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
         <button class="btn btn-primary" onclick="generarPitchEditorial()">${icon('ai',13)} ${pe.spotify ? 'Regenerar' : 'Generar'} pitch</button>
       </div>
@@ -1002,7 +1068,7 @@ function setLaunchLetra(v) {
 }
 function buildDNAfromLyricsPrompt(a, letra) {
   const art = activeArtist() || {}; const adn = art.adn || {};
-  return `Eres estratega de marketing musical. A partir de la LETRA de la canción y el ADN del artista, define el "Campaign DNA" (ADN de campaña) del lanzamiento: el concepto narrativo con el que se va a comunicar la canción en redes.
+  return `Eres estratega de marketing musical. A partir de la LETRA de la canción y el ADN del artista, define el ADN DE CAMPAÑA del lanzamiento: el concepto narrativo con el que se va a comunicar la canción en redes.
 
 ARTISTA: ${s(art.name)}
 Arquetipos: ${((adn.personality||{}).archetypes||[]).join(', ')}
@@ -1025,11 +1091,11 @@ async function generarDNADesdeLetra() {
   a.letra = letra;
   if (!aiReady()) { abrirAISettings(); return; }
   const d = a.dna || {};
-  if ((s(d.about) || s(d.message) || s(d.emotion)) && !(await uiConfirm('Esto reemplazará el Campaign DNA actual con uno generado desde la letra. ¿Continuar?'))) return;
+  if ((s(d.about) || s(d.message) || s(d.emotion)) && !(await uiConfirm('Esto reemplazará el ADN de campaña actual con uno generado desde la letra. ¿Continuar?'))) return;
   const ai = aiSettings();
   const prompt = buildDNAfromLyricsPrompt(a, letra);
   const st = document.getElementById('letra-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el Campaign DNA desde la letra (${s(ai.model)})…`; }
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el ADN de campaña desde la letra (${s(ai.model)})…`; }
   try {
     const { text, usage } = await callClaude(prompt, 900, 'campaign_dna');
     const obj = parseJSONObj(text);
@@ -1041,7 +1107,7 @@ async function generarDNADesdeLetra() {
     a.lastUsage = { in: usage.input_tokens || 0, out: usage.output_tokens || 0, cost: costFromUsage(usage, ai) };
     saveLaunches();
     renderIdeas();
-    if (typeof uiToast === 'function') uiToast('✓ Campaign DNA generado desde la letra');
+    if (typeof uiToast === 'function') uiToast('✓ ADN de campaña generado desde la letra');
   } catch (e) {
     if (st) { st.style.color = 'var(--accent2)'; st.innerHTML = `${icon('warning',12)} Error con la IA: ${s(friendlyError(e))}. Revisa la API en ${icon('settings',12)}.`; }
   }
@@ -1289,9 +1355,9 @@ function wizSetDays(p, q) {
   document.getElementById('post-days').textContent = postDays;
 }
 function wizSetCover(cover) {
-  document.querySelectorAll('.cover-opt').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('.cover-opt').forEach(c => { c.classList.remove('sel'); c.setAttribute('aria-pressed','false'); });
   const match = document.querySelector('.cover-opt.' + (/^c[1-5]$/.test(cover) ? cover : 'c1'));
-  (match || document.querySelector('.cover-opt')).classList.add('sel');
+  const chosen=match || document.querySelector('.cover-opt'); if(chosen){ chosen.classList.add('sel'); chosen.setAttribute('aria-pressed','true'); }
 }
 function wizGetCover() {
   const el = document.querySelector('.cover-opt.sel');
@@ -1300,8 +1366,7 @@ function wizGetCover() {
 }
 function wizSetMix(arr) {
   const set = new Set((arr || []).map(x => s(x).toLowerCase()));
-  document.querySelectorAll('#wiz-mix .chip').forEach(c =>
-    c.classList.toggle('on', set.has(c.textContent.trim().toLowerCase())));
+  document.querySelectorAll('#wiz-mix .chip').forEach(c => { const on=set.has(c.textContent.trim().toLowerCase()); c.classList.toggle('on',on); c.setAttribute('aria-pressed',String(on)); });
 }
 function wizGetMix() {
   return [...document.querySelectorAll('#wiz-mix .chip.on')].map(c => c.textContent.trim().toLowerCase());
@@ -1386,7 +1451,7 @@ function wizRender() {
   document.getElementById('wiz-next').textContent = wizStepN === 4
     ? (editingId ? '✓ Guardar Cambios' : '✓ Crear Lanzamiento')
     : 'Continuar →';
-  document.querySelector('.wiz-logo small').textContent = editingId ? 'Editar Lanzamiento' : 'Campaign Planner';
+  document.querySelector('.wiz-logo small').textContent = editingId ? 'Editar lanzamiento' : 'Planificador de campaña';
   document.querySelector('.wiz-body').scrollTop = 0;
 }
 function wizNext() { if (wizStepN < 4) { wizStepN++; wizRender(); } else { wizFinish(); } }
@@ -1448,8 +1513,8 @@ function wizDelete() { if (editingId) borrarLanzamiento(editingId); }
 
 function wizValidateStep1() { /* gating futuro */ }
 function wizPickCover(el) {
-  document.querySelectorAll('.cover-opt').forEach(c => c.classList.remove('sel'));
-  el.classList.add('sel');
+  document.querySelectorAll('.cover-opt').forEach(c => { c.classList.remove('sel'); c.setAttribute('aria-pressed','false'); });
+  el.classList.add('sel'); el.setAttribute('aria-pressed','true');
 }
 function wizStep(which, dir) {
   if (which === 'pre')  { preDays  = Math.max(0, preDays + dir);  document.getElementById('pre-days').textContent  = preDays; }
@@ -1471,11 +1536,11 @@ function wizCalcTimeline() {
     const start = new Date(drop); start.setDate(start.getDate() - preDays);
     const end = new Date(drop);   end.setDate(end.getDate() + postDays);
     document.getElementById('tl-start').textContent = fmt(start);
-    document.getElementById('tl-drop').textContent  = `DROP ${fmt(drop)}`;
+    document.getElementById('tl-drop').textContent  = `ESTRENO ${fmt(drop)}`;
     document.getElementById('tl-end').textContent   = fmt(end);
   } else {
     document.getElementById('tl-start').textContent = `Inicio (−${preDays}d)`;
-    document.getElementById('tl-drop').textContent  = 'Lanzamiento';
+    document.getElementById('tl-drop').textContent  = 'Estreno';
     document.getElementById('tl-end').textContent   = `Cierre (+${postDays}d)`;
   }
 }
@@ -1493,17 +1558,17 @@ function renderSidebarArtist() {
   const so = document.getElementById('topbar-signout'); if (so) so.style.display = authed() ? '' : 'none';
   const menu = document.getElementById('artist-menu');
   menu.innerHTML = (_restrictedArtist ? '' : artists.map(ar => `
-    <div class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
+    <button type="button" class="artist-menu-item ${ar.id===currentArtistId?'active':''}" onclick="setActiveArtist('${ar.id}')">
       <div class="artist-avatar" style="width:24px;height:24px;font-size:var(--text-xs)">${up(ar.name).slice(0,1)}</div>
       <span>${s(ar.name)}</span>
       ${ar.id===currentArtistId?'<span style="margin-left:auto">'+icon('check',12)+'</span>':''}
-    </div>`).join('')
-    + `<div class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</div>`)
+    </button>`).join('')
+    + `<button type="button" class="artist-menu-item artist-menu-add" onclick="abrirNuevoArtista()">+ Nuevo artista</button>`)
     + `<div style="border-top:1px solid var(--border);margin:4px 0"></div>`
-    + (authed() ? `<div class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</div>` + (_restrictedArtist ? '' : `<div class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</div>`) : '')
-    + (isAdmin() ? `<div class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</div>` : '')
-    + `<div class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:var(--text-2xs);color:${cloudEnabled()?'var(--ok)':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></div>`
-    + (authed() ? `<div class="artist-menu-item" onclick="signOutTempo()" style="color:var(--accent2)">${icon('logout',14)} Salir</div>` : `<div class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</div><div class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</div>`);
+    + (authed() ? `<button type="button" class="artist-menu-item" onclick="abrirCuenta()">${icon('settings',14)} Mi cuenta</button>` + (_restrictedArtist ? '' : `<button type="button" class="artist-menu-item" onclick="abrirTeam()">${icon('team',14)} Mi equipo · ${s(_teamName)}</button>`) : '')
+    + (isAdmin() ? `<button type="button" class="artist-menu-item" onclick="abrirAdmin()" style="color:var(--accent)">${icon('wrench',14)} Backend admin</button>` : '')
+    + `<button type="button" class="artist-menu-item" onclick="abrirSync()">${icon('cloud',14)} Sincronización <span id="sync-menu-dot" style="margin-left:auto;font-size:var(--text-2xs);color:${cloudEnabled()?'var(--ok)':'var(--text-dim)'}">${cloudEnabled()?'●':'○'}</span></button>`
+    + (authed() ? `<button type="button" class="artist-menu-item" onclick="signOutTempo()" style="color:var(--accent2)">${icon('logout',14)} Salir</button>` : `<button type="button" class="artist-menu-item" onclick="exportarDatos()">⤓ Exportar backup (.json)</button><button type="button" class="artist-menu-item" onclick="importarDatos()">⤒ Importar backup</button>`);
   renderMoreSheet();
 }
 // ── Hoja "Más" (móvil) — agrupa lo que no entra en la barra de pestañas inferior:
@@ -1518,20 +1583,20 @@ function renderMoreSheet() {
   // así que va primero y se reconoce de inmediato, igual que un selector de cuenta/workspace.
   const _a = activeArtist();
   if (!_restrictedArtist && _a) {
-    html += `<div class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:8px;margin-bottom:4px">
+    html += `<button type="button" class="more-sheet-item" onclick="toggleMoreArtistList()" style="background:var(--surface2);border-radius:8px;margin-bottom:4px" aria-expanded="false" aria-controls="more-artist-list">
       <div class="artist-avatar" style="width:32px;height:32px;font-size:var(--text-base);flex-shrink:0">${up(_a.name).slice(0,1)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:var(--text-base);font-weight:600;color:var(--text)">${s(_a.name)}</div>
         <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-ui)">Cambiar artista</div>
       </div>
       <span id="more-artist-chevron" style="color:var(--text-dim);font-size:var(--text-base);display:inline-block;transition:transform .15s">▾</span>
-    </div>
+    </button>
     <div id="more-artist-list" style="display:none;padding-bottom:4px">` +
-      artists.map(ar => `<div class="more-sheet-item" style="padding-left:30px" onclick="setActiveArtist('${ar.id}');cerrarMoreSheet()">
+      artists.map(ar => `<button type="button" class="more-sheet-item" style="padding-left:30px" onclick="setActiveArtist('${ar.id}');cerrarMoreSheet()">
         <div class="artist-avatar" style="width:24px;height:24px;font-size:var(--text-2xs);flex-shrink:0">${up(ar.name).slice(0,1)}</div>
         <span style="flex:1">${s(ar.name)}</span>${ar.id === currentArtistId ? icon('check', 15) : ''}
-      </div>`).join('') +
-      `<div class="more-sheet-item" style="padding-left:30px" onclick="abrirNuevoArtista();cerrarMoreSheet()"><span class="icon">${icon('plus', 17)}</span><span>Nuevo artista</span></div>
+      </button>`).join('') +
+      `<button type="button" class="more-sheet-item" style="padding-left:30px" onclick="abrirNuevoArtista();cerrarMoreSheet()"><span class="icon">${icon('plus', 17)}</span><span>Nuevo artista</span></button>
     </div>`;
   }
 
@@ -1540,22 +1605,22 @@ function renderMoreSheet() {
   const pageLinks = [['campanias','megaphone','Campañas activas']]
     .concat(showLabel ? [['label','label','Label']] : [])
     .concat([['perfil','artist','Perfil del Artista'], ['adn','dna','ADN Artístico'], ['banco','references','Banco de Referencias']]);
-  html += '<div class="more-sheet-item" onclick="cerrarMoreSheet();cmdkOpen()"><span class="icon">' + icon('search', 19) + '</span><span>Buscar… <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">⌘K</span></span></div>';
+  html += '<button type="button" class="more-sheet-item" onclick="cerrarMoreSheet();cmdkOpen()"><span class="icon">' + icon('search', 19) + '</span><span>Buscar… <span style="color:var(--text-dim);font-family:var(--font-ui);font-size:var(--text-2xs)">⌘K</span></span></button>';
   html += '<div class="more-sheet-label">Secciones</div>' + pageLinks.map(([id, ic, label]) =>
-    `<div class="more-sheet-item" onclick="showPage('${id}');cerrarMoreSheet()"><span class="icon">${icon(ic, 19)}</span><span>${label}</span></div>`
+    `<button type="button" class="more-sheet-item" onclick="showPage('${id}');cerrarMoreSheet()"><span class="icon">${icon(ic, 19)}</span><span>${label}</span></button>`
   ).join('');
 
   html += '<div style="border-top:1px solid var(--border);margin:6px 0"></div><div class="more-sheet-label">Cuenta</div>';
   if (authed()) {
-    html += `<div class="more-sheet-item" onclick="abrirCuenta();cerrarMoreSheet()"><span class="icon">${icon('settings', 19)}</span><span>Mi cuenta</span></div>`;
-    if (!_restrictedArtist) html += `<div class="more-sheet-item" onclick="abrirTeam();cerrarMoreSheet()"><span class="icon">${icon('team', 19)}</span><span>Mi equipo · ${s(_teamName)}</span></div>`;
-    if (isAdmin()) html += `<div class="more-sheet-item" onclick="abrirAdmin();cerrarMoreSheet()"><span class="icon" style="color:var(--accent)">${icon('wrench', 19)}</span><span style="color:var(--accent)">Backend admin</span></div>`;
-    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:var(--text-xs);color:${cloudEnabled() ? 'var(--ok)' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></div>`;
-    html += `<div class="more-sheet-item" onclick="signOutTempo()"><span class="icon" style="color:var(--accent2)">${icon('logout', 19)}</span><span style="color:var(--accent2)">Cerrar sesión</span></div>`;
+    html += `<button type="button" class="more-sheet-item" onclick="abrirCuenta();cerrarMoreSheet()"><span class="icon">${icon('settings', 19)}</span><span>Mi cuenta</span></button>`;
+    if (!_restrictedArtist) html += `<button type="button" class="more-sheet-item" onclick="abrirTeam();cerrarMoreSheet()"><span class="icon">${icon('team', 19)}</span><span>Mi equipo · ${s(_teamName)}</span></button>`;
+    if (isAdmin()) html += `<button type="button" class="more-sheet-item" onclick="abrirAdmin();cerrarMoreSheet()"><span class="icon" style="color:var(--accent)">${icon('wrench', 19)}</span><span style="color:var(--accent)">Backend admin</span></button>`;
+    html += `<button type="button" class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span style="flex:1">Sincronización</span><span style="font-size:var(--text-xs);color:${cloudEnabled() ? 'var(--ok)' : 'var(--text-dim)'}">${cloudEnabled() ? '●' : '○'}</span></button>`;
+    html += `<button type="button" class="more-sheet-item" onclick="signOutTempo()"><span class="icon" style="color:var(--accent2)">${icon('logout', 19)}</span><span style="color:var(--accent2)">Cerrar sesión</span></button>`;
   } else {
-    html += `<div class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span>Sincronización</span></div>`;
-    html += `<div class="more-sheet-item" onclick="exportarDatos()"><span class="icon">${icon('download', 19)}</span><span>Exportar backup (.json)</span></div>`;
-    html += `<div class="more-sheet-item" onclick="importarDatos()"><span class="icon">${icon('upload', 19)}</span><span>Importar backup</span></div>`;
+    html += `<button type="button" class="more-sheet-item" onclick="abrirSync();cerrarMoreSheet()"><span class="icon">${icon('cloud', 19)}</span><span>Sincronización</span></button>`;
+    html += `<button type="button" class="more-sheet-item" onclick="exportarDatos()"><span class="icon">${icon('download', 19)}</span><span>Exportar backup (.json)</span></button>`;
+    html += `<button type="button" class="more-sheet-item" onclick="importarDatos()"><span class="icon">${icon('upload', 19)}</span><span>Importar backup</span></button>`;
   }
   host.innerHTML = html;
 }
@@ -1564,14 +1629,17 @@ function cerrarMoreSheet() { document.getElementById('more-sheet-overlay').class
 function toggleMoreArtistList() {
   const list = document.getElementById('more-artist-list'); if (!list) return;
   const chev = document.getElementById('more-artist-chevron');
+  const trigger = document.querySelector('[aria-controls="more-artist-list"]');
   const open = list.style.display !== 'none';
   list.style.display = open ? 'none' : 'block';
+  if (trigger) trigger.setAttribute('aria-expanded', String(!open));
   if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 function toggleArtistMenu(force) {
   const menu = document.getElementById('artist-menu');
   const open = (force === undefined) ? !menu.classList.contains('open') : force;
   menu.classList.toggle('open', open);
+  const trigger=document.querySelector('.sidebar-artist[aria-controls="artist-menu"]'); if(trigger) trigger.setAttribute('aria-expanded',String(open));
 }
 function setActiveArtist(id) {
   if (!artists.find(a => a.id === id)) return;
@@ -1827,7 +1895,7 @@ function renderArtistForms() {
   });
   document.querySelectorAll('[data-bind-array]').forEach(cont => {
     const arr = getPath(a, cont.dataset.bindArray) || [];
-    cont.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', arr.includes(ch.textContent.trim())));
+    cont.querySelectorAll('.chip').forEach(ch => { const on=arr.includes(ch.textContent.trim()); ch.classList.toggle('on',on); ch.setAttribute('aria-pressed',String(on)); });
   });
   renderTeam();
   renderMoodboard();
@@ -1899,7 +1967,8 @@ function toggleArchetype(ch) {
   let arr = getPath(a, path); if (!Array.isArray(arr)) { arr = []; setPath(a, path, arr); }
   const label = ch.textContent.trim();
   const i = arr.indexOf(label);
-  if (i>=0) { arr.splice(i,1); ch.classList.remove('on'); } else { arr.push(label); ch.classList.add('on'); }
+  if (i>=0) { arr.splice(i,1); ch.classList.remove('on'); ch.setAttribute('aria-pressed','false'); }
+  else { arr.push(label); ch.classList.add('on'); ch.setAttribute('aria-pressed','true'); }
   saveArtists();
 }
 

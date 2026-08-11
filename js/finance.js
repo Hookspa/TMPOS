@@ -56,12 +56,12 @@ function royaltyPanelHTML(l){
   const d = royaltyDistribution(l);
   const head = `<div class="panel-head"><span class="ph-icon">${icon('team',18)}</span><span class="ph-title">Reparto de ingresos</span><span class="ph-sub">por titular · Royalty Split</span>
     <div class="mtabs" style="margin-left:auto;gap:4px">
-      <div class="mtab ${d.base==='neto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('neto')">Neto (post-recoup)</div>
-      <div class="mtab ${d.base==='bruto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('bruto')">Bruto</div>
+      <button type="button" class="mtab ${d.base==='neto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('neto')">Neto (tras recuperar inversión)</button>
+      <button type="button" class="mtab ${d.base==='bruto'?'active':''}" style="font-size:var(--text-2xs);padding:4px 9px" onclick="setRoyaltyBase('bruto')">Bruto</button>
     </div></div>`;
   if(!d.hasSplit) return `<div class="panel">${head}<div class="empty-hint">Define el <b>Royalty Split</b> en el Label Copy del track para ver cómo se reparten los ingresos por titular.</div></div>`;
   if(d.base==='neto' && d.distributable<=0){
-    return `<div class="panel">${head}<div class="empty-hint">En <b>recoupment</b>: faltan <b>${money(d.faltaRecoup)}</b> para recuperar la inversión. Nada que repartir todavía (o cambia a <b>Bruto</b> para ver el reparto sobre ingresos totales).</div></div>`;
+    return `<div class="panel">${head}<div class="empty-hint">Faltan <b>${money(d.faltaRecoup)}</b> para recuperar la inversión. Todavía no hay un neto para repartir; cambia a <b>Bruto</b> si quieres ver el reparto sobre ingresos totales.</div></div>`;
   }
   const warn = Math.round(d.totalPct) !== 100 ? `<span style="color:var(--accent);font-family:var(--font-ui);font-size:var(--text-xs)" title="El Royalty Split no suma 100%">${icon('warning',11)} split ${d.totalPct%1?d.totalPct.toFixed(2):d.totalPct}%</span>` : '';
   const rows = d.rows.sort((a,b)=>b.monto-a.monto).map(r => `<tr>
@@ -87,7 +87,7 @@ function royaltyPanelHTML(l){
 function setRoyaltyBase(b){ _royaltyBase = b; if(typeof renderReleaseTab==='function') renderReleaseTab('inversion'); }
 
 function releaseInversionHTML(l){
-  if(!canDo('ver_finanzas') && !canDo('editar_finanzas')) return `<div class="empty-hint">No tienes acceso a las finanzas de este release.</div>`;
+  if(!canDo('ver_finanzas') && !canDo('editar_finanzas')) return `<div class="empty-hint">No tienes acceso a las finanzas de este lanzamiento.</div>`;
   const editable = canDo('editar_finanzas');
   const fs = financeSummary(l), byCat = expensesByCat(l);
   const estadoColor = { no_recuperado:'var(--accent2)', parcial:'var(--beat)', recuperado:'var(--ok)' }[fs.estado];
@@ -140,10 +140,10 @@ function releaseInversionHTML(l){
     <div class="dashboard-grid" style="margin-bottom:16px">
       ${card('Inversión total', money(fs.inversion), `${(l.expenses || []).length} gasto(s)`)}
       ${card('Ingresos', money(fs.ingresos), '')}
-      ${card('Recoupment', fs.recoupPct + '%', fs.estado.replace('_', ' '), estadoColor)}
+      ${card('Recuperación', fs.recoupPct + '%', fs.estado.replace('_', ' '), estadoColor)}
       ${card('ROI', fs.roi == null ? '—' : fs.roi + '%', fs.roi == null ? 'sin inversión' : '', fs.roi == null ? '' : (fs.roi >= 0 ? 'var(--ok)' : 'var(--accent2)'))}
     </div>
-    <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Recoupment</span><span class="ph-sub">ingresos vs inversión</span></div>
+    <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('finance',18)}</span><span class="ph-title">Recuperación de inversión</span><span class="ph-sub">ingresos vs. inversión</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${fs.recoupPct}%;background:${estadoColor}"></div></div>
       ${editable ? `<div class="field" style="margin-top:12px;max-width:240px"><label>Ingresos acumulados (US$)</label><input class="input" value="${fs.ingresos || ''}" inputmode="decimal" placeholder="0" onchange="setRecoupIngresos(this.value)"></div>` : ''}
     </div>
@@ -276,7 +276,7 @@ function captureReleaseSnapshot(id, opts) {
   try { localStorage.setItem('ao_release_snapshots', JSON.stringify(arr)); } catch (e) {}
   _snapshotCloudUpsert(snap);                                // best-effort 1 upsert (tabla del propio equipo)
   if (!(opts && opts.silent) && typeof uiToast === 'function') uiToast('✓ Snapshot de cierre capturado');
-  if (typeof renderReleaseTab === 'function' && (typeof currentLaunchId !== 'undefined') && currentLaunchId === id) renderReleaseTab('resumen');
+  if (typeof renderReleaseTab === 'function' && (typeof currentLaunchId !== 'undefined') && currentLaunchId === id) renderReleaseTab((typeof _releaseTab!=='undefined'&&_releaseTab==='resultados')?'resultados':'resumen');
   return snap;
 }
 async function _snapshotCloudUpsert(snap) {
@@ -293,21 +293,22 @@ function snapshotPanelHTML(l) {
   const canCap = (typeof canDo !== 'function') || canDo('edit_launch');
   const btn = canCap ? `<button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:var(--text-xs)" onclick="captureReleaseSnapshot('${l.id}')">${icon('save', 12)} ${snap ? 'Actualizar' : 'Capturar'} snapshot</button>` : '';
   const head = `<div class="panel-head"><span class="ph-icon">${icon('chart', 18)}</span><span class="ph-title">Snapshot de cierre</span><span class="ph-sub">dato operativo del lanzamiento</span>${btn}</div>`;
-  if (!snap) return `<div class="panel">${head}<div class="empty-hint">Aún sin snapshot. Se captura solo al cerrar el release, o con el botón. Mide cómo se corrió: tareas, cycle-time, latencia de gates, lead time, espaciado, inversión/ROI y resultado.</div></div>`;
+  if (!snap) return `<div class="panel">${head}<div class="empty-hint">Aún sin snapshot. Se captura automáticamente al cerrar el lanzamiento, o con el botón. Mide la ejecución: tareas, duración de ciclos, latencia de hitos, antelación, espaciado, inversión, ROI y resultado.</div></div>`;
   const stat = (lbl, val) => `<div class="stat-card"><div class="stat-label">${lbl}</div><div class="stat-value" style="font-size:var(--text-xl)">${val == null ? '—' : val}</div></div>`;
   const gates = Object.keys(snap.gate_latency_dias || {}).length;
   const r7 = snap.resultado_d7 && snap.resultado_d7.streams != null ? (snap.resultado_d7.streams.toLocaleString('es') + ' streams') : '—';
   const grid = `<div class="dash-kpis" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px">
     ${stat('Tareas', snap.n_tareas_total)}
-    ${stat('Cycle mediana', snap.cycle_days_mediana == null ? '—' : snap.cycle_days_mediana + 'd')}
-    ${stat('Lead time', snap.lead_time_dias == null ? '—' : snap.lead_time_dias + 'd')}
+    ${stat('Ciclo mediano', snap.cycle_days_mediana == null ? '—' : snap.cycle_days_mediana + 'd')}
+    ${stat('Antelación', snap.lead_time_dias == null ? '—' : snap.lead_time_dias + 'd')}
     ${stat('Espaciado', snap.espaciado_mediano_dias == null ? '—' : snap.espaciado_mediano_dias + 'd')}
-    ${stat('Readiness', snap.readiness_final_pct == null ? '—' : snap.readiness_final_pct + '%')}
+    ${stat('Preparación', snap.readiness_final_pct == null ? '—' : snap.readiness_final_pct + '%')}
     ${stat('Inversión', money(snap.inversion || 0))}
     ${stat('ROI', snap.roi == null ? '—' : snap.roi + '%')}
-    ${stat('Gates medidos', gates)}
+    ${stat('Hitos medidos', gates)}
   </div>`;
-  const meta = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${snap.genero || 's/género'} · ${snap.tipo_release} · ${snap.etapa_carrera} · resultado d7: ${r7} · completitud ${snap.completitud}% · capturado ${new Date(snap.capturedAt).toLocaleString('es')}${snap.cycle_estimadas ? ' · ' + snap.cycle_estimadas + ' cycle estimado(s)' : ''}</div>`;
+  const tipo = ({ single:'sencillo', ep:'EP', album:'álbum' })[snap.tipo_release] || snap.tipo_release;
+  const meta = `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${snap.genero || 's/género'} · ${tipo} · ${snap.etapa_carrera} · resultado d7: ${r7} · completitud ${snap.completitud}% · capturado ${new Date(snap.capturedAt).toLocaleString('es')}${snap.cycle_estimadas ? ' · ' + snap.cycle_estimadas + ' ciclo(s) estimado(s)' : ''}</div>`;
   const rs = snap.royalty_split;
   const royalty = rs ? `<div style="margin-top:8px;font-size:var(--text-xs);font-family:var(--font-ui);color:var(--text-muted)">Reparto congelado (neto ${money(rs.distributable)}${rs.per_track ? ` · ${rs.n_tracks} canciones` : ''}): ${rs.titulares.slice(0, 4).map(x => `${s(x.name)} ${money(x.monto)}`).join(' · ')}${rs.titulares.length > 4 ? ` +${rs.titulares.length - 4}` : ''}</div>` : '';
   return `<div class="panel">${head}${grid}${meta}${royalty}</div>`;

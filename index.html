@@ -8,7 +8,9 @@
 <link rel="icon" type="image/png" sizes="32x32" href="logo_exports/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="logo_exports/favicon-16.png">
 <link rel="apple-touch-icon" href="logo_exports/favicon-180.png">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Overpass:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #070707;
@@ -23,10 +25,10 @@
   --muted: #4a4a4a;
   --dim: #252525;
   --fd: 'Bebas Neue', sans-serif;
-  --fi: 'Instrument Serif', serif;
-  --fb: 'DM Sans', sans-serif;
-  /* --fm: Space Mono retirado (de-slop 2026-07); ahora = --fb. Token conservado por compat. */
-  --fm: 'DM Sans', sans-serif;
+  /* Alias heredados conservados para no reescribir los selectores de esta página. */
+  --fi: 'Overpass', sans-serif;
+  --fb: 'Overpass', sans-serif;
+  --fm: 'Overpass', sans-serif;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,7 +49,7 @@ body {
   border-radius: 50%;
   pointer-events: none;
   z-index: 9999;
-  transition: transform 0.15s ease, width 0.2s, height 0.2s;
+  transition: transform 0.15s ease;
   mix-blend-mode: difference;
 }
 .cursor-ring {
@@ -248,15 +250,15 @@ nav.scrolled {
 
 /* ── TICKER ── */
 .ticker {
-  overflow: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 14px 0;
   background: var(--s1);
 }
 .ticker-inner {
-  display: flex; gap: 0;
-  animation: ticker 28s linear infinite;
+  display: flex; width: max-content; min-width: 100%;
   white-space: nowrap;
 }
 .ticker-item {
@@ -265,9 +267,9 @@ nav.scrolled {
   text-transform: uppercase;
   padding: 0 32px;
   display: flex; align-items: center; gap: 32px;
+  margin: 0 auto;
 }
-.ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--orange); }
-@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
 
 /* ── SECTIONS ── */
 section { padding: 100px 48px; max-width: 1100px; margin: 0 auto; }
@@ -399,8 +401,8 @@ hr.divider { border: none; border-top: 1px solid var(--border); }
 .shot-frame img { display: block; width: 100%; height: auto; }
 .shot-hero { margin-top: 48px; }
 .shot-hero .shot-frame:hover {
-  border-color: rgba(255,107,53,0.3);
-  box-shadow: 0 40px 100px -30px rgba(255,107,53,0.15), 0 30px 80px -30px rgba(0,0,0,0.8);
+  border-color: var(--border2);
+  box-shadow: 0 40px 100px -30px rgba(0,0,0,0.9);
 }
 .screens-grid {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -766,8 +768,7 @@ footer {
 <!-- TICKER -->
 <div class="ticker">
   <div class="ticker-inner">
-    <div class="ticker-item">TEMPO OS <div class="ticker-dot"></div> Releases &amp; Tracks <div class="ticker-dot"></div> Tareas &amp; tablero <div class="ticker-dot"></div> Aprobaciones <div class="ticker-dot"></div> Listo para lanzar % <div class="ticker-dot"></div> Roles &amp; permisos <div class="ticker-dot"></div> Automatizaciones <div class="ticker-dot"></div> Recoupment &amp; ROI <div class="ticker-dot"></div> Notificaciones <div class="ticker-dot"></div> Reportes IA <div class="ticker-dot"></div> White-label <div class="ticker-dot"></div> LATAM <div class="ticker-dot"></div></div>
-    <div class="ticker-item">TEMPO OS <div class="ticker-dot"></div> Releases &amp; Tracks <div class="ticker-dot"></div> Tareas &amp; tablero <div class="ticker-dot"></div> Aprobaciones <div class="ticker-dot"></div> Listo para lanzar % <div class="ticker-dot"></div> Roles &amp; permisos <div class="ticker-dot"></div> Automatizaciones <div class="ticker-dot"></div> Recoupment &amp; ROI <div class="ticker-dot"></div> Notificaciones <div class="ticker-dot"></div> Reportes IA <div class="ticker-dot"></div> White-label <div class="ticker-dot"></div> LATAM <div class="ticker-dot"></div></div>
+    <div class="ticker-item">TEMPO OS <div class="ticker-dot"></div> Lanzamientos y canciones <div class="ticker-dot"></div> Tareas y tablero <div class="ticker-dot"></div> Aprobaciones <div class="ticker-dot"></div> Listo para lanzar % <div class="ticker-dot"></div> Roles y permisos <div class="ticker-dot"></div> Automatizaciones <div class="ticker-dot"></div> Recuperación y ROI <div class="ticker-dot"></div> Notificaciones <div class="ticker-dot"></div> Reportes IA <div class="ticker-dot"></div> Marca propia <div class="ticker-dot"></div> LATAM</div>
   </div>
 </div>
 
@@ -789,19 +790,19 @@ footer {
     <div class="problem-card">
       <div class="prob-num">02</div>
       <div class="prob-title">Las aprobaciones se pierden</div>
-      <div class="prob-text">¿Quién aprobó el cover? ¿Se firmó el split? ¿Está listo el máster? Las decisiones se diluyen en hilos de chat que nadie vuelve a encontrar.</div>
+      <div class="prob-text">¿Quién aprobó la portada? ¿Se firmó el split? ¿Está listo el máster? Las decisiones se diluyen en hilos de chat que nadie vuelve a encontrar.</div>
       <div class="prob-ghost">02</div>
     </div>
     <div class="problem-card">
       <div class="prob-num">03</div>
       <div class="prob-title">Sin visibilidad del sello</div>
-      <div class="prob-text">Cuánto se invirtió, qué se recuperó, qué releases vienen, qué está bloqueado por legal. Sin una pantalla que lo muestre, decides a ciegas.</div>
+      <div class="prob-text">Cuánto se invirtió, qué se recuperó, qué lanzamientos vienen, qué está bloqueado por legal. Sin una pantalla que lo muestre, decides a ciegas.</div>
       <div class="prob-ghost">03</div>
     </div>
     <div class="problem-card">
       <div class="prob-num">04</div>
       <div class="prob-title">Herramientas que no son tuyas</div>
-      <div class="prob-text">Los gestores de proyectos genéricos no hablan el idioma de un release. Y las herramientas que sí, son en inglés, pensadas para US, sin el flujo de sellos y artistas de LATAM.</div>
+      <div class="prob-text">Los gestores de proyectos genéricos no hablan el idioma de un lanzamiento. Y las herramientas que sí, son en inglés, pensadas para EE. UU., sin el flujo de sellos y artistas de LATAM.</div>
       <div class="prob-ghost">04</div>
     </div>
   </div>
@@ -813,14 +814,14 @@ footer {
 <section class="modules-section">
   <div class="label reveal">El sistema</div>
   <div class="h2 reveal reveal-delay-1">El sello entero,<br><em>en una pantalla.</em></div>
-  <p class="body-text reveal reveal-delay-2">TEMPO OS organiza tu música en cuatro niveles — <strong>Sello → Artista → Release → Canciones</strong> — y monta encima la capa colaborativa: tareas, aprobaciones, roles y automatizaciones. Entras a una canción y sabes qué tiene, qué le falta, quién debe hacerlo, cuánto se invirtió y qué sigue. Gestión de proyectos hecha para sellos.</p>
+  <p class="body-text reveal reveal-delay-2">TEMPO OS organiza tu música en cuatro niveles: <strong>Sello → Artista → Lanzamiento → Canciones</strong>. Encima monta la capa colaborativa: tareas, aprobaciones, roles y automatizaciones. Entras a una canción y sabes qué tiene, qué le falta, quién debe hacerlo, cuánto se invirtió y qué sigue. Gestión de proyectos hecha para sellos.</p>
 
   <div class="modules-grid" style="margin-top:48px">
     <div class="module-card wide reveal reveal-delay-1">
       <span class="module-icon">◎</span>
       <div class="module-num">EL NÚCLEO</div>
-      <div class="module-name">EL RELEASE COMO REGISTRO CENTRAL</div>
-      <div class="module-desc">Cada lanzamiento es una ficha con todo: tracklist, identidad, campaña, finanzas y trabajo. Una barra <strong>"Listo para lanzar %"</strong>, una macro-fase auto-calculada (Idea → Producción → Legal → Distribución → Lanzado → Post) y alertas de lo que está por vencer o bloqueado.</div>
+      <div class="module-name">EL LANZAMIENTO COMO REGISTRO CENTRAL</div>
+      <div class="module-desc">Cada lanzamiento es una ficha con todo: lista de canciones, identidad, campaña, finanzas y trabajo. Una barra <strong>"Listo para lanzar %"</strong>, una macrofase calculada automáticamente (Idea → Producción → Legal → Distribución → Lanzado → Cierre) y alertas de lo que está por vencer o bloqueado.</div>
     </div>
     <div class="module-card reveal reveal-delay-2">
       <span class="module-icon">▤</span>
@@ -832,7 +833,7 @@ footer {
       <span class="module-icon">▦</span>
       <div class="module-num">VISTAS</div>
       <div class="module-name">5 VISTAS + "MIS TAREAS"</div>
-      <div class="module-desc">Lista · Kanban · Calendario · Timeline · Por responsable. Un inbox "Mis tareas" mobile-first y una vista <strong>"Qué falta"</strong> accionable por release.</div>
+      <div class="module-desc">Lista · Kanban · Calendario · Línea de tiempo · Por responsable. Una lista global "Mis tareas" pensada para móvil y una vista <strong>"Qué falta"</strong> accionable por lanzamiento.</div>
     </div>
     <div class="module-card reveal reveal-delay-2">
       <span class="module-icon">◳</span>
@@ -844,7 +845,7 @@ footer {
       <span class="module-icon">◇</span>
       <div class="module-num">ALCANCE</div>
       <div class="module-name">ROLES Y PERMISOS</div>
-      <div class="module-desc">10 presets de negocio: label manager, manager, productor, ingeniero, abogado, marketing, diseñador, artista, lector… Cada quien ve y edita solo lo suyo. El abogado no ve finanzas; el diseñador, solo sus assets.</div>
+      <div class="module-desc">10 perfiles de negocio: responsable de sello, manager, productor, ingeniero, abogado, marketing, diseñador, artista y lector. Cada quien ve y edita solo lo suyo. El abogado no ve finanzas; el diseñador, solo sus archivos.</div>
     </div>
     <div class="module-card wide reveal reveal-delay-2">
       <span class="module-icon">⬡</span>
@@ -856,35 +857,35 @@ footer {
       <span class="module-icon">◈</span>
       <div class="module-num">CONTROL</div>
       <div class="module-name">APROBACIONES</div>
-      <div class="module-desc">9 gates — cover, máster, label copy, split, presupuesto, calendario, reporte, campaña, publicación. Propone → revisa → aprueba, y queda registrado quién y cuándo.</div>
+      <div class="module-desc">9 hitos: portada, máster, label copy, split, presupuesto, calendario, reporte, campaña y publicación. Propone → revisa → aprueba, y queda registrado quién y cuándo.</div>
     </div>
     <div class="module-card reveal reveal-delay-2">
       <span class="module-icon">◉</span>
       <div class="module-num">ACCOUNTABILITY</div>
       <div class="module-name">NOTIFICACIONES + COMENTARIOS</div>
-      <div class="module-desc">Campana in-app mobile-first, comentarios por canal (legal, marketing, audio…) con @menciones, y un feed de actividad de todo lo que pasa en el release.</div>
+      <div class="module-desc">Campana integrada y pensada para móvil, comentarios por canal (legal, marketing, audio) con @menciones, y un registro de actividad de todo lo que pasa en el lanzamiento.</div>
     </div>
     <div class="module-card reveal reveal-delay-1">
       <span class="module-icon">⬢</span>
       <div class="module-num">NEGOCIO</div>
-      <div class="module-name">FINANZAS + RECOUPMENT</div>
-      <div class="module-desc">Inversión por categoría, plan vs gasto real, recoupment (¿ya se recuperó?) y ROI por release. La parte que decide si el sello gana o pierde.</div>
+      <div class="module-name">FINANZAS + RECUPERACIÓN</div>
+      <div class="module-desc">Inversión por categoría, plan vs. gasto real, recuperación de inversión y ROI por lanzamiento. La parte que decide si el sello gana o pierde.</div>
     </div>
     <div class="module-card reveal reveal-delay-2">
       <span class="module-icon">♪</span>
       <div class="module-num">POR CANCIÓN</div>
       <div class="module-name">MÚSICA · LEGAL · LABEL COPY</div>
-      <div class="module-desc">Cada track es durable (por ISRC): links de mezcla/máster, créditos y splits %, split sheets y autorizaciones por canción con su estado, y un documento madre de <strong>Label Copy</strong> con todos los datos para distribución.</div>
+      <div class="module-desc">Cada canción conserva su historia por ISRC: enlaces de mezcla y máster, créditos y splits, split sheets y autorizaciones con su estado, y un documento madre de <strong>Label Copy</strong> con todos los datos para distribución.</div>
     </div>
     <div class="module-card wide reveal reveal-delay-1">
       <span class="module-icon">✦</span>
-      <div class="module-num">LA CAPA QUE YA CONOCÍAS · ✨ IA</div>
+      <div class="module-num">LA CAPA QUE YA CONOCÍAS · IA</div>
       <div class="module-name">MARKETING, CONTENIDO &amp; DATA</div>
-      <div class="module-desc">Todo el módulo de marketing vive ahora dentro del release: ADN de artista y campaña, banco de 500+ referencias, generador de ideas y contenido con IA, calendario editorial, objetivos SMART, métricas con tendencias, aprendizajes e <strong>IA estratégica</strong> que aprende de tu historial.</div>
+      <div class="module-desc">Todo el módulo de marketing vive ahora dentro del lanzamiento: ADN de artista y campaña, banco de 500+ referencias, generador de ideas y contenido con IA, calendario editorial, objetivos SMART, métricas con tendencias, aprendizajes e <strong>IA estratégica</strong> que aprende de tu historial.</div>
     </div>
     <div class="module-card reveal reveal-delay-2">
       <span class="module-icon">◧</span>
-      <div class="module-num">TU MARCA · ✨ IA</div>
+      <div class="module-num">TU MARCA · IA</div>
       <div class="module-name">REPORTES + WHITE-LABEL</div>
       <div class="module-desc">Reportes con IA en PDF/PPTX/nube para artista, cliente o inversionista. Y tu propia marca en el workspace: color, logo y nombre. Archivos privados con auditoría de quién vio qué.</div>
     </div>
@@ -901,43 +902,43 @@ footer {
 <section class="screens-section" id="vistazo">
   <div class="label reveal">Por dentro</div>
   <div class="h2 reveal reveal-delay-1">No es una idea.<br><em>Está construido.</em></div>
-  <p class="body-text reveal reveal-delay-2">Capturas reales de TEMPO OS — datos, no mockups. Así se ve correr un sello de principio a fin.</p>
+  <p class="body-text reveal reveal-delay-2">Capturas reales de TEMPO OS: datos, no maquetas. Así se ve correr un sello de principio a fin.</p>
 
   <div class="shot-hero reveal reveal-delay-2">
     <div class="shot-frame">
       <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">tempo os · dashboard</div></div>
-      <img src="screenshots/dashboard.jpg" alt="Dashboard de TEMPO OS con KPIs, tendencia y señales CRM" loading="lazy">
+        <img src="screenshots/dashboard.jpg" alt="Dashboard de TEMPO OS con indicadores, tendencia y señales operativas" loading="lazy">
     </div>
   </div>
 
   <div class="screens-grid">
     <figure class="shot reveal">
       <div class="shot-frame">
-        <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">ficha de release</div></div>
-        <img src="screenshots/release.jpg" alt="Ficha de release de TEMPO OS con checklist y aprobaciones" loading="lazy">
+        <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">ficha de lanzamiento</div></div>
+        <img src="screenshots/release.jpg" alt="Ficha de lanzamiento de TEMPO OS con checklist y aprobaciones" loading="lazy">
       </div>
-      <figcaption><b>Ficha de release</b> — "Listo para lanzar %", alertas y aprobaciones en un solo lugar</figcaption>
+      <figcaption><b>Ficha de lanzamiento</b> · "Listo para lanzar %", alertas y aprobaciones en un solo lugar</figcaption>
     </figure>
     <figure class="shot reveal reveal-delay-1">
       <div class="shot-frame">
         <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">tareas · kanban</div></div>
         <img src="screenshots/tareas.jpg" alt="Tablero de tareas colaborativas en TEMPO OS" loading="lazy">
       </div>
-      <figcaption><b>Tareas</b> — tablero colaborativo con responsable, prioridad y estado</figcaption>
+      <figcaption><b>Tareas</b> · tablero colaborativo con responsable, prioridad y estado</figcaption>
     </figure>
     <figure class="shot reveal">
       <div class="shot-frame">
         <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">lanzamientos</div></div>
         <img src="screenshots/pipeline.jpg" alt="Pipeline de lanzamientos de TEMPO OS" loading="lazy">
       </div>
-      <figcaption><b>Lanzamientos</b> — todos tus releases y su estado, de un vistazo</figcaption>
+      <figcaption><b>Lanzamientos</b> · todos tus lanzamientos y su estado, de un vistazo</figcaption>
     </figure>
     <figure class="shot reveal reveal-delay-1">
       <div class="shot-frame">
-        <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">negocio · recoupment</div></div>
-        <img src="screenshots/negocio.jpg" alt="Finanzas y recoupment de un release en TEMPO OS" loading="lazy">
+        <div class="shot-bar"><span></span><span></span><span></span><div class="shot-url">negocio · recuperación</div></div>
+        <img src="screenshots/negocio.jpg" alt="Finanzas y recuperación de inversión de un lanzamiento en TEMPO OS" loading="lazy">
       </div>
-      <figcaption><b>Negocio</b> — inversión, recoupment y ROI por release</figcaption>
+      <figcaption><b>Negocio</b> · inversión, recuperación y ROI por lanzamiento</figcaption>
     </figure>
   </div>
 </section>
@@ -949,14 +950,14 @@ footer {
   <div class="pace-inner">
     <div class="label reveal">El método</div>
     <div class="h2 reveal reveal-delay-1">Un método,<br><em>convertido en software.</em></div>
-    <p class="body-text reveal reveal-delay-2">Cada parte de TEMPO OS ejecuta un paso del proceso de lanzamiento. No es una herramienta más donde improvisas — es un sistema que te lleva del plan a la ejecución medible, con todo el equipo en la misma página. Usar TEMPO OS <em>es</em> seguir el método, release tras release.</p>
+    <p class="body-text reveal reveal-delay-2">Cada parte de TEMPO OS ejecuta un paso del proceso de lanzamiento. No es una herramienta más donde improvisas; es un sistema que te lleva del plan a la ejecución medible, con todo el equipo en la misma página. Usar TEMPO OS <em>es</em> seguir el método, lanzamiento tras lanzamiento.</p>
 
     <div class="pace-grid">
       <div class="pace-card reveal">
         <div class="pace-letter">01</div>
         <div class="pace-word">Planea</div>
         <div class="pace-title">Del plan al pipeline</div>
-        <div class="pace-desc">Creas el release (single, EP o álbum), eliges una plantilla y el sistema genera las tareas, las dependencias y el calendario por ti.</div>
+        <div class="pace-desc">Creas el lanzamiento (sencillo, EP o álbum), eliges una plantilla y el sistema genera las tareas, las dependencias y el calendario por ti.</div>
       </div>
       <div class="pace-card reveal reveal-delay-1">
         <div class="pace-letter">02</div>
@@ -974,7 +975,7 @@ footer {
         <div class="pace-letter">04</div>
         <div class="pace-word">Mide y aprende</div>
         <div class="pace-title">Resultados, no corazonadas</div>
-        <div class="pace-desc">Métricas con tendencias, recoupment y ROI, reportes con IA y una IA estratégica que aprende de tu historial para el próximo release.</div>
+        <div class="pace-desc">Métricas con tendencias, recuperación y ROI, reportes con IA y una IA estratégica que aprende de tu historial para el próximo lanzamiento.</div>
       </div>
     </div>
   </div>
@@ -1009,14 +1010,14 @@ footer {
       <div class="who-icon">◎</div>
       <div>
         <div class="who-name">MANAGERS Y AGENCIAS</div>
-        <div class="who-desc">Managers con 1 a 10 artistas que hoy operan con chats, hojas de cálculo y notas dispersas. TEMPO OS centraliza la operación de cada release y mantiene a todo el equipo rindiendo cuentas.</div>
+        <div class="who-desc">Managers con 1 a 10 artistas que hoy operan con chats, hojas de cálculo y notas dispersas. TEMPO OS centraliza la operación de cada lanzamiento y mantiene a todo el equipo rindiendo cuentas.</div>
       </div>
     </div>
     <div class="who-card reveal reveal-delay-2">
       <div class="who-icon">▦</div>
       <div>
         <div class="who-name">EQUIPOS DE LANZAMIENTO</div>
-        <div class="who-desc">Productor, ingeniero, abogado, diseñador, marketing — cada uno con su rol, sus tareas y sus aprobaciones. Sin chats infinitos, sin archivos perdidos en carpetas.</div>
+        <div class="who-desc">Productor, ingeniero, abogado, diseñador y marketing: cada uno con su rol, sus tareas y sus aprobaciones. Sin chats infinitos ni archivos perdidos en carpetas.</div>
       </div>
     </div>
     <div class="who-card reveal reveal-delay-3">
@@ -1036,7 +1037,7 @@ footer {
   <div class="eco-inner" style="max-width:780px;text-align:center;margin:0 auto">
     <div class="label reveal" style="justify-content:center">El origen</div>
     <div class="h2 reveal reveal-delay-1">Nacido <em>dentro</em><br>de la industria.</div>
-    <p class="body-text reveal reveal-delay-2" style="margin:0 auto">TEMPO OS no nació en un laboratorio de Silicon Valley. Nació desde adentro del desarrollo artístico en Latinoamérica — años de trabajo real con artistas, convertidos en un sistema. Conoce el código cultural del reggaetón colombiano, del regional mexicano, del pop latino. Habla tu idioma porque viene de tu mercado.</p>
+    <p class="body-text reveal reveal-delay-2" style="margin:0 auto">TEMPO OS no nació en un laboratorio de Silicon Valley. Nació desde adentro del desarrollo artístico en Latinoamérica: años de trabajo real con artistas, convertidos en un sistema. Conoce el código cultural del reggaetón colombiano, del regional mexicano y del pop latino. Habla tu idioma porque viene de tu mercado.</p>
   </div>
 </div>
 
@@ -1046,7 +1047,7 @@ footer {
 <section class="pricing-section" id="pricing">
   <div class="label reveal">Pricing</div>
   <div class="h2 reveal reveal-delay-1">El CRM completo.<br><em>Sin sorpresas.</em></div>
-  <p class="body-text reveal reveal-delay-2">Por workspace, con asientos para tu equipo. Precios en USD, pagos locales disponibles — Pix, SPEI, Mercado Pago, PSE.</p>
+  <p class="body-text reveal reveal-delay-2">Por espacio de trabajo, con asientos para tu equipo. Precios en USD y pagos locales disponibles: Pix, SPEI, Mercado Pago y PSE.</p>
 
   <div class="pricing-grid">
     <div class="price-card reveal">
@@ -1056,12 +1057,12 @@ footer {
       <div class="price-period">Siempre gratis</div>
       <div class="price-divider"></div>
       <div class="price-feature"><i>+</i>1 artista · 2 asientos</div>
-      <div class="price-feature"><i>+</i>1 release activo</div>
+      <div class="price-feature"><i>+</i>1 lanzamiento activo</div>
       <div class="price-feature"><i>+</i>Checklist "Listo para lanzar"</div>
       <div class="price-feature"><i>+</i>Tareas + calendario</div>
       <div class="price-feature"><i>+</i>Banco de referencias</div>
-      <div class="price-feature off"><i>—</i>Automatizaciones</div>
-      <div class="price-feature off"><i>—</i>Finanzas + roles avanzados</div>
+      <div class="price-feature off"><i>×</i>Automatizaciones</div>
+      <div class="price-feature off"><i>×</i>Finanzas + roles avanzados</div>
       <a href="app.html" class="price-cta ghost">Empezar gratis</a>
     </div>
 
@@ -1069,10 +1070,10 @@ footer {
       <div class="price-tier">Individual</div>
       <div class="price-name">ARTISTA</div>
       <div class="price-val">$39 <span>/mes</span></div>
-      <div class="price-period">O $390/año — ahorras $78</div>
+      <div class="price-period">O $390/año · ahorras $78</div>
       <div class="price-divider"></div>
       <div class="price-feature"><i>+</i>1 artista · hasta 5 asientos</div>
-      <div class="price-feature"><i>+</i>Releases y tracks ilimitados</div>
+      <div class="price-feature"><i>+</i>Lanzamientos y canciones ilimitados</div>
       <div class="price-feature"><i>+</i>Tareas colaborativas · 5 vistas</div>
       <div class="price-feature"><i>+</i>Aprobaciones + notificaciones</div>
       <div class="price-feature"><i>+</i>Plantillas + automatizaciones</div>
@@ -1085,12 +1086,12 @@ footer {
       <div class="price-tier" style="margin-top:14px">Sello</div>
       <div class="price-name">MANAGER</div>
       <div class="price-val">$129 <span>/mes</span></div>
-      <div class="price-period">O $1,290/año — ahorras $258</div>
+      <div class="price-period">O $1,290/año · ahorras $258</div>
       <div class="price-divider"></div>
       <div class="price-feature"><i>+</i>Todo de Artista</div>
       <div class="price-feature"><i>+</i>Artistas ilimitados · hasta 10 asientos</div>
       <div class="price-feature"><i>+</i>10 roles de negocio + permisos por área</div>
-      <div class="price-feature"><i>+</i>Finanzas, recoupment y ROI</div>
+      <div class="price-feature"><i>+</i>Finanzas, recuperación y ROI</div>
       <div class="price-feature"><i>+</i>Dashboard de sello</div>
       <div class="price-feature"><i>+</i>Legal + Label Copy + auditoría</div>
       <div class="price-feature"><i>+</i>Asientos adicionales disponibles</div>
@@ -1114,7 +1115,7 @@ footer {
     </div>
   </div>
 
-  <p class="body-text reveal" style="margin:32px auto 0;text-align:center;font-size:13px">Cada miembro entra con su <strong style="color:var(--text)">rol de negocio</strong> y ve solo lo que le toca — el abogado no ve finanzas, el diseñador solo sus assets. En el plan Sello puedes sumar <strong style="color:var(--text)">asientos adicionales</strong> cuando crece tu equipo. ¿Necesitas tu marca propia y asientos ilimitados? Eso es Label Custom.</p>
+  <p class="body-text reveal" style="margin:32px auto 0;text-align:center;font-size:13px">Cada miembro entra con su <strong style="color:var(--text)">rol de negocio</strong> y ve solo lo que le toca. El abogado no ve finanzas; el diseñador, solo sus archivos. En el plan Sello puedes sumar <strong style="color:var(--text)">asientos adicionales</strong> cuando crece tu equipo. ¿Necesitas tu marca propia y asientos ilimitados? Eso es Label Custom.</p>
 </section>
 
 <hr class="divider">
@@ -1125,7 +1126,7 @@ footer {
   <div class="cta-title reveal reveal-delay-1">MANTÉN<br>EL TEMPO.</div>
   <div class="cta-sub reveal reveal-delay-2">Lanzamiento tras lanzamiento.</div>
   <div class="reveal reveal-delay-3">
-    <a href="app.html" class="btn-primary" style="font-size:12px;padding:18px 48px">Empieza gratis — sin tarjeta</a>
+    <a href="app.html" class="btn-primary" style="font-size:12px;padding:18px 48px">Empieza gratis · sin tarjeta</a>
   </div>
   <div class="cta-note reveal reveal-delay-4">Disponible en LATAM · Pagos locales · En español</div>
 </section>
