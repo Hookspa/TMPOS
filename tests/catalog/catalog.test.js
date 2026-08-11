@@ -426,11 +426,16 @@ test('la comprobación detecta cambios de contenido aunque los conteos no cambie
 test('el catálogo canónico conserva las 6,066 referencias y app.html ya no contiene una copia', () => {
   const root = path.resolve(__dirname, '../..');
   const html = fs.readFileSync(path.join(root, 'app.html'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'css/app.css'), 'utf8');
   const catalogCsv = fs.readFileSync(path.join(root, 'refs_02.csv'), 'utf8');
   const artifact = createCatalogArtifactFromCsv(catalogCsv, { minimumRows: 6066 });
   const rows = parseCsvStrict(artifact.csv);
 
   assert.doesNotMatch(html, /id=["']bank-csv["']/);
+  assert.doesNotMatch(html, /<style(?:\s|>)/i);
+  assert.match(html, /href=["']css\/app\.css\?v=20260811a["']/);
+  assert.match(css, /:root, \[data-theme="dark"\]/);
+  assert.match(css, /\.catalog-state/);
   const scriptVersions = { catalog: '20260811c', app: '20260811c', releases: '20260811b', team: '20260811b', init: '20260811b' };
   Object.entries(scriptVersions).forEach(([script, version]) => {
     assert.match(html, new RegExp(`src=["']js/${script}\\.js\\?v=${version}["']`));

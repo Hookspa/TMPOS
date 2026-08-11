@@ -28,8 +28,10 @@ test('el usuario sin sesión ve el acceso al equipo', async ({ page }) => {
 test('el usuario puede abrir ArtistOS y navegar al Banco', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
+  const stylesheetResponse = page.waitForResponse(response => response.url().includes('/css/app.css'));
 
   await openLocalWorkspace(page);
+  expect((await stylesheetResponse).ok()).toBe(true);
 
   await expect(page).toHaveTitle('Tempo OS');
   await expect(page.locator('#page-compas')).toHaveClass(/\bactive\b/);
