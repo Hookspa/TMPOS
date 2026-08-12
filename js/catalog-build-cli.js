@@ -2,11 +2,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { createCatalogArtifactFromCsv } = require('./catalog-build.js');
+const { CATALOG_MINIMUM_ROWS } = require('./catalog.js');
 
 const root = path.resolve(__dirname, '..');
 const catalogPath = path.join(root, 'refs_02.csv');
 const manifestPath = path.join(root, 'js', 'catalog-manifest.js');
-const CATALOG_MINIMUM_ROWS = 6066;
 
 function renderManifest(manifest) {
   const json = JSON.stringify(manifest, null, 2);

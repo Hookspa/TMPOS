@@ -1,0 +1,221 @@
+name: Validate and deploy ArtistOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: artistos-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  validate-and-build:
+    # Visual baselines are intentionally generated on Darwin; pin the same OS family.
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install test dependencies
+        run: npm ci
+      - name: Install deterministic browser
+        run: npx playwright install chromium
+      - name: Run catalog, deployment, functional and visual gates
+        run: npm run test:ci
+      - name: Build atomic Pages artifact
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: node .github/scripts/build-site.js
+      - name: Upload primary Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          name: github-pages-primary
+          path: _site
+          retention-days: 7
+
+  preflight-production:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      verified_commit: ${{ steps.verified.outputs.verified_commit }}
+    steps:
+      - name: Checkout preflight tooling
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Checkout the version currently expected in production
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+          path: _preflight_source
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+      - name: Prove the rollback source before publishing
+        env:
+          DEPLOY_BASE_URL: ${{ vars.PAGES_PRODUCTION_URL || 'https://hookspa.github.io/TMPOS/' }}
+          PREFLIGHT_SHA: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+        run: node .github/scripts/canary.js --preflight --base-url "$DEPLOY_BASE_URL" --expected-commit "$PREFLIGHT_SHA" --expected-root _preflight_source --attempts 3 --delay-ms 2000
+      - name: Expose only the verified rollback commit
+        id: verified
+        env:
+          PREFLIGHT_SHA: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+        run: echo "verified_commit=$PREFLIGHT_SHA" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    needs: [validate-and-build, preflight-production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: Deploy validated artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        with:
+          artifact_name: github-pages-primary
+
+  canary:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout expected version
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install browser dependency
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify deployed files and catalog
+        env:
+          DEPLOY_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: node .github/scripts/canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$GITHUB_SHA" --incident _incident/deployment-incident.json
+      - name: Open ArtistOS and verify Banco ready
+        env:
+          DEPLOY_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: node .github/scripts/browser-canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$GITHUB_SHA"
+      - name: Preserve failed canary diagnostic
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: failed-canary-diagnostic
+          path: _incident
+          if-no-files-found: ignore
+          retention-days: 90
+
+  recover:
+    if: always() && needs.canary.result == 'failure' && vars.AUTO_RECOVERY_ENABLED != 'false'
+    needs: [preflight-production, deploy, canary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.recovery-deployment.outputs.page_url }}
+    outputs:
+      recovery_commit: ${{ steps.lkg.outputs.head_sha }}
+    steps:
+      - name: Checkout recovery tooling
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Resolve a previously verified immutable commit
+        id: lkg
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LKG_FALLBACK_COMMIT: ${{ needs.preflight-production.outputs.verified_commit }}
+        run: node .github/scripts/find-last-known-good.js
+      - name: Checkout verified recovery source
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ steps.lkg.outputs.head_sha }}
+          path: _lkg_source
+          persist-credentials: false
+      - name: Rebuild verified recovery artifact
+        env:
+          DEPLOY_COMMIT: ${{ steps.lkg.outputs.head_sha }}
+          DEPLOY_OUTPUT_DIR: ${{ github.workspace }}/_lkg
+        run: node _lkg_source/.github/scripts/build-site.js
+      - name: Upload recovery Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          name: github-pages-recovery
+          path: _lkg
+          retention-days: 7
+      - name: Redeploy last-known-good once
+        id: recovery-deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        with:
+          artifact_name: github-pages-recovery
+      - name: Install browser dependency
+        working-directory: _lkg_source
+        run: npm ci
+      - name: Install Chromium
+        working-directory: _lkg_source
+        run: npx playwright install --with-deps chromium
+      - name: Verify recovered files and catalog
+        env:
+          DEPLOY_BASE_URL: ${{ steps.recovery-deployment.outputs.page_url }}
+          RECOVERY_SHA: ${{ steps.lkg.outputs.head_sha }}
+        run: node _lkg_source/.github/scripts/canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$RECOVERY_SHA" --expected-root _lkg_source
+      - name: Open recovered Banco
+        env:
+          DEPLOY_BASE_URL: ${{ steps.recovery-deployment.outputs.page_url }}
+        run: node _lkg_source/.github/scripts/browser-canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$RECOVERY_SHA" --expected-root _lkg_source
+
+  incident:
+    if: always() && (needs.deploy.result == 'failure' || needs.deploy.result == 'cancelled' || needs.canary.result == 'failure' || needs.canary.result == 'cancelled')
+    needs: [deploy, canary, recover]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout incident tooling
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Record sanitized incident
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          CANARY_RESULT: ${{ needs.canary.result }}
+          RECOVERY_RESULT: ${{ needs.recover.result }}
+          RECOVERY_COMMIT: ${{ needs.recover.outputs.recovery_commit }}
+        run: node .github/scripts/record-incident.js
+      - name: Publish technical incident record
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: deployment-incident
+          path: _incident/deployment-incident.json
+          retention-days: 90

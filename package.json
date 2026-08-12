@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test": "npm run test:catalog && npm run catalog:check && playwright test",
+    "test": "npm run ci:validate && playwright test",
+    "test:ci": "npm run ci:validate && playwright test",
     "test:catalog": "node --test tests/catalog/*.test.js",
+    "test:deploy": "node --test tests/deploy/*.test.js",
+    "ci:validate": "npm run test:catalog && npm run catalog:check && npm run test:deploy",
     "catalog:manifest": "node js/catalog-build-cli.js --write",
     "catalog:check": "node js/catalog-build-cli.js --check",
     "test:e2e": "playwright test tests/e2e",

@@ -137,8 +137,37 @@ test('el Banco conserva las referencias personales', async ({ page }) => {
 test('el catálogo unificado carga 6,066 referencias sin duplicar el legacy', async ({ page }) => {
   await openLocalWorkspace(page);
 
-  await expect.poll(() => page.evaluate(() => catalogLoaderState.status), { timeout: 20_000 }).toBe('ready');
-  await expect.poll(() => page.evaluate(() => referencias.length)).toBe(6066);
+  await expect.poll(() => page.evaluate(() => window.TempoHealth.catalog().status), { timeout: 20_000 }).toBe('ready');
+  const health = await page.evaluate(() => window.TempoHealth.catalog({ open: true }));
+  expect(health).toEqual({ status: 'ready', references: 6066, bancoVisible: true });
+});
+
+test('el Banco trata el catálogo como datos y no como HTML ejecutable', async ({ page }) => {
+  await openLocalWorkspace(page);
+  await expect.poll(() => page.evaluate(() => window.TempoHealth.catalog().status), { timeout: 20_000 }).toBe('ready');
+  await page.evaluate(() => {
+    window.__catalogXss = 0;
+    setReferencias([{
+      id: 'hostile-reference',
+      title: '<img src=x onerror="window.__catalogXss=1">',
+      hook: '<svg onload="window.__catalogXss=2">',
+      cat: ['</span><img src=x onerror="window.__catalogXss=3">'],
+      for: ['<script>window.__catalogXss=4</script>'],
+      link: 'https://example.com/x" onmouseover="window.__catalogXss=5',
+      thumb: 'https://example.com/x" onload="window.__catalogXss=6',
+      comentarios: '',
+      icon: 'pin',
+    }]);
+    showPage('banco');
+    renderBanco();
+  });
+
+  const card = page.locator('#refs-grid .ref-page-card').filter({ hasText: '<img src=x' });
+  await expect(card).toBeVisible();
+  await expect(card.locator('.ref-page-title img')).toHaveCount(0);
+  expect(await card.locator('a').getAttribute('onmouseover')).toBeNull();
+  expect(await card.locator('.ref-thumb-img').getAttribute('onload')).toBeNull();
+  expect(await page.evaluate(() => window.__catalogXss)).toBe(0);
 });
 
 test('las selecciones antiguas conservan su vínculo y contador de uso', async ({ page }) => {
@@ -205,13 +234,13 @@ test('el fallback conserva las referencias personales', async ({ page }) => {
   await expect(page.locator('#refs-grid')).toContainText('Referencia personal sin conexión');
 });
 
-test('Contactar soporte copia el diagnóstico cuando no hay sesión', async ({ page }) => {
+test('Copiar diagnóstico conserva el reporte cuando no hay sesión', async ({ page }) => {
   await page.route('**/refs_02.csv', route => route.fulfill({ status: 503, contentType: 'text/plain', body: 'no disponible' }));
   await openLocalWorkspace(page);
   await expect.poll(() => page.evaluate(() => catalogLoaderState.status), { timeout: 15_000 }).toBe('degraded');
   await page.locator('.nav-item[data-page="banco"]').click();
 
-  await page.locator('#catalog-status').getByRole('button', { name: 'Contactar soporte' }).click();
+  await page.locator('#catalog-status').getByRole('button', { name: 'Copiar diagnóstico' }).click();
 
   await expect(page.locator('#ui-toast')).toContainText('Diagnóstico copiado');
 });
@@ -230,9 +259,10 @@ test('Contactar soporte registra una sola incidencia por versión y workspace', 
         insert: async row => { window.__catalogAuditRows.push({ table, row }); return { error: null }; },
       }),
     });
+    renderCatalogStatus();
   });
 
-  const support = page.locator('#catalog-status').getByRole('button', { name: 'Contactar soporte' });
+  const support = page.locator('#catalog-status').getByRole('button', { name: 'Enviar reporte técnico' });
   await support.click();
   await expect(page.locator('#ui-toast')).toContainText('Reporte enviado');
   await support.click();
@@ -257,9 +287,10 @@ test('si audit_log falla, soporte conserva el diagnóstico mediante copia', asyn
     _user = { id: 'user-2', email: 'equipo@example.com' };
     _teamId = '22222222-2222-4222-8222-222222222222';
     getSb = async () => ({ from: () => ({ insert: async () => ({ error: { message: 'tabla no disponible' } }) }) });
+    renderCatalogStatus();
   });
 
-  await page.locator('#catalog-status').getByRole('button', { name: 'Contactar soporte' }).click();
+  await page.locator('#catalog-status').getByRole('button', { name: 'Enviar reporte técnico' }).click();
 
   await expect(page.locator('#ui-toast')).toContainText('Diagnóstico copiado');
 });

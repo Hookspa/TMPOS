@@ -6,7 +6,14 @@ const s  = v => (v == null ? '' : String(v));
 const up = v => s(v).toUpperCase();
 const trim = v => s(v).replace(/^["'﻿\r\s]+|["'\r\s]+$/g, '');
 const esc = v => s(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-const safeUrl = v => /^https?:\/\//i.test(s(v)) ? s(v) : (s(v).startsWith('data:image/') ? s(v) : '#');
+const safeUrl = v => {
+  const value = s(v).trim();
+  if (/^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(value)) return value;
+  try {
+    const url = new URL(value);
+    return /^https?:$/.test(url.protocol) ? url.href.replace(/["']/g, char => encodeURIComponent(char)) : '#';
+  } catch (e) { return '#'; }
+};
 
 // ══════════════════════════════════════════
 // ESTADO GLOBAL
@@ -270,7 +277,7 @@ function loadCatalogBank(url) {
   _catalogUrl = url || _catalogUrl;
   if (!_catalogLoader) {
     _catalogLoader = TempoCatalog.createCatalogLoader({
-      minimumRows: 6066,
+      minimumRows: TempoCatalog.CATALOG_MINIMUM_ROWS,
       maxAttempts: 3,
       timeoutMs: 8000,
       baseDelayMs: 400,
@@ -280,6 +287,21 @@ function loadCatalogBank(url) {
   }
   return _catalogLoader.load(_catalogUrl);
 }
+function catalogHealthSnapshot(options) {
+  if (options && options.open === true) {
+    if (typeof showAuthGate === 'function') showAuthGate(false);
+    if (typeof showPage === 'function') showPage('banco');
+  }
+  return Object.freeze({
+    status: catalogLoaderState.status,
+    references: referencias.length,
+    bancoVisible: Boolean(document.querySelector('#page-banco.active')),
+  });
+}
+window.TempoHealth = Object.freeze({
+  ...(window.TempoHealth || {}),
+  catalog: catalogHealthSnapshot,
+});
 function renderCatalogStatus() {
   const host = document.getElementById('catalog-status'); if (!host) return;
   if (catalogLoaderState.status === 'loading' && _catalogRetrying) {
@@ -290,6 +312,8 @@ function renderCatalogStatus() {
     return;
   }
   if (catalogLoaderState.status !== 'degraded') { host.innerHTML = ''; return; }
+  const canSendReport = typeof authed === 'function' && authed();
+  const supportLabel = canSendReport ? 'Enviar reporte técnico' : 'Copiar diagnóstico';
   host.innerHTML = `<div class="catalog-state catalog-state--degraded" role="alert">
     <span class="catalog-state-icon">${icon('warning',17)}</span>
     <div class="catalog-state-copy">
@@ -298,7 +322,7 @@ function renderCatalogStatus() {
     </div>
     <div class="catalog-state-actions">
       <button type="button" class="btn btn-ghost btn-sm" onclick="retryCatalogBank()">${icon('refresh',12)} Reintentar</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="contactCatalogSupport()">Contactar soporte</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="contactCatalogSupport()">${supportLabel}</button>
     </div>
   </div>`;
 }
@@ -727,13 +751,13 @@ function catBadgeHTML(cats, small) {
   return (cats || []).filter(Boolean).map(c => {
     const col = catColor(c);
     const sz = 'var(--text-2xs)';
-    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${up(trTag(c,'cat'))}</span>`;
+    return `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:${col}22;color:${col};border:1px solid ${col}44">${esc(up(trTag(c,'cat')))}</span>`;
   }).join('');
 }
 function forBadgeHTML(fors, small) {
   const sz = 'var(--text-2xs)';
   return (fors || []).filter(Boolean).map(f =>
-    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${s(trTag(f,'for'))}</span>`
+    `<span style="display:inline-block;padding:2px 6px;border-radius:2px;font-size:${sz};font-family:var(--font-ui);margin:1px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${esc(trTag(f,'for'))}</span>`
   ).join('');
 }
 function renderBancoContext() {
@@ -741,7 +765,7 @@ function renderBancoContext() {
   const a = activeLaunch();
   const n = a ? a.ideas.length : 0;
   host.innerHTML = launchContextHTML()
-    + `<div style="margin:-10px 0 18px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps-sm);display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? s(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
+    + `<div style="margin:-10px 0 18px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps-sm);display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? esc(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
 }
 function renderBanco() {
   renderCatalogStatus();
@@ -782,16 +806,16 @@ function renderBanco() {
       <div class="ref-page-thumb">
         ${(() => { const th = refThumbImmediate(r); const iid = 'rthumb-' + r._idx;
           return th
-          ? `<img id="${iid}" class="ref-thumb-img" src="${s(th)}" alt="${esc(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
+          ? `<img id="${iid}" class="ref-thumb-img" src="${esc(safeUrl(th))}" alt="${esc(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
           : `<img id="${iid}" class="ref-thumb-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
         <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
           style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
         ${r.custom ? customBadgeHTML(r) : ''}
-        ${r.link ? `<a href="${safeUrl(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:var(--text-2xs);font-family:var(--font-ui);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
+        ${r.link ? `<a href="${esc(safeUrl(r.link))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:var(--text-2xs);font-family:var(--font-ui);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
       </div>
       <div class="ref-page-info">
-        <div class="ref-page-title">${s(trText(r.title))}</div>
-        ${r.hook ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${s(trText(r.hook))}"</div>` : ''}
+        <div class="ref-page-title">${esc(trText(r.title))}</div>
+        ${r.hook ? `<div style="font-size:var(--text-2xs);color:var(--text-dim);font-style:italic;margin-bottom:5px;line-height:1.4">"${esc(trText(r.hook))}"</div>` : ''}
         <div style="margin-bottom:3px;display:flex;flex-wrap:wrap">${catBadgeHTML(r.cat, true) || '<span style="font-size:var(--text-2xs);color:var(--text-dim)">sin cat</span>'}</div>
         <div style="display:flex;flex-wrap:wrap">${forBadgeHTML(r.for, true)}</div>
         <div class="card-actions"><button type="button" class="card-open" onclick="openRefBoxdrop(${r._idx})">Ver detalle ${icon('link',10)}</button></div>
@@ -840,7 +864,7 @@ function customBadgeHTML(r) {
   const label = community ? (s(r.author) ? 'COMUNIDAD' : 'COMUNIDAD') : (shared ? 'COMPARTIDA' : 'PRIVADA');
   const col = community ? '#a78bfa' : (shared ? 'var(--ok)' : 'var(--text-dim)');
   const ico = community ? 'star' : (shared ? 'eye' : 'lock');
-  return `<span title="${community ? ('De la comunidad' + (s(r.author)?(' · '+s(r.author)):'')) : (shared ? 'Compartida con la comunidad' : 'Privada (solo tú)')}"
+  return `<span title="${esc(community ? ('De la comunidad' + (s(r.author)?(' · '+s(r.author)):'')) : (shared ? 'Compartida con la comunidad' : 'Privada (solo tú)'))}"
     style="position:absolute;top:6px;left:6px;display:inline-flex;align-items:center;gap:3px;font-size:var(--text-2xs);font-family:var(--font-ui);letter-spacing:var(--track-caps-sm);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:${col};border:1px solid ${col}55;z-index:2">${icon(ico,10)} ${label}</span>`;
 }
 
@@ -853,7 +877,7 @@ function renderBancoToolbar() {
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
       <div style="flex:1;min-width:170px;position:relative;display:flex;align-items:center">
         <span style="position:absolute;left:10px;color:var(--text-dim);display:flex;pointer-events:none">${icon('search',14)}</span>
-        <input id="banco-search" class="input" type="text" value="${s(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
+        <input id="banco-search" class="input" type="text" value="${esc(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
           oninput="bancoSetSearch(this.value)" style="width:100%;padding-left:32px;font-size:var(--text-sm)">
         ${bancoSearch ? `<button onclick="bancoSetSearch('')" title="Limpiar" style="position:absolute;right:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex">${icon('close',12)}</button>` : ''}
       </div>
@@ -879,7 +903,7 @@ function renderBancoToolbar() {
 function ensureTagDatalist() {
   let dl = document.getElementById('tag-suggestions');
   if (!dl) { dl = document.createElement('datalist'); dl.id = 'tag-suggestions'; document.body.appendChild(dl); }
-  dl.innerHTML = getUniqueTags('cat').map(t => `<option value="${s(t)}"></option>`).join('');
+  dl.innerHTML = getUniqueTags('cat').map(t => `<option value="${esc(t)}"></option>`).join('');
 }
 function bancoSetSearch(v) { bancoSearch = v || ''; paginaActual = 1; renderBanco(); const el = document.getElementById('banco-search'); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} } }
 function setBancoSort(v) { bancoSort = v || 'default'; if (bancoSort !== 'default') bancoRandom = false; paginaActual = 1; renderBanco(); }
@@ -997,16 +1021,16 @@ function openRefBoxdrop(idx) {
     const chips = cats.map(c => {
       const locked = (c === 'custom');
       const col = catColor(c);
-      return `<span class="brief-tag" style="display:inline-flex;align-items:center;gap:4px;background:${col}22;color:${col};border:1px solid ${col}55">${s(c)}${locked ? `<span title="Tag fijo" style="opacity:.6;display:inline-flex">${icon('lock',9)}</span>` : `<button onclick="refRemoveTag(${idx},'${s(c).replace(/'/g,"\\'")}')" title="Quitar tag" style="background:none;border:none;color:inherit;cursor:pointer;display:inline-flex;padding:0">${icon('close',9)}</button>`}</span>`;
+      return `<span class="brief-tag" style="display:inline-flex;align-items:center;gap:4px;background:${col}22;color:${col};border:1px solid ${col}55">${esc(c)}${locked ? `<span title="Tag fijo" style="opacity:.6;display:inline-flex">${icon('lock',9)}</span>` : `<button onclick="refRemoveTag(${idx},${esc(JSON.stringify(s(c)))})" title="Quitar tag" style="background:none;border:none;color:inherit;cursor:pointer;display:inline-flex;padding:0">${icon('close',9)}</button>`}</span>`;
     }).join('');
-    const forChips = fors.map(f => `<span class="brief-tag">${s(f)}</span>`).join('');
+    const forChips = fors.map(f => `<span class="brief-tag">${esc(f)}</span>`).join('');
     ensureTagDatalist();
     document.getElementById('bd-tags').innerHTML = chips + forChips +
       `<input class="input" list="tag-suggestions" style="font-size:var(--text-xs);width:130px;padding:3px 8px" placeholder="+ tag…" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddTag(${idx},this.value);}" onblur="if(this.value.trim())refAddTag(${idx},this.value)">`;
   } else {
     const tagHTML = [
-      ...cats.map(c => `<span class="brief-tag accent">${s(trTag(c,'cat'))}</span>`),
-      ...fors.map(f => `<span class="brief-tag">${s(trTag(f,'for'))}</span>`)
+      ...cats.map(c => `<span class="brief-tag accent">${esc(trTag(c,'cat'))}</span>`),
+      ...fors.map(f => `<span class="brief-tag">${esc(trTag(f,'for'))}</span>`)
     ].join('');
     document.getElementById('bd-tags').innerHTML = tagHTML || '<span style="font-size:var(--text-xs);color:var(--text-dim)">Sin tags</span>';
   }
@@ -1025,12 +1049,12 @@ function openRefBoxdrop(idx) {
   const briefIco = `<span style="color:var(--text-muted)">${icon(s(r.icon)||'pin',34)}</span>`;
   const card  = document.getElementById('bd-thumb-card');
   const linkFooter = editable
-    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:var(--text-xs);width:100%" value="${s(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:var(--text-2xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
+    ? `<div style="padding:8px;border-top:1px solid var(--border)"><input class="input" style="font-size:var(--text-xs);width:100%" value="${esc(link)}" placeholder="Link (TikTok/YT/IG…) → miniatura" onblur="refSetLink(${idx}, this.value)">${link ? `<a href="${esc(safeUrl(link))}" target="_blank" rel="noopener" style="font-size:var(--text-2xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;display:block;margin-top:4px">${icon('link',11)} Abrir</a>` : ''}</div>`
     : (link
-      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${safeUrl(link)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
+      ? `<div style="padding:10px;border-top:1px solid var(--border)"><a href="${esc(safeUrl(link))}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none;word-break:break-all">${icon('link',12)} Abrir original</a></div>`
       : `<div style="padding:10px;border-top:1px solid var(--border);font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-dim);text-align:center">SIN LINK ASOCIADO</div>`);
   card.innerHTML = `
-    <img id="bd-thumb-img" class="brief-thumb-img" src="${s(thumb)||''}" alt="${esc(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
+    <img id="bd-thumb-img" class="brief-thumb-img" src="${thumb ? esc(safeUrl(thumb)) : ''}" alt="${esc(r.title)}" loading="lazy" style="${thumb?'':'display:none'}"
       onerror="this.style.display='none';this.parentNode.querySelector('.brief-thumb-fallback').style.display='flex'">
     <div class="brief-thumb-fallback" style="display:${thumb?'none':'flex'}">${briefIco}</div>
     ${linkFooter}`;

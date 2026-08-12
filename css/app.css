@@ -1146,8 +1146,8 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius-md); color: var(--text-muted);
   }
-  .catalog-state--degraded { border-color: color-mix(in srgb, var(--blocked) 55%, var(--border)); }
-  .catalog-state-icon { flex: none; display: inline-flex; color: var(--blocked); margin-top: 1px; }
+  .catalog-state--degraded { border-color: color-mix(in srgb, var(--risk) 55%, var(--border)); }
+  .catalog-state-icon { flex: none; display: inline-flex; color: var(--risk); margin-top: 1px; }
   .catalog-state-copy { flex: 1; min-width: 0; max-width: 68ch; }
   .catalog-state-title { color: var(--text); font-size: var(--text-base); font-weight: var(--fw-title); line-height: var(--lh-snug); }
   .catalog-state-detail { margin-top: var(--space-1); font-size: var(--text-sm); line-height: var(--lh-normal); }

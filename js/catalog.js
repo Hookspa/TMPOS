@@ -4,6 +4,7 @@
   else if (root) root.TempoCatalog = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createCatalogApi() {
   const CATALOG_HEADER = ['id', 'hook', 'title', 'for', 'cat', 'link', 'comentarios', 'thumb'];
+  const CATALOG_MINIMUM_ROWS = 6066;
 
   function parseCsvStrict(input) {
     const text = String(input).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -333,6 +334,7 @@
 
   return {
     CATALOG_HEADER,
+    CATALOG_MINIMUM_ROWS,
     createCatalogIncident,
     createCatalogLoader,
     migrateLegacyReferenceKeys,
