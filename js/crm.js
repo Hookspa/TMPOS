@@ -110,7 +110,7 @@ function tareasPanelHTML(kind){
       ${editable?`<button class="goal-btn" title="Dependencias${depsCount?' ('+depsCount+')':''}" style="${depsCount?'color:var(--accent)':''}" onclick="openDepsPicker('${tk.id}')">${icon('link',12)}</button>`:''}
       ${editable?`<button class="goal-btn reject" title="Quitar" onclick="removeTask('${kind}','${tk.id}')">${icon('close',12)}</button>`:''}
     </div>`;}).join('');
-  return `${(typeof secInfo==='function')?secInfo('Tareas ' + (kind==='track'?'de la canción':'del release'), 'Responsable, prioridad, fecha y estado. También aparecen en tu inbox global "Mis tareas".'):''}${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
+  return `${(typeof secInfo==='function')?secInfo('Tareas ' + (kind==='track'?'de la canción':'del lanzamiento'), 'Responsable, prioridad, fecha y estado. También aparecen en la lista global "Mis tareas".'):''}${rows||'<div class="empty-hint">Sin tareas.</div>'}${editable?`<button class="btn btn-ghost" style="margin-top:6px" onclick="addTask('${kind}')">+ Tarea</button>`:''}`;
 }
 async function addTask(kind){ if(!requireCan('gestionar_tareas')) return; const scope=_taskScope(kind); if(!scope) return; const tit=(await uiPrompt('Tarea:',{title:'Nueva tarea'})||'').trim(); if(!tit) return; createTask(scope,{titulo:tit}); _taskRerender(kind); }
 function setTaskField(kind,id,f,val){ if(!requireCan('gestionar_tareas')) return; const patch={}; patch[f]=val; updateTaskRow(id,patch); if(f==='estado'||f==='dueDate'||f==='priority') _taskRerender(kind); }
@@ -126,13 +126,13 @@ function releaseAlerts(l){
   const released = (l.status==='complete') || (dleft!=null && dleft<0);
   const ts = (typeof tracksOfLaunch==='function')?tracksOfLaunch(l):[];
   const rc = l.releaseChecklist||{};
-  if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta el cover del release'+(near?` (drop en ${dleft}d)`:''), action:{label:'Archivos →', fn:`setReleaseTab('archivos')`}});
+  if(!(rc.visual&&rc.visual.coverCreado)) out.push({level:near?'red':'yellow', text:'Falta la portada del lanzamiento'+(near?` (estreno en ${dleft}d)`:''), action:{label:'Archivos →', fn:`setReleaseTab('archivos')`}});
   ts.forEach(t=>{ const lg=(t.checklist&&t.checklist.legal)||{}; const a=(t.checklist&&t.checklist.audio)||{};
-    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'track'}`, action:{label:'Checklist →', fn:`setReleaseTab('checklists')`}});
-    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'track'} (drop en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}','audio')`}});
+    if(!lg.splitFirmado) out.push({level:near?'red':'yellow', text:`Split sin firmar: ${s(t.title)||'canción'}`, action:{label:'Checklist →', fn:`setReleaseTab('checklists')`}});
+    if(near && !a.masterRecibido) out.push({level:'red', text:`Falta máster: ${s(t.title)||'canción'} (estreno en ${dleft}d)`, action:{label:'Audio →', fn:`openTrack('${t.id}','audio')`}});
     // Ruteo legal: conflicto de titularidad del Label Copy (split ≠ 100%) → salta a la pestaña Legal del release
     const iss=(typeof labelCopyIssues==='function')?labelCopyIssues(t):[];
-    if(iss.some(i=>i.level==='red')) out.push({level:near?'red':'yellow', text:`Titularidad con conflicto: ${s(t.title)||'track'}`, action:{label:'Legal →', fn:`setReleaseTab('legal')`}});
+    if(iss.some(i=>i.level==='red')) out.push({level:near?'red':'yellow', text:`Titularidad con conflicto: ${s(t.title)||'canción'}`, action:{label:'Legal →', fn:`setReleaseTab('legal')`}});
   });
   const _rtasks = (typeof tasks!=='undefined') ? tasks.filter(t=>t.releaseId===l.id) : [];
   const overdue = _rtasks.filter(tk=>tk.dueDate && tk.estado!==TASK_DONE && (typeof diasRestantes==='function') && diasRestantes(tk.dueDate)<0).length;
@@ -170,12 +170,12 @@ function releaseSpacingWarnings(l){
   const dleft=(typeof diasRestantes==='function')?diasRestantes(l.date):null;
   const released=(l.status==='complete')||(dleft!=null&&dleft<0);
   if(!released && dleft!=null && dleft>=0 && dleft<42){
-    out.push({level: dleft<21?'red':'yellow', text:`Lead-time corto: ${dleft}d al drop (ideal ≥42). Menos de 6 semanas arriesga la ventana de pitch editorial.`});
+    out.push({level: dleft<21?'red':'yellow', text:`Antelación corta: ${dleft}d al estreno (ideal ≥42). Menos de 6 semanas arriesga la ventana de pitch editorial.`});
   }
   const wk=rosterReleasesInWeek(l.date, l.id);
   if(wk.length>=2){
     const names=wk.map(x=>s(x.name)).filter(Boolean).slice(0,3).join(', ');
-    out.push({level: wk.length>=3?'red':'yellow', text:`Semana cargada en el roster: ${wk.length+1} releases la misma semana${names?` (${names}${wk.length>3?'…':''})`:''}. Recomendado: máx 2–3/semana.`});
+    out.push({level: wk.length>=3?'red':'yellow', text:`Semana cargada en el calendario: ${wk.length+1} lanzamientos${names?` (${names}${wk.length>3?'…':''})`:''}. Recomendado: máx. 2–3 por semana.`});
   }
   return out;
 }

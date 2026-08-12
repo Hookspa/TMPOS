@@ -9,12 +9,12 @@ let _cmdkOpen = false;
 
 function cmdkEnsureDOM() {
   if (document.getElementById('cmdk')) return;
-  const o = document.createElement('div');
+  const o = document.createElement('dialog');
   o.className = 'cmdk-overlay';
   o.id = 'cmdk';
-  o.style.display = 'none';
+  o.setAttribute('aria-label', 'Buscar');
   o.innerHTML =
-    '<div class="cmdk-panel" role="dialog" aria-label="Buscar">' +
+    '<div class="cmdk-panel">' +
       '<input class="cmdk-input" id="cmdk-input" autocomplete="off" spellcheck="false" placeholder="Buscar artista, lanzamiento, sección…">' +
       '<div class="cmdk-results" id="cmdk-results"></div>' +
       '<div class="cmdk-hint"><span>&uarr;&darr; moverse</span><span>&crarr; abrir</span><span>esc cerrar</span></div>' +
@@ -73,11 +73,11 @@ function cmdkRender(q) {
   const host = document.getElementById('cmdk-results');
   if (!list.length) { host.innerHTML = '<div class="cmdk-empty">Sin resultados</div>'; return; }
   host.innerHTML = list.map((it, i) =>
-    `<div class="cmdk-item${i === _cmdkSel ? ' sel' : ''}" data-i="${i}" onmousemove="cmdkHover(${i})" onclick="cmdkRun(${i})">` +
+    `<button type="button" class="cmdk-item${i === _cmdkSel ? ' sel' : ''}" data-i="${i}" onmousemove="cmdkHover(${i})" onclick="cmdkRun(${i})">` +
       `<span class="cmdk-ic">${(typeof icon === 'function') ? icon(it.icon, 16) : ''}</span>` +
       `<span class="cmdk-label">${esc(it.label)}${it.sub ? ` <span class="cmdk-sub">${esc(it.sub)}</span>` : ''}</span>` +
       `<span class="cmdk-type">${esc(it.type)}</span>` +
-    `</div>`
+    `</button>`
   ).join('');
 }
 let _cmdkVisible = [];
@@ -105,7 +105,8 @@ function cmdkOpen() {
   _cmdkItems = cmdkBaseIndex();
   _cmdkSel = 0;
   _cmdkOpen = true;
-  document.getElementById('cmdk').style.display = 'flex';
+  const o = document.getElementById('cmdk');
+  if (typeof tempoDialogOpen === 'function') tempoDialogOpen(o); else o.showModal();
   const inp = document.getElementById('cmdk-input');
   inp.value = '';
   cmdkRender('');
@@ -113,7 +114,8 @@ function cmdkOpen() {
 }
 function cmdkClose() {
   _cmdkOpen = false;
-  const o = document.getElementById('cmdk'); if (o) o.style.display = 'none';
+  const o = document.getElementById('cmdk');
+  if (o) { if (typeof tempoDialogClose === 'function') tempoDialogClose(o); else if (o.open) o.close(); }
 }
 function cmdkToggle() { _cmdkOpen ? cmdkClose() : cmdkOpen(); }
 
@@ -131,19 +133,19 @@ function ayudaHTML() {
   const k = cmdkKeyLabel();
   const steps = [
     ['Crea tu lanzamiento', 'Con "+ Nuevo Lanzamiento". Single, EP o álbum — todo cuelga de aquí.'],
-    ['Pega la letra de la canción', 'En Lanzamientos → Generar Ideas. La letra alimenta el Campaign DNA, las ideas y el pitch.'],
-    ['Genera el contenido del drop', 'Caption, guión y hashtags por pieza, desde el ADN del artista y de la campaña.'],
+    ['Pega la letra de la canción', 'En Lanzamientos → Generar ideas. La letra alimenta el ADN de campaña, las ideas y el pitch.'],
+    ['Genera el contenido del lanzamiento', 'Caption, guion y hashtags por pieza, desde el ADN del artista y de la campaña.'],
     ['Arma tu Plan de Medios y Objetivos', 'Plataformas y montos en el Plan de Medios; metas SMART en Objetivos.'],
-    ['Sigue todo desde el Dashboard', 'Riesgo de lanzamientos, tareas y la franja ON AIR con el próximo drop.'],
+    ['Sigue todo desde el Dashboard', 'Riesgo de lanzamientos, tareas y la franja ON AIR con el próximo lanzamiento.'],
   ];
   const mods = [
     ['dashboard', 'Dashboard', 'Roster: riesgo de lanzamientos + salud, y el zoom por artista.'],
-    ['releases', 'Lanzamientos', 'Cada release y su ficha: estado, música, campaña, plan de medios, tareas.'],
+    ['releases', 'Lanzamientos', 'Cada lanzamiento y su ficha: estado, música, campaña, plan de medios y tareas.'],
     ['checklist', 'Tareas', 'To-dos del equipo con vistas: lista, kanban, calendario, Gantt…'],
     ['megaphone', 'Campañas activas', 'Las campañas en curso del workspace, de un vistazo.'],
     ['artist', 'Perfil & ADN Artístico', 'Identidad, bio y el ADN del artista (wizard con IA).'],
     ['references', 'Banco de Referencias', 'Miles de ideas de contenido; marca con ★ las de tu lanzamiento.'],
-    ['ai', 'Generadores con IA', 'Campaign DNA desde la letra, ideas, contenido por pieza, pitch, objetivos y estrategia.'],
+    ['ai', 'Generadores con IA', 'ADN de campaña desde la letra, ideas, contenido por pieza, pitch, objetivos y estrategia.'],
     ['search', 'Buscar (' + k + ')', 'Salta a cualquier artista, lanzamiento, sección o referencia.'],
   ];
   const shortcuts = [

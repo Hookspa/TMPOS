@@ -11,96 +11,107 @@ renderSidebarArtist();
 renderAllLaunches();
 if (typeof renderOnAir === 'function') { renderOnAir(); setInterval(renderOnAir, 30000); }  // franja ON AIR + reloj
 
-// Banco por defecto: CSV embebido (Test ArtistOS — Ideas de contenido)
-(function loadEmbeddedBank() {
-  try {
-    const el = document.getElementById('bank-csv');
-    if (el && el.textContent.trim()) {
-      const parsed = parsearCSV(el.textContent);
-      if (parsed.length) { setReferencias(parsed); bancoCargado = true; }
-    }
-  } catch (e) { console.warn('No se pudo cargar el banco embebido:', e); }
-})();
-if (typeof mergeCustomRefs === 'function') mergeCustomRefs(); // posts propios persistidos → al banco
+// El DEMO permite abrir el Banco de inmediato; el catálogo canónico lo reemplaza al validar.
+if (typeof mergeCustomRefs === 'function') mergeCustomRefs();
 
 iniciarBanco();
 
-// Banco externo grande (CSV en el repo, miniaturas en Supabase) → se mezcla en runtime para no inflar app.html
-if (typeof loadExternalBank === 'function') loadExternalBank('refs_02.csv');
+// Catálogo externo versionado junto al app; incluye las antiguas referencias embebidas.
+if (typeof loadCatalogBank === 'function') loadCatalogBank('refs_02.csv');
 
 // sincronización en la nube al arrancar (si está configurada → pide login)
 if (cloudEnabled()) { showAuthGate(true); setSyncStatus('syncing'); authInit(); } else { setSyncStatus('off'); }
 
-// Accesibilidad transversal de modales: nombre, diálogo, cierre por teclado,
-// foco inicial, trampa de Tab y restauración al control que abrió el modal.
-(function initModalAccessibility() {
-  const priorFocus = new WeakMap();
-  const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+// Contrato canónico de overlays: <dialog> nativo aporta top layer, foco protegido y
+// Escape. El puente con la clase .open conserva las APIs existentes mientras la app
+// migra sus aperturas a tempoDialogOpen()/tempoDialogClose().
+const _tempoDialogPriorFocus = new WeakMap();
+const _tempoDialogSelector = 'dialog.boxdrop-overlay, dialog.more-sheet-overlay, dialog.cmdk-overlay, dialog.wizard-overlay';
+const _tempoDialogStack = [];
 
-  function prepareOverlay(overlay) {
-    if (!overlay || !overlay.classList || !overlay.classList.contains('boxdrop-overlay')) return;
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('tabindex', '-1');
-    const title = overlay.querySelector('.boxdrop-title, .wiz-title, h2, h3');
-    if (title) {
-      if (!title.id) title.id = `${overlay.id || 'modal'}-title`;
-      overlay.setAttribute('aria-labelledby', title.id);
-    } else if (!overlay.hasAttribute('aria-label')) {
-      overlay.setAttribute('aria-label', 'Diálogo');
-    }
-    overlay.querySelectorAll('.boxdrop-close').forEach(close => {
-      if (!/^(BUTTON|A)$/.test(close.tagName)) {
-        close.setAttribute('role', 'button');
-        close.setAttribute('tabindex', '0');
-      }
-      if (!close.hasAttribute('aria-label')) close.setAttribute('aria-label', 'Cerrar');
-      if (!close.dataset.keyboardClose) {
-        close.addEventListener('keydown', event => {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); close.click(); }
-        });
-        close.dataset.keyboardClose = 'true';
-      }
-    });
+function tempoDialogSyncPageLock() {
+  document.documentElement.classList.toggle('tempo-dialog-open', !!document.querySelector('dialog[open]'));
+}
+
+function tempoDialogPrepare(dialog) {
+  if (!dialog || dialog.tagName !== 'DIALOG' || dialog.dataset.tempoDialogReady) return;
+  dialog.dataset.tempoDialogReady = 'true';
+  const title = dialog.querySelector('.boxdrop-title, .wiz-title, h2, h3');
+  if (title) {
+    if (!title.id) title.id = `${dialog.id || 'modal'}-title`;
+    if (!dialog.hasAttribute('aria-label')) dialog.setAttribute('aria-labelledby', title.id);
+  } else if (!dialog.hasAttribute('aria-label')) {
+    dialog.setAttribute('aria-label', 'Diálogo');
   }
-
-  function openOverlay(overlay) {
-    prepareOverlay(overlay);
-    if (document.activeElement && !overlay.contains(document.activeElement)) priorFocus.set(overlay, document.activeElement);
+  dialog.querySelectorAll('.boxdrop-close').forEach(close => {
+    if (!close.hasAttribute('aria-label')) close.setAttribute('aria-label', 'Cerrar');
+  });
+  dialog.addEventListener('cancel', event => { event.preventDefault(); tempoDialogRequestClose(dialog); });
+  dialog.addEventListener('close', () => {
+    if (dialog.classList.contains('open')) dialog.classList.remove('open');
+    const stackIndex = _tempoDialogStack.lastIndexOf(dialog);
+    if (stackIndex >= 0) _tempoDialogStack.splice(stackIndex, 1);
+    tempoDialogSyncPageLock();
+    const prior = _tempoDialogPriorFocus.get(dialog);
+    _tempoDialogPriorFocus.delete(dialog);
     requestAnimationFrame(() => {
-      const target = overlay.querySelector(focusableSelector) || overlay;
-      if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+      const focusedInDialog = Array.from(document.querySelectorAll('dialog[open]')).some(openDialog => openDialog.contains(document.activeElement));
+      if (!focusedInDialog && prior && document.contains(prior) && typeof prior.focus === 'function') prior.focus({ preventScroll: true });
     });
-  }
+  });
+}
 
-  document.querySelectorAll('.boxdrop-overlay').forEach(prepareOverlay);
+function tempoDialogOpen(dialog) {
+  if (!dialog || dialog.tagName !== 'DIALOG') return;
+  tempoDialogPrepare(dialog);
+  if (!dialog.open) {
+    const prior = document.activeElement;
+    if (prior && prior !== document.body && !dialog.contains(prior)) _tempoDialogPriorFocus.set(dialog, prior);
+    dialog.showModal();
+    _tempoDialogStack.push(dialog);
+  }
+  if (!dialog.classList.contains('open')) dialog.classList.add('open');
+  tempoDialogSyncPageLock();
+}
+
+function tempoDialogRequestClose(dialog) {
+  if (!dialog || !dialog.open) return;
+  const cancelAction = dialog.dataset.dialogCancel;
+  if (cancelAction && typeof window[cancelAction] === 'function') {
+    window[cancelAction]();
+    return;
+  }
+  dialog.click(); // reutiliza el contrato de cierre/backdrop y su limpieza de estado
+  if (dialog.open && dialog.classList.contains('open')) tempoDialogClose(dialog);
+}
+
+function tempoDialogClose(dialog, returnValue) {
+  if (!dialog || dialog.tagName !== 'DIALOG') return;
+  if (dialog.classList.contains('open')) dialog.classList.remove('open');
+  if (dialog.open) dialog.close(returnValue || '');
+  else tempoDialogSyncPageLock();
+}
+
+(function initTempoDialogs() {
+  document.querySelectorAll(_tempoDialogSelector).forEach(tempoDialogPrepare);
   const observer = new MutationObserver(records => records.forEach(record => {
     if (record.type === 'childList') record.addedNodes.forEach(node => {
       if (node.nodeType !== 1) return;
-      if (node.matches && node.matches('.boxdrop-overlay')) prepareOverlay(node);
-      if (node.querySelectorAll) node.querySelectorAll('.boxdrop-overlay').forEach(prepareOverlay);
+      if (node.matches && node.matches(_tempoDialogSelector)) tempoDialogPrepare(node);
+      if (node.querySelectorAll) node.querySelectorAll(_tempoDialogSelector).forEach(tempoDialogPrepare);
     });
     if (record.type === 'attributes') {
-      const overlay = record.target;
-      if (overlay.classList.contains('open')) openOverlay(overlay);
-      else {
-        const prior = priorFocus.get(overlay);
-        if (prior && document.contains(prior) && typeof prior.focus === 'function') prior.focus({ preventScroll: true });
-        priorFocus.delete(overlay);
-      }
+      const dialog = record.target;
+      if (dialog.classList.contains('open')) tempoDialogOpen(dialog);
+      else tempoDialogClose(dialog);
     }
   }));
   observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
-
   document.addEventListener('keydown', event => {
-    if (event.key !== 'Tab') return;
-    const overlays = Array.from(document.querySelectorAll('.boxdrop-overlay.open'));
-    const overlay = overlays[overlays.length - 1];
-    if (!overlay) return;
-    const focusable = Array.from(overlay.querySelectorAll(focusableSelector)).filter(el => el.offsetParent !== null);
-    if (!focusable.length) { event.preventDefault(); overlay.focus(); return; }
-    const first = focusable[0], last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    const dialog = _tempoDialogStack[_tempoDialogStack.length - 1];
+    if (!dialog || !dialog.open) return;
+    event.preventDefault();
+    tempoDialogRequestClose(dialog);
   });
 })();

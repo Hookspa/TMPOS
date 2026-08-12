@@ -113,6 +113,11 @@ async function cloudLoad() {
     // Migrar launches de la nube que aún no tengan track, y persistir si cambió
     let _migrated = migrateLaunchesToTracks();
     if (typeof migrateEmbeddedTasks === 'function' && migrateEmbeddedTasks()) _migrated = true;
+    // La nube puede contener claves de referencia anteriores a los IDs del catálogo unificado.
+    if (typeof migrateCatalogLegacyState === 'function' && migrateCatalogLegacyState()) {
+      saveLaunchesLocal();
+      _migrated = true;
+    }
     if (_migrated) scheduleCloudSync();
     if (!artists.find(a => a.id === currentArtistId)) currentArtistId = artists[0] && artists[0].id;
     renderSidebarArtist(); renderAllLaunches();
@@ -424,8 +429,61 @@ function applyRolePill() {
   if (typeof hydrateIcons === 'function') hydrateIcons(pill);
 }
 const agVal = id => (document.getElementById(id) || {}).value || '';
-function agStatus(msg, err) { const el = document.getElementById('ag-status'); if (el) { el.textContent = msg; el.style.color = err ? 'var(--accent2)' : 'var(--text-muted)'; } }
-function showAuthGate(show) { const g = document.getElementById('auth-gate'); if (g) g.style.display = show ? 'flex' : 'none'; }
+function agStatus(msg, err) {
+  const status = document.getElementById('ag-status');
+  const error = document.getElementById('ag-error');
+  if (status) status.textContent = err ? '' : (msg || '');
+  if (error) error.textContent = err ? (msg || '') : '';
+}
+function agBusy(busy) {
+  const card = document.getElementById('auth-card');
+  if (card) card.setAttribute('aria-busy', busy ? 'true' : 'false');
+  document.querySelectorAll('#auth-gate [data-auth-action]').forEach(el => { el.disabled = !!busy; });
+}
+function agCredentials(requirePassword) {
+  const emailEl = document.getElementById('ag-email');
+  const passEl = document.getElementById('ag-pass');
+  const email = emailEl ? emailEl.value.trim() : '';
+  const password = passEl ? passEl.value : '';
+  if (!email || (emailEl && !emailEl.checkValidity())) {
+    agStatus('Escribe un correo válido.', true);
+    if (emailEl) emailEl.focus();
+    return null;
+  }
+  if (requirePassword && password.length < 6) {
+    agStatus('La contraseña debe tener al menos 6 caracteres.', true);
+    if (passEl) passEl.focus();
+    return null;
+  }
+  return { email, password };
+}
+function showAuthGate(show) {
+  const gate = document.getElementById('auth-gate');
+  if (!gate) return;
+  if (show) {
+    document.querySelectorAll('dialog[open]').forEach(dialog => {
+      try { dialog.close(); } catch (e) {}
+    });
+  }
+  gate.classList.toggle('is-open', !!show);
+  gate.setAttribute('aria-hidden', show ? 'false' : 'true');
+  document.body.classList.toggle('auth-open', !!show);
+  Array.from(document.body.children).forEach(el => {
+    if (el === gate || el.tagName === 'SCRIPT') return;
+    if (show && !el.inert) { el.inert = true; el.dataset.authInert = 'true'; }
+    if (!show && el.dataset.authInert === 'true') { el.inert = false; delete el.dataset.authInert; }
+  });
+  if (show) {
+    agBusy(false);
+    requestAnimationFrame(() => {
+      const email = document.getElementById('ag-email');
+      if (gate.classList.contains('is-open') && email && !gate.contains(document.activeElement)) email.focus();
+    });
+  } else {
+    agBusy(false);
+    agStatus('');
+  }
+}
 
 async function authInit() {
   const sb = await getSb(); if (!sb) return;
@@ -582,22 +640,39 @@ async function moveArtistToTeam(artistId, targetId) {
   } catch (e) { setSyncStatus('error', friendlyError(e, 'mover')); uiAlert(friendlyError(e, 'mover el artista')); }
 }
 async function signIn() {
-  const sb = await getSb(); agStatus('Entrando…');
-  const r = await sb.auth.signInWithPassword({ email: agVal('ag-email'), password: agVal('ag-pass') });
-  if (r.error) agStatus(friendlyError(r.error, 'iniciar sesión'), true);
+  const values = agCredentials(true); if (!values) return;
+  agBusy(true); agStatus('Verificando acceso…');
+  try {
+    const sb = await getSb();
+    if (!sb) throw new Error('El servicio de acceso no está disponible.');
+    const r = await sb.auth.signInWithPassword(values);
+    if (r.error) { agBusy(false); agStatus(friendlyError(r.error, 'iniciar sesión'), true); }
+  } catch (e) { agBusy(false); agStatus(friendlyError(e, 'iniciar sesión'), true); }
 }
 async function signUp() {
-  const sb = await getSb(); agStatus('Creando cuenta…');
-  const r = await sb.auth.signUp({ email: agVal('ag-email'), password: agVal('ag-pass') });
-  if (r.error) return agStatus(friendlyError(r.error, 'crear la cuenta'), true);
-  if (r.data && r.data.session) agStatus('¡Listo!'); else agStatus('Cuenta creada. Revisa tu correo para confirmar (o usa enlace mágico).');
+  const values = agCredentials(true); if (!values) return;
+  agBusy(true); agStatus('Creando tu cuenta…');
+  try {
+    const sb = await getSb();
+    if (!sb) throw new Error('El servicio de acceso no está disponible.');
+    const r = await sb.auth.signUp(values);
+    agBusy(false);
+    if (r.error) return agStatus(friendlyError(r.error, 'crear la cuenta'), true);
+    if (r.data && r.data.session) agStatus('Cuenta creada. Ya puedes entrar.');
+    else agStatus('Cuenta creada. Revisa tu correo para confirmarla.');
+  } catch (e) { agBusy(false); agStatus(friendlyError(e, 'crear la cuenta'), true); }
 }
 async function signInMagic() {
-  const sb = await getSb(); const email = agVal('ag-email');
-  if (!email) return agStatus('Escribe tu correo', true);
-  agStatus('Enviando enlace…');
-  const r = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
-  if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true); else agStatus('Te enviamos un enlace mágico a ' + email);
+  const values = agCredentials(false); if (!values) return;
+  agBusy(true); agStatus('Enviando el enlace seguro…');
+  try {
+    const sb = await getSb();
+    if (!sb) throw new Error('El servicio de acceso no está disponible.');
+    const r = await sb.auth.signInWithOtp({ email: values.email, options: { emailRedirectTo: location.href } });
+    agBusy(false);
+    if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true);
+    else agStatus('Enviamos el enlace a ' + values.email + '.');
+  } catch (e) { agBusy(false); agStatus(friendlyError(e, 'enviar el enlace'), true); }
 }
 async function signOutTempo() {
   const sb = await getSb(); if (sb) await sb.auth.signOut();
@@ -614,11 +689,11 @@ function renderTeamModal() {
   // Selector de equipos (si hay más de uno) + crear nuevo
   const teamsList = _teams.map(t => {
     const active = t.id === _teamId;
-    return `<div onclick="switchTeam('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;background:${active?'color-mix(in srgb, var(--accent) 6%, transparent)':'transparent'}">
+    return `<article style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ${active?'var(--accent)':'var(--border)'};border-radius:8px;background:${active?'color-mix(in srgb, var(--accent) 6%, transparent)':'transparent'}">
       <div class="artist-avatar" style="width:26px;height:26px;font-size:var(--text-xs)">${up(t.name||'?').slice(0,1)}</div>
       <div style="flex:1"><div style="font-size:var(--text-base);font-weight:500">${s(t.name)}</div><div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-muted)">${s(t.role)}</div></div>
-      ${active?'<span style="color:var(--accent);font-size:var(--text-sm)">● activo</span>':'<span style="font-size:var(--text-xs);color:var(--text-dim)">cambiar →</span>'}
-    </div>`;
+      ${active?'<span style="color:var(--accent);font-size:var(--text-sm)">● activo</span>':`<button type="button" class="card-open" onclick="switchTeam('${t.id}')">Cambiar ${icon('link',10)}</button>`}
+    </article>`;
   }).join('');
   // Panel de asignación de artistas al equipo
   const otherTeams = _teams.filter(t => t.id !== _teamId);
@@ -946,10 +1021,16 @@ async function removeMember(userId, email) {
 }
 // olvidé mi contraseña (desde el login)
 async function forgotPassword() {
-  const sb = await getSb(); const email = agVal('ag-email');
-  if (!email) return agStatus('Escribe tu correo para recuperar la contraseña', true);
-  const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
-  if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true); else agStatus('Enviamos un enlace para restablecer tu contraseña a ' + email);
+  const values = agCredentials(false); if (!values) return;
+  agBusy(true); agStatus('Enviando instrucciones…');
+  try {
+    const sb = await getSb();
+    if (!sb) throw new Error('El servicio de acceso no está disponible.');
+    const r = await sb.auth.resetPasswordForEmail(values.email, { redirectTo: location.href });
+    agBusy(false);
+    if (r.error) agStatus(friendlyError(r.error, 'enviar el enlace'), true);
+    else agStatus('Enviamos las instrucciones a ' + values.email + '.');
+  } catch (e) { agBusy(false); agStatus(friendlyError(e, 'enviar el enlace'), true); }
 }
 // ajustes de cuenta
 function abrirCuenta() { toggleArtistMenu(false); renderCuenta(); document.getElementById('modal-account').classList.add('open'); }
@@ -1081,7 +1162,7 @@ function abrirAdmin() {
 function cerrarAdmin(e) { if (!e || e.target === document.getElementById('modal-admin')) document.getElementById('modal-admin').classList.remove('open'); }
 
 async function adminTab(name, el) {
-  if (el) { document.querySelectorAll('#admin-tabs .mtab').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+  document.querySelectorAll('#admin-tabs .mtab').forEach(b => { const on=b.dataset.atab===name; b.classList.toggle('active',on); b.setAttribute('aria-selected',String(on)); });
   const body = document.getElementById('admin-body');
   body.innerHTML = '<div class="empty-hint">Cargando…</div>';
   try {

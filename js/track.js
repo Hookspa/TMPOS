@@ -26,7 +26,7 @@ function renderTrackDetail() {
   const phase = trackPhase(t);
   const TABS = [['audio','Audio'],['labelcopy','Label Copy']];
   host.innerHTML = `
-    <div style="margin-bottom:16px"><span style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer" onclick="backToRelease()">← ${s(l ? l.name : 'Release')}</span></div>
+    <div style="margin-bottom:16px"><button type="button" class="link-muted" style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--text-muted);cursor:pointer;border:0;background:transparent;padding:0" onclick="backToRelease()">← ${s(l ? l.name : 'Lanzamiento')}</button></div>
     <div class="panel" style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="font-family:var(--font-display);font-size:var(--text-2xl);letter-spacing:var(--track-display)">${s(t.title) || '(sin título)'}</div>
@@ -35,11 +35,11 @@ function renderTrackDetail() {
       </div>
       <div style="min-width:220px;flex:1">${readyBarHTML(pct, 'LISTO PARA LANZAR · TRACK')}<div style="font-size:var(--text-2xs);color:var(--text-dim);font-family:var(--font-ui);margin-top:6px">${rd.done}/${rd.total} ítems del checklist</div></div>
     </div>
-    <div class="mtabs" id="track-tabbar" style="margin-bottom:16px;flex-wrap:wrap">${TABS.map(x => `<div class="mtab ${x[0] === _trackTab ? 'active' : ''}" data-ttab="${x[0]}" onclick="setTrackTab('${x[0]}')">${x[1]}</div>`).join('')}</div>
+    <div class="mtabs" id="track-tabbar" role="tablist" aria-label="Secciones de la canción" style="margin-bottom:16px;flex-wrap:wrap">${TABS.map(x => `<button type="button" role="tab" aria-selected="${x[0]===_trackTab}" class="mtab ${x[0] === _trackTab ? 'active' : ''}" data-ttab="${x[0]}" onclick="setTrackTab('${x[0]}')">${x[1]}</button>`).join('')}</div>
     <div id="track-tab-body"></div>`;
   renderTrackTab(_trackTab);
 }
-function setTrackTab(name) { _trackTab = name; document.querySelectorAll('#track-tabbar .mtab').forEach(b => b.classList.toggle('active', b.dataset.ttab === name)); renderTrackTab(name); }
+function setTrackTab(name) { _trackTab = name; document.querySelectorAll('#track-tabbar .mtab').forEach(b => { const on=b.dataset.ttab===name; b.classList.toggle('active',on); b.setAttribute('aria-selected',String(on)); }); renderTrackTab(name); }
 function renderTrackTab(name) {
   const t = curTrack(); const host = document.getElementById('track-tab-body'); if (!t || !host) return;
   // La canción solo tiene Audio · Label Copy. Checklist/Legal/Tareas/Marketing se centralizaron
@@ -138,7 +138,8 @@ async function saveChecklistAsTemplate(tid) {
 // Checklists de lanzamiento (Trabajo del release): el checklist "Listo para lanzar" de cada canción.
 function releaseChecklistsHTML(l) {
   const ts = (typeof tracksOfLaunch === 'function') ? tracksOfLaunch(l) : [];
-  if (!ts.length) return `${(typeof secInfo === 'function') ? secInfo('Checklists de lanzamiento', 'El checklist "Listo para lanzar" de cada canción. Alimenta la barra de readiness del track y del release.') : ''}<div class="empty-hint">Este lanzamiento no tiene canciones. Agrégalas en la pestaña <b>Música</b>.</div>`;
+  const releaseLevel = (typeof releaseChecklistPanelHTML === 'function') ? releaseChecklistPanelHTML(l) : '';
+  if (!ts.length) return `${releaseLevel}${(typeof secInfo === 'function') ? secInfo('Checklists por canción', 'El checklist "Listo para lanzar" de cada canción alimenta la preparación de la canción y del lanzamiento.') : ''}<div class="empty-hint">Este lanzamiento no tiene canciones. Agrégalas en la pestaña <b>Música</b>.</div>`;
   const blocks = ts.map(t => {
     const rd = (typeof trackReady === 'function') ? trackReady(t) : { done: 0, total: 0 };
     const pct = rd.total ? Math.round(rd.done / rd.total * 100) : 0;
@@ -148,7 +149,7 @@ function releaseChecklistsHTML(l) {
         <div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">${rd.done}/${rd.total}</div></div>
       ${trackChecklistHTML(t)}`;
   }).join('');
-  return `${(typeof secInfo === 'function') ? secInfo('Checklists de lanzamiento', 'El checklist "Listo para lanzar" de cada canción. Alimenta la barra de readiness del track y del release.') : ''}${blocks}`;
+  return `${releaseLevel}${(typeof secInfo === 'function') ? secInfo('Checklists por canción', 'El checklist "Listo para lanzar" de cada canción alimenta la preparación de la canción y del lanzamiento.') : ''}${blocks}`;
 }
 // ── Panel de gestión de plantillas (aplicar · duplicar · renombrar · eliminar) ──
 function abrirTemplatesPanel(tid) { if (tid) _checklistCtx = tid; renderTemplatesPanel(); document.getElementById('modal-templates').classList.add('open'); }
@@ -262,14 +263,14 @@ function trackLabelCopyHTML(t) {
   <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('file',18)}</span><span class="ph-title">Label Copy</span><span class="ph-sub">documento madre · formato disquera</span>
     <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="labelCopyPDF()">${icon('download',13)} Generar Label Copy (PDF)</button></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px">
-      ${f('Álbum / Release', 'labelCopy.album', lc.album, l ? l.name : '')}
+      ${f('Álbum / Lanzamiento', 'labelCopy.album', lc.album, l ? l.name : '')}
       ${f('Sello', 'labelCopy.label', lc.label)}
       ${f('Distribuidora', 'labelCopy.distributor', lc.distributor)}
       ${f('Género', 'labelCopy.genre', lc.genre)}
       ${f('Main artist(s)', 'labelCopy.track.mainArtists', lct.mainArtists, 'ELTY, BCA, JEYSON…')}
       ${f('Repertoire owner', 'labelCopy.track.repertoireOwner', lct.repertoireOwner, 'Genios Musicales LLC')}
       ${f('Featuring artists', 'labelCopy.track.featuring', lct.featuring)}
-      ${f('Release date', 'labelCopy.track.releaseDate', lct.releaseDate || (l && l.date) || '')}
+      ${f('Fecha de lanzamiento', 'labelCopy.track.releaseDate', lct.releaseDate || (l && l.date) || '')}
       ${sel('Explicit', 'labelCopy.track.explicit', lct.explicit, ['No', 'Sí'])}
       ${sel('Clean version disponible', 'labelCopy.track.cleanVersion', lct.cleanVersion, ['No', 'Sí'])}
       ${f('Dueño del máster', 'master.owner', (t.master || {}).owner)}
@@ -298,7 +299,7 @@ function trackLabelCopyHTML(t) {
     ${lcBusinessField(t)}
   </div>
 
-  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos del release</span><span class="ph-sub">people book · autocompleta al escribir</span></div>
+  <div class="panel"><div class="panel-head"><span class="ph-icon">${icon('contacts',18)}</span><span class="ph-title">Contactos del lanzamiento</span><span class="ph-sub">directorio · autocompleta al escribir</span></div>
     ${lcListField(t, 'labelCopy.contacts', [['name','Nombre'],['role','Rol'],['email','Email']], 'Contactos', 'contacto')}
   </div>
 
@@ -492,7 +493,7 @@ async function labelCopyPDF() {
   y = 100;
   doc.setTextColor(20, 20, 20);
   kv('Repertoire owner', lct.repertoireOwner); kv('Featuring', lct.featuring);
-  kv('Release date', lct.releaseDate || (l && l.date)); kv('Explicit', lct.explicit);
+  kv('Fecha de lanzamiento', lct.releaseDate || (l && l.date)); kv('Explícita', lct.explicit);
   kv('Clean version', lct.cleanVersion); kv('Género', lc.genre);
   kv('Dueño del máster', `${clean((t.master || {}).owner)}${(t.master || {}).ownerSplit ? ' (' + clean((t.master || {}).ownerSplit) + '%)' : ''}`);
 
