@@ -15,8 +15,25 @@ const {
   verifyCurrentProduction,
   verifyRemoteDeployment,
 } = require('../../.github/scripts/deploy-contract.js');
+const { createStaticServer } = require('../../.github/scripts/serve-static.js');
 
 const root = path.resolve(__dirname, '../..');
+
+test('el servidor de navegador usa Node y entrega el shell sin depender de Python', async () => {
+  const server = createStaticServer({ root });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/app.html`);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /<html/i);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
 
 function artifactFetch(destination, mutate) {
   return async input => {
