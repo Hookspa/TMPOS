@@ -4,6 +4,7 @@ const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+XHLkWQAAAABJRU5ErkJggg==',
   'base64',
 );
+const SNAPSHOT_VERSION_LABEL = 'Sistema operativo musical · v0.78.0‑alpha';
 
 test.beforeEach(async ({ page }, testInfo) => {
   const theme = testInfo.project.name.includes('light') ? 'light' : 'dark';
@@ -22,6 +23,9 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 async function stabilize(page) {
   await page.evaluate(() => document.fonts.ready);
+  await page.locator('.sidebar > .logo > span').evaluate((element, label) => {
+    element.textContent = label;
+  }, SNAPSHOT_VERSION_LABEL);
   await page.addStyleTag({ content: `
     *, *::before, *::after {
       animation-duration: 0s !important;
