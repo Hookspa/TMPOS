@@ -10,6 +10,7 @@ const {
   createDeploymentManifest,
   publicFileContent,
   publicPaths,
+  resolveCurrentProductionCommit,
   sha256,
   verifyCurrentProduction,
   verifyRemoteDeployment,
@@ -89,6 +90,31 @@ test('el preflight reconoce la publicación legacy exacta antes de activar Actio
   assert.equal(result.commit, 'legacy-commit');
   assert.equal(result.source, 'legacy-pages');
   assert.equal(result.rowCount, 6066);
+});
+
+test('el preflight continúa desde el commit realmente recuperado en producción', async () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-current-production-'));
+  const destination = path.join(temporary, 'site');
+  const recoveredCommit = 'a'.repeat(40);
+  const failedCommit = 'b'.repeat(40);
+  try {
+    buildSite({ root, destination, commit: recoveredCommit });
+    const current = await resolveCurrentProductionCommit({
+      baseUrl: 'https://example.test/TMPOS/',
+      fallbackCommit: failedCommit,
+      fetch: artifactFetch(destination),
+    });
+    assert.deepEqual(current, { commit: recoveredCommit, source: 'deployment-manifest' });
+
+    const legacy = await resolveCurrentProductionCommit({
+      baseUrl: 'https://example.test/TMPOS/',
+      fallbackCommit: failedCommit,
+      fetch: async () => new Response('not found', { status: 404 }),
+    });
+    assert.deepEqual(legacy, { commit: failedCommit, source: 'legacy-bootstrap' });
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('el canary rechaza un asset alterado aunque responda HTTP 200', async () => {
@@ -210,6 +236,8 @@ test('el workflow bloquea publicación fuera de main y usa dependencias inmutabl
   assert.doesNotMatch(workflow, /uses:\s*[^\n]+@v\d/);
   assert.match(workflow, /npm run test:ci/);
   assert.match(workflow, /find-last-known-good\.js/);
+  assert.match(workflow, /resolve-current-production\.js/);
+  assert.match(workflow, /merge-base --is-ancestor/);
   assert.match(workflow, /vars\.DEPLOY_ENABLED == 'true'/);
   assert.match(workflow, /preflight-production:/);
   assert.match(workflow, /LKG_FALLBACK_COMMIT/);

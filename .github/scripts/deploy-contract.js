@@ -250,6 +250,30 @@ async function verifyRemoteDeploymentOnce(options) {
   };
 }
 
+async function resolveCurrentProductionCommit(options) {
+  const fallbackCommit = String(options.fallbackCommit || '').trim();
+  if (!/^[0-9a-f]{40}$/i.test(fallbackCommit)) {
+    const error = new Error('El preflight requiere un commit de bootstrap completo');
+    error.code = 'PREFLIGHT_FALLBACK_INVALID';
+    throw error;
+  }
+  try {
+    const manifestBuffer = await fetchAsset(
+      options.fetch || globalThis.fetch,
+      options.baseUrl,
+      'deployment-manifest.json',
+      'discover-current-production',
+      options.fetchTimeoutMs,
+    );
+    const manifest = JSON.parse(manifestBuffer.toString('utf8'));
+    const deployedCommit = String(manifest.commit || '').trim();
+    if (!/^[0-9a-f]{40}$/i.test(deployedCommit)) throw new Error('Commit publicado inválido');
+    return Object.freeze({ commit: deployedCommit, source: 'deployment-manifest' });
+  } catch (_error) {
+    return Object.freeze({ commit: fallbackCommit, source: 'legacy-bootstrap' });
+  }
+}
+
 async function verifyLegacyRemoteDeploymentOnce(options) {
   const fetchImpl = options.fetch || globalThis.fetch;
   if (!fetchImpl) throw new Error('El preflight requiere fetch');
@@ -362,6 +386,7 @@ module.exports = {
   PUBLIC_FILES,
   publicFileContent,
   publicPaths,
+  resolveCurrentProductionCommit,
   sha256,
   verifyCurrentProduction,
   verifyLegacyRemoteDeploymentOnce,

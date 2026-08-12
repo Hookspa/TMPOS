@@ -55,25 +55,37 @@ jobs:
     steps:
       - name: Checkout preflight tooling
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Checkout the version currently expected in production
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          ref: ${{ github.event_name == 'push' && github.event.before || github.sha }}
-          path: _preflight_source
-          persist-credentials: false
+          fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 22
+      - name: Resolve the version actually serving production
+        id: current-production
+        env:
+          DEPLOY_BASE_URL: ${{ vars.PAGES_PRODUCTION_URL || 'https://hookspa.github.io/TMPOS/' }}
+          PREFLIGHT_FALLBACK_SHA: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+        run: node .github/scripts/resolve-current-production.js
+      - name: Require the rollback commit to belong to main history
+        env:
+          CURRENT_PRODUCTION_SHA: ${{ steps.current-production.outputs.head_sha }}
+        run: git merge-base --is-ancestor "$CURRENT_PRODUCTION_SHA" origin/main
+      - name: Checkout the version actually serving production
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ steps.current-production.outputs.head_sha }}
+          path: _preflight_source
+          persist-credentials: false
       - name: Prove the rollback source before publishing
         env:
           DEPLOY_BASE_URL: ${{ vars.PAGES_PRODUCTION_URL || 'https://hookspa.github.io/TMPOS/' }}
-          PREFLIGHT_SHA: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+          PREFLIGHT_SHA: ${{ steps.current-production.outputs.head_sha }}
         run: node .github/scripts/canary.js --preflight --base-url "$DEPLOY_BASE_URL" --expected-commit "$PREFLIGHT_SHA" --expected-root _preflight_source --attempts 3 --delay-ms 2000
       - name: Expose only the verified rollback commit
         id: verified
         env:
-          PREFLIGHT_SHA: ${{ github.event_name == 'push' && github.event.before || github.sha }}
+          PREFLIGHT_SHA: ${{ steps.current-production.outputs.head_sha }}
         run: echo "verified_commit=$PREFLIGHT_SHA" >> "$GITHUB_OUTPUT"
 
   deploy:
