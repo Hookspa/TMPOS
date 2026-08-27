@@ -442,7 +442,7 @@ test('el shell usa assets externos y respeta los presupuestos de tamaño', () =>
     assert.match(html, new RegExp(`href=["']${asset.replaceAll('.', '\\.')}["']`));
     assert.ok(fs.statSync(path.join(root, asset)).size > 0, `${asset} debe existir y tener contenido`);
   });
-  assert.match(html, /<meta name=["']theme-color["'] content=["']#0d0d0f["']>/);
+  assert.match(html, /<meta name=["']theme-color["'] content=["']#0a0a0a["']>/);
   assert.ok(fs.statSync(htmlPath).size <= 100 * 1024, 'app.html excede 100 KiB');
   assert.ok(fs.statSync(cssPath).size <= 115 * 1024, 'css/app.css excede 115 KiB');
   assert.ok(fs.statSync(catalogPath).size <= 2 * 1024 * 1024, 'refs_02.csv excede 2 MiB');

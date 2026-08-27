@@ -38,8 +38,12 @@ design/
 HANDOFF.md
 CHANGELOG.md
 DESIGN.md
+AGENTS.md
 CLAUDE.md
 PRODUCT.md
+CONTEXT.md
+docs/
+.scratch/
 
 # Contexto de /impeccable (config local de live mode)
 .impeccable/

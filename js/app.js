@@ -107,7 +107,7 @@ function toggleBancoTranslate() {
   renderBanco();
 }
 
-const CAT_PALETTE = ['#FF6B35','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
+const CAT_PALETTE = ['#FF6900','#FFAA00','#d98a4f','#7ea584','#6b8ca6','#b3431a','#c9a24f','#9a7b8f'];
 const catColorMap = {};
 let paletteIdx = 0;
 function catColor(c) {
@@ -1602,7 +1602,7 @@ function buildCalDoc(printMode) {
   const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p.id}">${_pieceDetailHTML(p)}</div>`).join('');
   const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
   const CSS = `
-    :root{--ac:#FF6B35;--bg:#0d0d0f;--surf:#1a1a1a;--card:#232326;--bd:#38383a;--tx:#FFFFFF;--mut:#98989D;--dim:#78787d}
+    :root{--ac:#FF6900;--bg:#0a0a0a;--surf:#171717;--card:#27272a;--bd:#2e2e2e;--tx:#FFFFFF;--mut:#98989D;--dim:#78787d}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5;font-variant-numeric:tabular-nums}
     a{color:var(--ac)} .wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
     .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:22px}
@@ -3244,7 +3244,7 @@ function artistLaunches() { return launches.filter(l => l.artistId === currentAr
 // Campañas evergreen / always-on del artista (viven como launches type:'evergreen').
 function artistEvergreen() { return launches.filter(l => l.artistId === currentArtistId && l.type === 'evergreen'); }
 // ── Campañas del calendario: release activo + todas las evergreen del artista (cada una con color) ──
-const CAMPAIGN_PALETTE = ['#FF6B35','#38bdf8','#a78bfa','#2ECC71','#FFAA00','#f472b6','#22d3ee','#fb923c'];
+const CAMPAIGN_PALETTE = ['#FF6900','#38bdf8','#a78bfa','#2ECC71','#FFAA00','#f472b6','#22d3ee','#fb923c'];
 let _calHidden = {}; // { launchId: true } campañas ocultas en el calendario
 function campColorFor(l, i) { return (l.type === 'evergreen' && l.color) ? l.color : CAMPAIGN_PALETTE[i % CAMPAIGN_PALETTE.length]; }
 function calCampaigns() {
@@ -3675,7 +3675,7 @@ async function renderDashTrend(art, ls) {
   const line = (css.getPropertyValue('--text-muted').trim()) || '#9BA1A6';
   const grid = (css.getPropertyValue('--border').trim()) || 'rgba(255,255,255,.08)';
   const txt = (css.getPropertyValue('--text-muted').trim()) || '#8a8a8a';
-  const surf = (css.getPropertyValue('--surface').trim()) || '#1a1a1a';   // tooltip theme-aware (antes era verde-negro hardcodeado)
+  const surf = (css.getPropertyValue('--surface').trim()) || '#171717';   // tooltip theme-aware (antes era verde-negro hardcodeado)
   const txtStrong = (css.getPropertyValue('--text').trim()) || '#FFFFFF';
   const ctx = cv.getContext('2d');
   // Sin esto Chart.js dibuja sus ticks en su default (Helvetica/Arial): una tercera

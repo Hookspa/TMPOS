@@ -38,7 +38,7 @@ test('los favicons externos responden y conservan el color del navegador', async
 
   await page.goto('/app.html');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', 'logo_exports/favicon-180.png');
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d0d0f');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0a0a0a');
 });
 
 test('el Dashboard queda disponible mientras el catálogo sigue pendiente', async ({ page }) => {
@@ -293,4 +293,22 @@ test('si audit_log falla, soporte conserva el diagnóstico mediante copia', asyn
   await page.locator('#catalog-status').getByRole('button', { name: 'Enviar reporte técnico' }).click();
 
   await expect(page.locator('#ui-toast')).toContainText('Diagnóstico copiado');
+});
+
+test('el branding de marca define --accent-fill con texto AA y se revierte a los tokens v7', async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('ao_brand', JSON.stringify({ color: '#3366FF' })));
+  await openLocalWorkspace(page);
+  const readVar = name => page.evaluate(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim(), name);
+  await page.evaluate(() => applyBranding());
+  expect(await readVar('--accent')).toBe('#3366FF');
+  expect(await readVar('--accent-fill')).toBe('#3366FF');
+  expect(await readVar('--accent-fg')).toBe('#FFF7ED');
+  // Naranja vivo: el contraste WCAG elige tinta, nunca blanco (la luma vieja daba 2.9:1).
+  await page.evaluate(() => { localStorage.setItem('ao_brand', JSON.stringify({ color: '#FF6900' })); applyBranding(); });
+  expect(await readVar('--accent-fg')).toBe('#180A02');
+  // Sin marca: vuelven los tokens del stylesheet (dual segun tema) y no queda --glow de color.
+  await page.evaluate(() => { localStorage.removeItem('ao_brand'); applyBranding(); });
+  const expectedFill = testInfo.project.name.includes('light') ? '#CA3500' : '#9F2D00';
+  expect(await readVar('--accent-fill')).toBe(expectedFill);
+  expect(await readVar('--glow')).not.toContain('255, 105');
 });

@@ -719,7 +719,7 @@ function renderTeamModal() {
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('settings',18)}</span><span class="ph-title">Marca del workspace</span><span class="ph-sub">logo · color · nombre</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
       <label style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Color de acento
-        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6B35'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6B35" style="width:90px;font-size:var(--text-sm);font-family:var(--font-ui)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:3px"><input type="color" id="brand-color" value="${_hex(_brandColor)||'#FF6900'}" style="width:42px;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer"><input class="input" id="brand-color-hex" value="${_hex(_brandColor)||''}" placeholder="#FF6900" style="width:90px;font-size:var(--text-sm);font-family:var(--font-ui)" oninput="var c=document.getElementById('brand-color');if(/^#?[0-9a-fA-F]{6}$/.test(this.value))c.value=this.value.replace(/^#?/,'#')"></div>
       </label>
       <label style="flex:1;min-width:160px;font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim)">Nombre de marca
         <input class="input" id="brand-name" value="${s(_brandName)}" placeholder="(opcional)" style="font-size:var(--text-sm);margin-top:3px">
@@ -1396,8 +1396,15 @@ function _shade(hex, p) { // oscurece (p<0) / aclara (p>0) un hex; p en [-1,1]
   const f = x => Math.max(0, Math.min(255, Math.round(x + (p < 0 ? x * p : (255 - x) * p))));
   return '#' + [f(r), f(g), f(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
-function _rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
-function _contrast(hex) { const n = parseInt(hex.slice(1), 16); const l = 0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255); return l > 150 ? '#1a1a1a' : '#ffffff'; }
+function _contrast(hex) {
+  // Contraste WCAG real (la luma aproximada elegía blanco sobre naranjas medios: 2.9:1).
+  // Devuelve el par v7: crema sobre fills oscuros, tinta sobre fills claros/vivos.
+  const n = parseInt(hex.slice(1), 16);
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  const CREMA = 0.937, TINTA = 0.0042; // luminancia relativa de #FFF7ED y #180A02
+  return (CREMA + 0.05) / (L + 0.05) >= (L + 0.05) / (TINTA + 0.05) ? '#FFF7ED' : '#180A02';
+}
 // Lee branding de cache local (pintado instantáneo antes del login) y de la nube tras loadTeam.
 function brandCache() { try { return JSON.parse(localStorage.getItem('ao_brand')) || {}; } catch (e) { return {}; } }
 function applyBranding() {
@@ -1406,11 +1413,12 @@ function applyBranding() {
   const root = document.documentElement.style;
   if (color) {
     root.setProperty('--accent', color);
+    root.setProperty('--accent-fill', color);
     root.setProperty('--accent-dark', _shade(color, -0.22));
     root.setProperty('--accent-fg', _contrast(color));
-    root.setProperty('--glow', _rgba(color, 0.30));
+    /* anti-slop #3: la marca NO reintroduce --glow de color; queda el neutro del tema */
   } else {
-    ['--accent', '--accent-dark', '--accent-fg', '--glow'].forEach(v => root.removeProperty(v));
+    ['--accent', '--accent-fill', '--accent-dark', '--accent-fg'].forEach(v => root.removeProperty(v));
   }
   // Logo: si hay logo_url, reemplaza el logotipo SVG por la imagen; el nombre va al subtítulo.
   const logoEl = document.querySelector('.sidebar .logo');

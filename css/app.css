@@ -1,14 +1,20 @@
   :root, [data-theme="dark"] {
-    /* DESIGN.md v6 — grafito + Overpass (de-slop tipográfico 2026-08-10), instrumento calmado */
-    --bg: #0d0d0f;
-    --surface: #1a1a1a;
-    --surface2: #232326;
-    --raise: #232326;
-    --border: #38383a;
-    --accent: #FF6B35;        /* TEMPO — SOLO acción/urgencia (nunca decorativo) */
-    --accent-dark: #d4521f;
+    /* DESIGN.md v7 — grafito + Overpass, rampa quemada (2026-08-27), instrumento calmado */
+    --bg: #0a0a0a;
+    --surface: #171717;
+    --surface2: #27272a;
+    --raise: #27272a;
+    --border: rgba(255,255,255,0.10);
+    /* v7 — el naranja habla en dos voces (rampa quemada, tema shadcn del usuario 2026-08-27):
+       --accent = SEÑAL (texto, strokes, drop-clock, logo) — SOLO acción/urgencia, nunca decorativo.
+       --accent-fill = FILL de acción (botón primario, badges, pasos) — quemado, con texto crema.
+       El fill oscuro deja de competir en brillo con la señal: sirve a "un naranja por viewport". */
+    --accent: #FF6900;        /* señal viva — 6.9:1 sobre --bg */
+    --accent-fill: #9F2D00;   /* fill quemado — con --accent-fg da 6.9:1 */
+    --accent-dark: #7C2D12;   /* hover/pressed del fill */
     --beat: #FFAA00;          /* BEAT (ámbar) */
-    --accent-fg: #180a02;     /* texto sobre naranja: negro pasa AA; blanco no */
+    --accent-fg: #FFF7ED;     /* texto crema sobre fill quemado (AA en dark y light) */
+    --ok-fg: #08130B;         /* texto sobre --ok: casi-negro pasa AA; crema no */
     --accent2: #FF453A;
     /* estados = sistema nervioso del cockpit */
     --ok: #2ECC71;            /* en tiempo */
@@ -17,7 +23,7 @@
     --done: #8E949B;          /* hecho/atenuado; AA sobre surface2 */
     --text: #FFFFFF;
     --text-muted: #98989D;
-    --text-dim: #8E8E93;        /* terciario/metadata; 4.81:1 sobre surface2 */
+    --text-dim: #8E8E93;        /* terciario/metadata; 4.57:1 sobre surface2 */
     --muted: var(--text-muted);  /* alias DESIGN.md — secundario */
     --dim: var(--text-dim);      /* alias DESIGN.md — terciario/metadata */
     --shadow: rgba(0,0,0,0.4);
@@ -109,11 +115,13 @@
     --surface: #FFFFFF;
     --surface2: #F5F5F7;
     --raise: #FFFFFF;
-    --border: #ededed;
-    --accent: #FF6B35;
-    --accent-dark: #d4521f;
+    --border: #ebebeb;
+    --accent: #CA3500;        /* señal quemada — 5.2:1 sobre blanco */
+    --accent-fill: var(--accent);  /* en light la señal y el fill comparten tono */
+    --accent-dark: #9A3412;
     --beat: #e08e00;
-    --accent-fg: #180a02;
+    --accent-fg: #FFF7ED;     /* 4.9:1 sobre el fill quemado */
+    --ok-fg: #08130B;
     --accent2: #E74C3C;
     --ok: #2ECC71;
     --risk: #B9791E;
@@ -391,7 +399,7 @@
     font-family: var(--font-ui);
     transition: all 0.15s;
   }
-  .btn-primary { background: var(--accent); color: var(--accent-fg); }
+  .btn-primary { background: var(--accent-fill); color: var(--accent-fg); }
   .btn-primary:hover { background: var(--accent-dark); }
   .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: #444; }
@@ -774,7 +782,7 @@
   .daypicker .dp-cell.empty { cursor: default; }
   .daypicker .dp-cell:not(.empty):hover { background: var(--surface2); border-color: var(--accent); }
   .daypicker .dp-cell.today { border-color: var(--text-dim); font-weight: 700; }
-  .daypicker .dp-cell.sel { background: var(--accent); color: var(--accent-fg); }
+  .daypicker .dp-cell.sel { background: var(--accent-fill); color: var(--accent-fg); }
   .daypicker .dp-cell.busy { color: var(--accent); font-weight: 600; }
   .daypicker .dp-dot { position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
   .daypicker .dp-cell.sel .dp-dot { background: var(--accent-fg); }
@@ -1315,7 +1323,7 @@
   .tk-section-title { font-family: var(--font-display); font-weight: 400; font-size: var(--h-section); letter-spacing: var(--track-display); color: var(--text); }
   .tk-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border); background: transparent; color: var(--text); font-family: var(--font-ui); font-size:var(--text-base); cursor: pointer; transition: all 0.15s; }
   .tk-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .tk-btn--primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+  .tk-btn--primary { background: var(--accent-fill); color: var(--accent-fg); border-color: var(--accent-fill); font-weight: 600; }
   .tk-btn--primary:hover { background: var(--accent-dark); color: var(--accent-fg); }
 
   /* ── ONBOARDING (estado vacío guiado, Caso 1) ── checklist de arranque que aparece
@@ -1326,7 +1334,7 @@
   .onb-steps { display: flex; flex-direction: column; gap: var(--space-3); }
   .onb-step { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
   .onb-step.locked { opacity: 0.55; }
-  .onb-num { flex: none; width: 28px; height: 28px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-ui); font-size:var(--text-base); background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+  .onb-num { flex: none; width: 28px; height: 28px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-ui); font-size:var(--text-base); background: var(--accent-fill); color: var(--accent-fg); font-weight: 700; }
   .onb-step.locked .onb-num { background: var(--surface2); color: var(--text-dim); }
   .onb-step-body { flex: 1; min-width: 0; }
   .onb-step-title { font-size:var(--text-base); color: var(--text); font-weight: 500; }
@@ -1472,7 +1480,7 @@
   .tab-item .icon { display: flex; }
   .tab-item span.tab-label { font-size:var(--text-2xs); font-family: var(--font-ui); }
   .tab-item.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--muted); }
-  .tab-item .badge { position: absolute; top: 4px; left: 50%; margin-left: 6px; background: var(--accent); color: var(--accent-fg); font-size:var(--text-2xs); font-weight: var(--fw-num); font-variant-numeric: tabular-nums; line-height: 1; font-family: var(--font-ui); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+  .tab-item .badge { position: absolute; top: 4px; left: 50%; margin-left: 6px; background: var(--accent-fill); color: var(--accent-fg); font-size:var(--text-2xs); font-weight: var(--fw-num); font-variant-numeric: tabular-nums; line-height: 1; font-family: var(--font-ui); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 
   /* ── HOJA "MÁS" (móvil) ── */
   .more-sheet-overlay {
@@ -1590,7 +1598,7 @@
   .stat-card::before { background: var(--border); box-shadow: none; }
 
   /* botón primario: sólido, sin gradiente ni glow */
-  .btn-primary { background: var(--accent); box-shadow: none; }
+  .btn-primary { background: var(--accent-fill); box-shadow: none; }
   .btn-primary:hover { background: var(--accent-dark); box-shadow: none; }
 
   /* nav activo: indicador funcional (barra lateral) */
@@ -1754,9 +1762,9 @@
   }
   .wiz-step .lbl { font-size:var(--text-sm); color: var(--text-muted); white-space: nowrap; }
   .wiz-step.active { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-  .wiz-step.active .num { background: var(--accent); color: var(--accent-fg); }
+  .wiz-step.active .num { background: var(--accent-fill); color: var(--accent-fg); }
   .wiz-step.active .lbl { color: var(--accent); font-weight: 600; }
-  .wiz-step.done .num { background: var(--ok); color: var(--accent-fg); }
+  .wiz-step.done .num { background: var(--ok); color: var(--ok-fg); }
   .wiz-step.done .lbl { color: var(--text); }
   .wiz-arrow { color: var(--text-dim); font-size:var(--text-sm); flex-shrink: 0; }
 
@@ -1848,7 +1856,7 @@
   .tl-seg { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size:var(--text-2xs); font-family: var(--font-ui); }
   .tl-seg.pre { background: var(--surface2); color: var(--text-muted); }
   .tl-seg.day { background: var(--raise); color: var(--text); min-width: 70px; border-inline:1px solid var(--border); }
-  .tl-seg.day.urgent { background: var(--accent); color: var(--accent-fg); border-color:var(--accent); }
+  .tl-seg.day.urgent { background: var(--accent-fill); color: var(--accent-fg); border-color:var(--accent-fill); }
   .tl-seg.post { background: color-mix(in srgb, var(--done) 18%, transparent); color: var(--done); }
   .tl-dates { display: flex; justify-content: space-between; font-size:var(--text-2xs); font-family: var(--font-ui); color: var(--text-muted); }
 
@@ -1877,7 +1885,7 @@
   .cover-opt.c1, .cover-opt.c2, .cover-opt.c3, .cover-opt.c4, .cover-opt.c5 { background: var(--surface2); }
 
   /* ── TAREAS (global · inbox + 5 vistas) ── */
-  .nav-item .badge { margin-left:auto; background:var(--accent); color:var(--accent-fg); font-size:var(--text-2xs); font-weight:700; font-family:var(--font-ui); min-width:16px; height:16px; padding:0 4px; border-radius:var(--radius-lg); display:inline-flex; align-items:center; justify-content:center; }
+  .nav-item .badge { margin-left:auto; background:var(--accent-fill); color:var(--accent-fg); font-size:var(--text-2xs); font-weight:700; font-family:var(--font-ui); min-width:16px; height:16px; padding:0 4px; border-radius:var(--radius-lg); display:inline-flex; align-items:center; justify-content:center; }
   .tv-toolbar { display:flex; flex-direction:column; gap:12px; margin-bottom:18px; }
   .tv-tabs { display:flex; gap:6px; flex-wrap:wrap; }
   .tv-tab { display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:var(--radius-lg); border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:var(--text-sm); font-weight:600; cursor:pointer; white-space:nowrap; transition:all .15s; }
@@ -1972,7 +1980,8 @@
   .cmt-tab.active { color:var(--text); border-color:var(--muted); background:var(--surface2); }
   .cmt-tab.priv.active { color:var(--accent2); border-color:rgba(255,77,77,.4); background:rgba(255,77,77,.06); }
   .cmt { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--hairline); }
-  .cmt-av { width:30px; height:30px; border-radius:50%; flex-shrink:0; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-size:var(--text-sm); font-weight:700; }
+  /* Avatares en neutro — anti-slop #6: el naranja nunca vive en un avatar. */
+  .cmt-av { width:30px; height:30px; border-radius:50%; flex-shrink:0; background:var(--surface2); color:var(--text); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:var(--text-sm); font-weight:700; }
   .cmt-body { flex:1; min-width:0; }
   .cmt-meta { font-size:var(--text-xs); color:var(--text-muted); font-family:var(--font-ui); margin-bottom:2px; }
   .cmt-text { font-size:var(--text-base); color:var(--text); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -1981,7 +1990,7 @@
   .mention-pop { position:absolute; z-index:var(--z-popover-top); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 12px 36px var(--shadow); min-width:220px; max-width:320px; max-height:240px; overflow:auto; padding:5px; }
   .mention-opt { display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:7px; cursor:pointer; }
   .mention-opt.sel, .mention-opt:hover { background:var(--surface2); }
-  .mention-opt .mav { width:26px; height:26px; border-radius:50%; flex-shrink:0; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-size:var(--text-xs); font-weight:700; }
+  .mention-opt .mav { width:26px; height:26px; border-radius:50%; flex-shrink:0; background:var(--surface2); color:var(--text); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:var(--text-xs); font-weight:700; }
   .mention-opt .mn { font-size:var(--text-base); font-weight:600; color:var(--text); line-height:1.1; }
   .mention-opt .me { font-size:var(--text-2xs); font-family:var(--font-ui); color:var(--text-dim); }
   /* actividad */
