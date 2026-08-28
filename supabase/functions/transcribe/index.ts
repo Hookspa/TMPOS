@@ -18,13 +18,26 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const MODEL = "whisper-1";
 const PRICE_PER_MIN = 0.006;
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://hookspa.github.io",
+]);
 
 Deno.serve(async (req) => {
+  // CORS es una protección del NAVEGADOR: no detiene curl ni scripts. La
+  // autorización real es el JWT + la membresía; esta lista no limita la seguridad.
+  const origin = req.headers.get("Origin");
+  const cors = {
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+    ...(origin && ALLOWED_ORIGINS.has(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
+  };
+  function j(obj: unknown, status: number) {
+    return new Response(JSON.stringify(obj), {
+      status,
+      headers: { ...cors, "content-type": "application/json" },
+    });
+  }
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     // Usuario autenticado (del JWT que envía el cliente)
@@ -81,7 +94,3 @@ Deno.serve(async (req) => {
     return j({ error: String(e) }, 500);
   }
 });
-
-function j(obj: unknown, status: number) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...cors, "content-type": "application/json" } });
-}

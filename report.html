@@ -965,6 +965,7 @@ async function callAI(context,sc){
   const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-6', max_tokens:1200, team_id:teamId, feature:'reporte' } });
   if(error) throw new Error(error.message||'Error de la función claude (¿desplegada?)');
   if(data && data.error) throw new Error(data.error);
+  if(data && data.logged===false) toast('La IA respondió, pero no se pudo registrar su consumo. Avísale al administrador.','error');
   return (data && data.text) || '';
 }
 
