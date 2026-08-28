@@ -50,3 +50,7 @@ docs/
 
 # Scripts one-off de dev (rehost de miniaturas, downloader IG) - no runtime
 tools/
+
+# Estado local del CLI de Supabase (project-ref, pooler-url con credenciales)
+# NUNCA al repo publico: supabase/ si se pushea, este subdirectorio no.
+supabase/.temp/
