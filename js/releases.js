@@ -910,14 +910,51 @@ function addGeneratedToCal(i) {
 }
 
 // ── Ajustes de IA + estimación de costo ──
+// Modelo por defecto. Anthropic retiró claude-3-5-haiku el 2026-02-19: cualquier
+// llamada con ese id devuelve 404, así que se remapea al leer (ver aiSettings).
+const AI_DEFAULT_MODEL = 'claude-haiku-4-5';
+
+// Precios de lista (US$ por 1M tokens: [entrada, salida]). Espejo de la tabla
+// PRICES en supabase/functions/claude/validate.mjs — si cambia una, cambia la otra.
+const AI_MODEL_PRICES = {
+  'claude-haiku-4-5':  [1.00,  5.00],
+  // Sonnet 5 cuesta temporalmente 2/10 hasta 2026-08-31. Conservamos 3/15,
+  // el precio de lista, porque sobreestimar cuatro días es más seguro que
+  // agregar lógica de fechas efímera y mantiene cliente y servidor idénticos.
+  'claude-sonnet-5':   [3.00, 15.00],
+  'claude-sonnet-4-6': [3.00, 15.00],
+  'claude-opus-5':     [5.00, 25.00],
+  'claude-opus-4-8':   [5.00, 25.00],
+};
+
+// Modelos retirados → reemplazo vigente. Los ajustes guardados en localStorage
+// (o restaurados desde un backup) traen ids viejos; sin este remapeo la IA
+// devuelve 404 en silencio para todo usuario que ya abrió la app.
+const AI_MODEL_MIGRATION = {
+  'claude-3-5-haiku-latest':   'claude-haiku-4-5',
+  'claude-3-5-haiku-20241022': 'claude-haiku-4-5',
+  'claude-3-haiku-20240307':   'claude-haiku-4-5',
+  'claude-3-5-sonnet-latest':  'claude-sonnet-5',
+  'claude-3-7-sonnet-20250219':'claude-sonnet-5',
+  'claude-sonnet-4-20250514':  'claude-sonnet-5',
+  'claude-3-opus-latest':      'claude-opus-5',
+  'claude-3-opus-20240229':    'claude-opus-5',
+};
+
 function aiSettings() {
   let st = {};
   try { st = JSON.parse(localStorage.getItem('ao_ai_settings')) || {}; } catch (e) {}
+  const saved = st.model || AI_DEFAULT_MODEL;
+  const model = AI_MODEL_MIGRATION[saved] || saved;
+  // Si el modelo se remapeó, los precios guardados son los del modelo retirado:
+  // se descartan a favor de la lista vigente en vez de reportar un costo falso.
+  const migrated = model !== saved;
+  const list = AI_MODEL_PRICES[model] || AI_MODEL_PRICES[AI_DEFAULT_MODEL];
   return {
     key: st.key || '',
-    model: st.model || 'claude-3-5-haiku-latest',
-    priceIn: st.priceIn != null ? +st.priceIn : 0.80,
-    priceOut: st.priceOut != null ? +st.priceOut : 4.00,
+    model,
+    priceIn: (!migrated && st.priceIn != null) ? +st.priceIn : list[0],
+    priceOut: (!migrated && st.priceOut != null) ? +st.priceOut : list[1],
     maxTokens: st.maxTokens || 2000,
   };
 }
@@ -926,6 +963,7 @@ function aiSettings() {
 // En modo equipo (con sesión) la IA está lista vía Edge Function (key en el servidor).
 // En modo demo, requiere key local.
 function aiReady() { return (typeof cloudEnabled === 'function' && cloudEnabled() && authed()) || !!aiSettings().key; }
+let aiUsageWarningShown = false;
 async function callClaude(prompt, maxTokens, feature) {
   const ai = aiSettings();
   // ── Modo equipo: proxy seguro (Edge Function 'claude') — la key NUNCA toca el cliente ──
@@ -936,6 +974,12 @@ async function callClaude(prompt, maxTokens, feature) {
     });
     if (error) throw new Error(error.message || 'Error de la función claude (¿está desplegada?)');
     if (data && data.error) throw new Error(data.error);
+    if (data && data.logged === false && !aiUsageWarningShown) {
+      aiUsageWarningShown = true;
+      if (typeof uiToast === 'function') {
+        uiToast('La respuesta se generó, pero no se registró el consumo. Avísale al administrador.', 6000);
+      }
+    }
     return { text: (data && data.text) || '', usage: (data && data.usage) || {}, ai };
   }
   // ── Modo demo: key directa en el cliente ──
@@ -1308,7 +1352,7 @@ function cerrarAISettings(e) {
 function guardarAISettings() {
   const obj = {
     key: document.getElementById('ai-key').value.trim(),
-    model: document.getElementById('ai-model').value.trim() || 'claude-3-5-haiku-latest',
+    model: document.getElementById('ai-model').value.trim() || AI_DEFAULT_MODEL,
     priceIn: parseFloat(document.getElementById('ai-pricein').value) || 0,
     priceOut: parseFloat(document.getElementById('ai-priceout').value) || 0,
     maxTokens: parseInt(document.getElementById('ai-maxtok').value) || 2000,
