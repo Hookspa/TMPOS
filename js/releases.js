@@ -858,7 +858,7 @@ function renderResults() {
   const a = activeLaunch(); const host = document.getElementById('ideas-results'); if (!host || !a) return;
   const g = a.generated || [];
   if (!g.length) { host.innerHTML = ''; return; }
-  const showCost = !(typeof isAdmin === 'function') || isAdmin(); // detalle de costo solo super-admin
+  const showCost = puedeVerDetallesAdminIA(); // detalle de costo solo super-admin
   const usage = (a.lastUsage && showCost)
     ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${a.lastUsage.in} tok in + ${a.lastUsage.out} tok out · costo real ≈ <strong style="color:var(--accent)">$${a.lastUsage.cost.toFixed(4)}</strong></div>`
     : '';
@@ -1008,16 +1008,21 @@ function aiCostHint(prompt, expectedOut) {
   const cost = inTok / 1e6 * ai.priceIn + outTok / 1e6 * ai.priceOut;
   return { inTok, outTok, cost, ai };
 }
-// El detalle de costo/tokens de IA solo lo ve el super-admin (josh@hookspa.com) — oculto para todos los demás.
+// Los detalles internos de IA fallan cerrados: si no se puede confirmar al
+// super-admin, no se muestran modelo, costo ni tokens.
+function puedeVerDetallesAdminIA() {
+  try { return typeof isAdmin === 'function' && isAdmin() === true; }
+  catch (e) { return false; }
+}
 function aiHintHTML(prompt, expectedOut) {
-  if (typeof isAdmin === 'function' && !isAdmin()) return '';
+  if (!puedeVerDetallesAdminIA()) return '';
   const e = aiCostHint(prompt, expectedOut);
   const perDollar = e.cost > 0 ? Math.max(1, Math.floor(1 / e.cost)) : '∞';
   return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-top:8px">IA: ${e.ai.key ? '<span style="color:var(--ok);display:inline-flex;align-items:center;gap:3px">key '+icon('check',11)+'</span>' : '<span style="color:var(--accent2)">sin key — '+icon('settings',12)+' API</span>'} · ${s(e.ai.model)} · estimado ≈ <strong style="color:var(--accent)">$${e.cost.toFixed(4)}</strong> (${e.inTok} in + ${e.outTok} out · ~${perDollar}/US$1)</div>`;
 }
 function usageBadge(u, ai) {
   if (!u) return '';
-  if (typeof isAdmin === 'function' && !isAdmin()) return '';
+  if (!puedeVerDetallesAdminIA()) return '';
   return `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--text-dim);margin-bottom:10px">${icon('ai',12)} IA · ${u.input_tokens || 0} in + ${u.output_tokens || 0} out · costo real ≈ <strong style="color:var(--accent)">$${costFromUsage(u, ai || aiSettings()).toFixed(4)}</strong></div>`;
 }
 function buildIdeaPrompt(a, count) {
@@ -1058,7 +1063,7 @@ function costFromUsage(u, ai) {
 }
 function updateCostLine() {
   const a = activeLaunch(); const el = document.getElementById('gen-cost'); if (!a || !el) return;
-  if (typeof isAdmin === 'function' && !isAdmin()) { el.innerHTML = ''; return; } // costo de IA: solo super-admin
+  if (!puedeVerDetallesAdminIA()) { el.innerHTML = ''; return; } // costo de IA: solo super-admin
   const count = parseInt((document.getElementById('gen-count') || {}).value) || 8;
   const est = estimateCost(a, count);
   const perDollar = est.cost > 0 ? Math.max(1, Math.floor(1 / est.cost)) : '∞';
@@ -1086,7 +1091,7 @@ async function generarIdeasIA() {
   // Antes se usaba el default (2000) y a partir de ~12 ideas el JSON se truncaba → parse fallaba.
   const maxTok = Math.min(8000, count * 320 + 700);
   const res = document.getElementById('ideas-results');
-  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando ${count} ideas con IA (${s(ai.model)})… esto puede tardar unos segundos.</div>`;
+  res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando ${count} ideas con IA${puedeVerDetallesAdminIA() ? ` (${s(ai.model)})` : ''}… esto puede tardar unos segundos.</div>`;
   try {
     const { text, usage } = await callClaude(prompt, maxTok, 'ideas');
     const ideas = parseIdeasJSON(text);
@@ -1139,7 +1144,7 @@ async function generarDNADesdeLetra() {
   const ai = aiSettings();
   const prompt = buildDNAfromLyricsPrompt(a, letra);
   const st = document.getElementById('letra-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el ADN de campaña desde la letra (${s(ai.model)})…`; }
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el ADN de campaña desde la letra${puedeVerDetallesAdminIA() ? ` (${s(ai.model)})` : ''}…`; }
   try {
     const { text, usage } = await callClaude(prompt, 900, 'campaign_dna');
     const obj = parseJSONObj(text);
@@ -1194,7 +1199,7 @@ async function traducirLetra() {
   if (!aiReady()) { abrirAISettings(); return; }
   const ai = aiSettings();
   const st = document.getElementById('letra-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Traduciendo la letra (${s(ai.model)})…`; }
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Traduciendo la letra${puedeVerDetallesAdminIA() ? ` (${s(ai.model)})` : ''}…`; }
   try {
     const prompt = `Traduce al español la siguiente letra de canción. Conserva el sentido, el tono y los modismos; si hay un regionalismo o slang, acláralo brevemente entre [corchetes]. Devuelve SOLO la traducción, sin comentarios ni encabezados.\n\nLETRA:\n${letra}`;
     const { text, usage } = await callClaude(prompt, 1200, 'traducir_letra');
@@ -1260,7 +1265,7 @@ async function generarPitchEditorial() {
   if (!aiReady()) { abrirAISettings(); return; }
   const ai = aiSettings();
   const st = document.getElementById('pitch-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el pitch editorial (${s(ai.model)})…`; }
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Generando el pitch editorial${puedeVerDetallesAdminIA() ? ` (${s(ai.model)})` : ''}…`; }
   try {
     const { text, usage } = await callClaude(buildPitchPrompt(a), 700, 'pitch_editorial');
     const obj = parseJSONObj(text);
@@ -1320,7 +1325,7 @@ async function generarPlanContenido() {
   if (!aiReady()) { abrirAISettings(); return; }
   const ai = aiSettings();
   const st = document.getElementById('plan-status');
-  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Armando el plan de contenido desde el ADN (${s(ai.model)})…`; }
+  if (st) { st.style.color = 'var(--text-muted)'; st.innerHTML = `${icon('ai',12)} Armando el plan de contenido desde el ADN${puedeVerDetallesAdminIA() ? ` (${s(ai.model)})` : ''}…`; }
   try {
     const { text, usage } = await callClaude(buildPlanContenidoPrompt(a), 1400, 'plan_contenido');
     const arr = parseJSONArray(text).filter(x => x && (x.titulo || x.categoria)).slice(0, 12);

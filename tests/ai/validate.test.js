@@ -80,7 +80,7 @@ test('max_tokens se acota al techo del servidor', () => {
 });
 
 // Infinity no es un número finito, así que cae al default (2000) en vez de al
-// techo (4000). Los dos caminos son seguros; el default es el más conservador.
+// techo (8000). Los dos caminos son seguros; el default es el más conservador.
 test('un max_tokens inválido cae al default en vez de propagarse', () => {
   for (const bad of [undefined, null, 0, -5, NaN, Infinity, -Infinity, true, '500', 'muchos', {}, [5], []]) {
     assert.equal(
