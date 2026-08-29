@@ -7,6 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 
 const MODULE = pathToFileURL(
@@ -92,6 +93,34 @@ test('un max_tokens inválido cae al default en vez de propagarse', () => {
 test('un max_tokens válido se respeta y se vuelve entero', () => {
   assert.equal(v.resolveMaxTokens(1200), 1200);
   assert.equal(v.resolveMaxTokens(700.9), 700);
+});
+
+// ── el techo contra la demanda REAL del cliente ─────────────────────────────
+// Esta es la prueba que faltaba. Un cap de 4000 llego a produccion y recorto el
+// JSON de 12 ideas en adelante: nadie habia contrastado el techo del servidor
+// con lo que el cliente realmente pide. Se lee el calculo del fuente en vez de
+// copiarlo, para que cambiarlo alli sin subir el cap rompa aqui.
+test('el techo del servidor cubre el presupuesto maximo que pide el cliente', () => {
+  const releases = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'js', 'releases.js'), 'utf8');
+  const m = releases.match(
+    /const maxTok = Math\.min\((\d+),\s*count \* (\d+) \+ (\d+)\)/);
+  assert.ok(m, 'cambio el calculo de maxTok en js/releases.js: revisa MAX_TOKENS_CAP');
+  const [, techoCliente, porIdea, base] = m.map(Number);
+
+  // Cantidades que ofrece el selector de ideas.
+  for (const count of [6, 8, 10, 12, 16, 20, 24]) {
+    const pedido = Math.min(techoCliente, count * porIdea + base);
+    assert.equal(
+      v.resolveMaxTokens(pedido), pedido,
+      `${count} ideas piden ${pedido} tokens y el servidor los recorta a ` +
+      `${v.resolveMaxTokens(pedido)}: el JSON se trunca y parseIdeasJSON falla`
+    );
+  }
+  assert.ok(
+    v.MAX_TOKENS_CAP >= techoCliente,
+    `MAX_TOKENS_CAP (${v.MAX_TOKENS_CAP}) es menor que el techo del cliente (${techoCliente})`
+  );
 });
 
 // ── team_id ─────────────────────────────────────────────────────────────────

@@ -41,7 +41,13 @@ export const PRICES = {
 // Techos del lado del servidor. El cliente pide lo que quiera; esto es lo que
 // puede gastar por llamada. El prompt más grande que arma la app (letra +
 // referencias + ADN) está bien por debajo de 60k caracteres.
-export const MAX_TOKENS_CAP = 4000;
+//
+// 8000 NO es arbitrario: es exactamente el techo que ya se impone el cliente en
+// js/releases.js (`Math.min(8000, count * 320 + 700)` al generar ideas). Un cap
+// menor recorta el JSON de 12 ideas en adelante y parseIdeasJSON falla en
+// silencio — ya pasó con un cap de 4000. Si ese calculo del cliente cambia,
+// este numero cambia con el; hay una prueba que lo exige.
+export const MAX_TOKENS_CAP = 8000;
 export const DEFAULT_MAX_TOKENS = 2000;
 export const MAX_PROMPT_CHARS = 60000;
 export const MAX_FEATURE_CHARS = 40;
