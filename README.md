@@ -1,4 +1,4 @@
-# ArtistOS — MVP
+# TEMPO — MVP
 
 Sistema operativo para lanzamientos musicales (prototipo de un solo archivo).
 Demo: https://hookspa.github.io/TMPOS/
@@ -8,7 +8,7 @@ Demo: https://hookspa.github.io/TMPOS/
 `.github/workflows/deploy-pages.yml` ejecuta las pruebas funcionales y visuales,
 valida el catálogo, construye un único artefacto versionado y lo publica en GitHub
 Pages. Después comprueba por HTTP que `app.html`,
-`css/app.css` y `refs_02.csv` coincidan con sus huellas, y abre ArtistOS con Chromium
+`css/app.css` y `refs_02.csv` coincidan con sus huellas, y abre TEMPO con Chromium
 para confirmar que el Banco llegue a `ready`.
 
 Si una publicación falla, el workflow consulta el historial de ejecuciones exitosas en

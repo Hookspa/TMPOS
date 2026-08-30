@@ -1,4 +1,4 @@
--- Tempo OS — Soporte multi-equipo (v0.10.0-alpha)
+-- TEMPO — Soporte multi-equipo (v0.10.0-alpha)
 -- Correr en Supabase → SQL Editor. Idempotente (create or replace / if not exists donde aplica).
 -- Requiere las tablas y helpers existentes: teams, team_members, artists, launches,
 -- is_member(team_id), is_editor(team_id), is_owner(team_id), provision_team(), accept_invite(tok).

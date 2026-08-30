@@ -118,7 +118,7 @@ test('acota una API colgada y reintenta fallos transitorios', async () => {
 });
 
 test('escribe outputs de recuperación sin incluir secretos', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-lkg-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-lkg-'));
   const output = path.join(directory, 'github-output');
   try {
     writeGithubOutput(output, { runId: '123', headSha: sha('e') });

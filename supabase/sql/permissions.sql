@@ -1,4 +1,4 @@
--- Tempo OS — Sprint 10: Permisos / roles / workspace (spine 10a–10c)
+-- TEMPO — Sprint 10: Permisos / roles / workspace (spine 10a–10c)
 -- Correr en Supabase → SQL Editor. Idempotente (if not exists / create or replace).
 -- Requiere: teams, team_members, invites, is_member/is_editor/is_owner, provision_team(), accept_invite(tok).
 -- El cliente (team.js) degrada limpio si esto aún no se corre (selects con fallback en cascada).

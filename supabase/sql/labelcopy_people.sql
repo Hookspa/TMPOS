@@ -1,4 +1,4 @@
--- Tempo OS — People book del Label Copy (v0.66.0-alpha)
+-- TEMPO — People book del Label Copy (v0.66.0-alpha)
 -- Contactos reutilizables (nombre + email/IPI/PRO/rol/publisher) que autocompletan la captura
 -- del Label Copy entre tracks. Es a nivel EQUIPO (cruza artistas), no por artista.
 -- data jsonb + team_id + RLS por equipo. Correr en Supabase → SQL Editor. Idempotente.

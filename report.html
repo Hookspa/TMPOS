@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tempo OS · Reporte de Lanzamiento</title>
+<title>TEMPO · Reporte de Lanzamiento</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="js/icons.js"></script>
@@ -183,7 +183,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 <div id="setup">
   <div class="logo-row">
     <div class="logo-mark"><span data-icon="report" data-isize="18"></span></div>
-    <span class="logo-text">Tempo OS · Reporte de Lanzamiento</span>
+    <span class="logo-text">TEMPO · Reporte de Lanzamiento</span>
   </div>
 
   <!-- Past report -->
@@ -203,7 +203,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:10
 
   <!-- Identity -->
   <div class="section-label" style="margin-top:32px">Proyecto</div>
-  <!-- Selector (cuando hay datos de Tempo OS) — auto-poblado desde el release donde se hizo clic -->
+  <!-- Selector (cuando hay datos de TEMPO) — auto-poblado desde el release donde se hizo clic -->
   <div id="project-picker" style="display:none">
     <div class="identity-grid">
       <div class="id-field"><label>Artista</label><select id="sel-artist"></select></div>
@@ -866,9 +866,9 @@ function buildContext(data,identity,sc){
   lines.push(`Lanzamiento: ${identity.project||'[sin especificar]'}`);
   lines.push(`Nivel: ${sc}`,'');
 
-  // Métricas y objetivos precargados desde Tempo OS (orgánico / metas SMART)
+  // Métricas y objetivos precargados desde TEMPO (orgánico / metas SMART)
   if(ST.prefillMetrics && ST.prefillMetrics.length){
-    lines.push('MÉTRICAS Y OBJETIVOS (desde Tempo OS):');
+    lines.push('MÉTRICAS Y OBJETIVOS (desde TEMPO):');
     ST.prefillMetrics.forEach(m=>{
       const got = m.value!=null ? m.value : 'sin dato';
       const goal = m.target ? ` · objetivo ${m.target}${m.pct!=null?` (${m.pct}%)`:''}` : '';
@@ -940,7 +940,7 @@ function buildContext(data,identity,sc){
   return lines.join('\n');
 }
 
-// ── CALL AI (vía proxy seguro de Tempo OS: Edge Function 'claude') ──
+// ── CALL AI (vía proxy seguro de TEMPO: Edge Function 'claude') ──
 // La API key vive en el servidor; aquí solo usamos la sesión del usuario (compartida con la app).
 const REPORT_SUPABASE = { url:'https://fzemsxyrzyssxprewwzs.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6ZW1zeHlyenlzc3hwcmV3d3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTI3OTcsImV4cCI6MjA5NjI2ODc5N30.6rZw5gzIhUryZOzC2Mx4-kgrZSxWtjXSXS_-EL--FUg' };
 let _sbReport=null;
@@ -969,7 +969,7 @@ async function callAI(context,sc){
   const prompt=`Eres un analista de marketing musical experto en lanzamientos independientes. Analiza estos datos y genera análisis en español:\n\n${context}\n\nInstrucciones:\n- ${depth}\n- Sé específico con los números reales. No inventes datos que no estén en el contexto.\n- YouTube son datos orgánicos de YouTube Studio (no pauta). Si hay datos de Google Ads Y YouTube, analiza si la pauta de Google Ads puede haber dirigido tráfico al video y discute la performance orgánica resultante.\n- Si hay Top Content, Traffic Source, Geography y/o Viewers Age, comenta los hallazgos más relevantes para informar el próximo lanzamiento.\n- Si solo hay una plataforma, analiza solo esa.\n- Usa HTML simple: <strong> para énfasis.\n- Formato: <div class="ai-section"><div class="ai-section-title">[Título]</div>[Contenido]</div>\n- No uses markdown. Máximo 450 palabras.`;
   const sb=await getSbReport();
   const { data:sess } = await sb.auth.getSession();
-  if(!sess || !sess.session){ throw new Error('Inicia sesión en Tempo OS para usar la IA del reporte (abre el reporte desde la app).'); }
+  if(!sess || !sess.session){ throw new Error('Inicia sesión en TEMPO para usar la IA del reporte (abre el reporte desde la app).'); }
   const teamId=(ST.ctx&&ST.ctx.teamId)||null;
   const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-6', max_tokens:1200, team_id:teamId, feature:'reporte' } });
   if(error) throw new Error(await edgeFunctionReportErrorMessage(error));
@@ -1193,7 +1193,7 @@ function renderReport(data,identity){
 
   // Footer
   const footParts=[identity.label,identity.artist,identity.project].filter(Boolean);
-  html+=`<hr class="r-div"><p style="font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em">${footParts.join(' · ')} · ${new Date().toLocaleDateString('es')} · Tempo OS · Reporte</p>`;
+  html+=`<hr class="r-div"><p style="font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em">${footParts.join(' · ')} · ${new Date().toLocaleDateString('es')} · TEMPO · Reporte</p>`;
 
   document.getElementById('report-body').innerHTML=html;
 }
@@ -1254,7 +1254,7 @@ async function generatePPTX(){
   // Analysis slide
   {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:8,y:2,w:3.5,h:3.5,fill:{color:C_INST,transparency:95},line:{type:'none'}});kicker(s,'ANÁLISIS DE CAMPAÑA',0.5,.28,DIM);sTitle(s,sc==='conservador'?'Lo que dicen los datos':sc==='realista'?'Patrones y diagnóstico':'Diagnóstico estratégico',.5,.52,8,INK);const plainInsights=(ST.aiInsights||'').replace(/<div class="ai-section-title">(.*?)<\/div>/g,'[$1] ').replace(/<div class="ai-section">/g,'\n').replace(/<\/div>/g,'\n').replace(/<strong>(.*?)<\/strong>/g,'$1').replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim();const lines=plainInsights.split('\n').filter(l=>l.trim()).slice(0,18);let y=1.32;lines.forEach(line=>{const isSectionTitle=line.startsWith('[')&&line.includes(']');if(isSectionTitle){const title=line.replace(/^\[|\]\s*$/g,'').replace(/\].*$/,'');s.addText(title,{x:.5,y,w:9,h:.28,fontSize:13,color:INK,bold:true,fontFace:'Georgia',margin:0});y+=.34;}else{s.addText(line,{x:.5,y,w:9,h:.26,fontSize:11,color:MUTED,fontFace:'Calibri',margin:0,wrap:true});y+=.3;}if(y>5.2)return;});}
   // Close slide
-  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:3,w:4,h:4,fill:{color:C_GADS,transparency:94},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8.5,y:-.5,w:3,h:3,fill:{color:C_SPOTIFY,transparency:94},line:{type:'none'}});kicker(s,'FIN DEL REPORTE',0.5,.5);sTitle(s,(identity.artist||'Artista')+'\n'+sc.charAt(0).toUpperCase()+sc.slice(1),.5,.8,9,INK);const footParts=[identity.label,identity.artist,identity.project].filter(Boolean);bodyTxt(s,footParts.join(' · '),.5,1.8,9,.28,MUTED,13);s.addShape(pres.shapes.LINE,{x:.5,y:2.2,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.5,2.38,5,.24,DIM,10);s.addText('Tempo OS · Reporte',{x:.5,y:5.25,w:9.1,h:.2,fontSize:9,color:DIM,fontFace:'Courier New',align:'right',charSpacing:2});}
+  {const s=darkSlide();s.addShape(pres.shapes.OVAL,{x:-.5,y:3,w:4,h:4,fill:{color:C_GADS,transparency:94},line:{type:'none'}});s.addShape(pres.shapes.OVAL,{x:8.5,y:-.5,w:3,h:3,fill:{color:C_SPOTIFY,transparency:94},line:{type:'none'}});kicker(s,'FIN DEL REPORTE',0.5,.5);sTitle(s,(identity.artist||'Artista')+'\n'+sc.charAt(0).toUpperCase()+sc.slice(1),.5,.8,9,INK);const footParts=[identity.label,identity.artist,identity.project].filter(Boolean);bodyTxt(s,footParts.join(' · '),.5,1.8,9,.28,MUTED,13);s.addShape(pres.shapes.LINE,{x:.5,y:2.2,w:4,h:0,line:{color:LINE,width:.8}});bodyTxt(s,new Date().toLocaleDateString('es',{year:'numeric',month:'long'}),.5,2.38,5,.24,DIM,10);s.addText('TEMPO · Reporte',{x:.5,y:5.25,w:9.1,h:.2,fontSize:9,color:DIM,fontFace:'Courier New',align:'right',charSpacing:2});}
   const artist=(identity.artist||'artista').toLowerCase().replace(/\s+/g,'_');
   const project=(identity.project||'lanzamiento').toLowerCase().replace(/\s+/g,'_');
   await pres.writeFile({fileName:`reporte_${artist}_${project}_${Date.now()}.pptx`});
@@ -1340,7 +1340,7 @@ async function loadReportCloud(id){
   }catch(e){ toast('No se pudo cargar el reporte: '+(e.message||e),'error'); }
 }
 
-// ── SELECTOR DE PROYECTO (boxdrop) — lee datos locales de Tempo OS; fallback manual si no hay ──
+// ── SELECTOR DE PROYECTO (boxdrop) — lee datos locales de TEMPO; fallback manual si no hay ──
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
 function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v==null?'':v; }
 function initProjectPicker(){
@@ -1381,7 +1381,7 @@ function initProjectPicker(){
   applyPick();
 }
 
-// ── PREFILL desde Tempo OS (handoff por localStorage al abrir desde un lanzamiento) ──
+// ── PREFILL desde TEMPO (handoff por localStorage al abrir desde un lanzamiento) ──
 (function prefillFromTempo(){
   let ctx=null; try{ ctx=JSON.parse(localStorage.getItem('ao_report_ctx')||'null'); }catch(e){}
   if(ctx){
@@ -1392,7 +1392,7 @@ function initProjectPicker(){
   }
   initProjectPicker();
   if(typeof updateBtn==='function') updateBtn();
-  if(ctx && typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde Tempo OS');
+  if(ctx && typeof toast==='function') toast('✓ Datos del lanzamiento precargados desde TEMPO');
   refreshSavedReports();
 })();
 updateBtn();

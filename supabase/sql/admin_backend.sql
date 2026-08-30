@@ -1,4 +1,4 @@
--- Tempo OS — Backend del super-admin (v0.12.0-alpha)
+-- TEMPO — Backend del super-admin (v0.12.0-alpha)
 -- Correr en Supabase → SQL Editor. Idempotente.
 -- Asume helpers existentes: is_member(team_id), is_editor(team_id), is_owner(team_id).
 

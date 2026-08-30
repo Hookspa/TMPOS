@@ -1,4 +1,4 @@
--- Tempo OS — Plan de Marketing por canción (PDF) · Storage (v0.69.0-alpha)
+-- TEMPO — Plan de Marketing por canción (PDF) · Storage (v0.69.0-alpha)
 -- Bucket PRIVADO 'marketing-plans': el PDF del plan de marketing de cada track.
 -- El cliente sube a `{team_id}/{trackId}/{ts}-{archivo}.pdf` y lo sirve por SIGNED URL.
 -- RLS scopeada por equipo: el primer segmento del path es el team_id.

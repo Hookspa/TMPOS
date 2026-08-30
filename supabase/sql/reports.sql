@@ -1,4 +1,4 @@
--- Tempo OS — Tabla reports (Módulo de reportes · Fase 2)
+-- TEMPO — Tabla reports (Módulo de reportes · Fase 2)
 -- Guarda los reportes de lanzamiento generados (snapshot del Launch Report Generator)
 -- para listarlos/compararlos a lo largo del tiempo (temporalidades).
 -- Mismo patrón que `tracks`/`launches`: data jsonb + team_id + artist_id + RLS por equipo.

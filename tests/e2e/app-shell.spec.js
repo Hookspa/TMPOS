@@ -59,7 +59,7 @@ test('el Dashboard queda disponible mientras el catálogo sigue pendiente', asyn
   releaseCatalog();
 });
 
-test('el usuario puede abrir ArtistOS y navegar al Banco', async ({ page }) => {
+test('el usuario puede abrir TEMPO y navegar al Banco', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const stylesheetResponse = page.waitForResponse(response => response.url().includes('/css/app.css'));
@@ -67,7 +67,7 @@ test('el usuario puede abrir ArtistOS y navegar al Banco', async ({ page }) => {
   await openLocalWorkspace(page);
   expect((await stylesheetResponse).ok()).toBe(true);
 
-  await expect(page).toHaveTitle('Tempo OS');
+  await expect(page).toHaveTitle('TEMPO');
   await expect(page.locator('#page-compas')).toHaveClass(/\bactive\b/);
 
   await page.locator('.nav-item[data-page="banco"]').click();

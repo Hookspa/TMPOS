@@ -1,4 +1,4 @@
-// Tempo OS — validación pura de la Edge Function "claude".
+// TEMPO — validación pura de la Edge Function "claude".
 //
 // Vive aparte de index.ts a propósito: sin Deno instalado no hay forma de correr
 // la función, y esta es justo la parte donde un error silencioso es un agujero de

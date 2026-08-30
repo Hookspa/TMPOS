@@ -1879,7 +1879,7 @@ function exportarDatos() {
   toggleArtistMenu(false);
   const ai = aiSettings();
   const data = {
-    app: 'Tempo OS', version: 1, exportedAt: new Date().toISOString(),
+    app: 'TEMPO', version: 1, exportedAt: new Date().toISOString(),
     artists: (function(){ try { return JSON.parse(localStorage.getItem('ao_artists')) || []; } catch(e){ return []; } })(),
     launches: (function(){ try { return JSON.parse(localStorage.getItem('ao_launches')) || []; } catch(e){ return []; } })(),
     activeArtist: localStorage.getItem('ao_active_artist') || '',
@@ -1922,7 +1922,7 @@ function handleImportFile(e) {
       await uiAlert('✓ Backup restaurado. La app se recargará.');
       location.reload();
     } catch (err) {
-      uiAlert(err.message === 'Archivo de backup inválido (falta "artists").' ? '✕ ' + err.message : friendlyError(err, 'leer ese archivo') + ' Asegúrate de que sea un backup .json exportado desde TEMPO OS y no esté dañado.');
+      uiAlert(err.message === 'Archivo de backup inválido (falta "artists").' ? '✕ ' + err.message : friendlyError(err, 'leer ese archivo') + ' Asegúrate de que sea un backup .json exportado desde TEMPO y no esté dañado.');
     } finally {
       e.target.value = '';
     }

@@ -549,7 +549,7 @@ async function labelCopyPDF() {
 
   // Pie
   doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-  doc.text(`Tempo OS · Label Copy generado ${todayISO()}`, M, H - 24);
+  doc.text(`TEMPO · Label Copy generado ${todayISO()}`, M, H - 24);
   doc.save(`LabelCopy-${clean(t.title)}-${todayISO()}.pdf`.replace(/\s+/g, '_'));
 }
 

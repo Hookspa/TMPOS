@@ -1,4 +1,4 @@
--- Tempo OS — Planes / Tiers / Asientos + contadores (v0.11.0-alpha)
+-- TEMPO — Planes / Tiers / Asientos + contadores (v0.11.0-alpha)
 -- Correr en Supabase → SQL Editor. Idempotente.
 
 -- ──────────────────────────────────────────────────────────────

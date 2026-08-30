@@ -46,7 +46,7 @@ function artifactFetch(destination, mutate) {
 }
 
 test('el artefacto de Pages contiene solo runtime público y un manifiesto verificable', () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-pages-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-pages-'));
   const destination = path.join(temporary, 'site');
   try {
     const manifest = buildSite({
@@ -77,7 +77,7 @@ test('el artefacto de Pages contiene solo runtime público y un manifiesto verif
 });
 
 test('el canary acepta un despliegue atómico que coincide con el commit esperado', async () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-canary-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-canary-'));
   const destination = path.join(temporary, 'site');
   try {
     buildSite({ root, destination, commit: 'good-commit' });
@@ -110,7 +110,7 @@ test('el preflight reconoce la publicación legacy exacta antes de activar Actio
 });
 
 test('el preflight continúa desde el commit realmente recuperado en producción', async () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-current-production-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-current-production-'));
   const destination = path.join(temporary, 'site');
   const recoveredCommit = 'a'.repeat(40);
   const failedCommit = 'b'.repeat(40);
@@ -135,7 +135,7 @@ test('el preflight continúa desde el commit realmente recuperado en producción
 });
 
 test('el canary rechaza un asset alterado aunque responda HTTP 200', async () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-corrupt-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-corrupt-'));
   const destination = path.join(temporary, 'site');
   try {
     buildSite({ root, destination, commit: 'bad-commit' });
@@ -173,7 +173,7 @@ test('el canary corta un fetch colgado con un código estable', async () => {
 });
 
 test('el canary reintenta con backoff y conserva el último fallo', async () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-retry-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-retry-'));
   const destination = path.join(temporary, 'site');
   const delays = [];
   try {
@@ -214,7 +214,7 @@ test('el canary reintenta con backoff y conserva el último fallo', async () => 
 });
 
 test('el constructor rechaza destinos destructivos y enlaces simbólicos públicos', () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'artistos-safety-'));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'tempo-os-safety-'));
   try {
     const sentinel = path.join(temporary, 'sentinel.txt');
     fs.writeFileSync(sentinel, 'preservar', 'utf8');
@@ -258,7 +258,7 @@ test('el workflow bloquea publicación fuera de main y usa dependencias inmutabl
   assert.match(workflow, /vars\.DEPLOY_ENABLED == 'true'/);
   assert.match(workflow, /preflight-production:/);
   assert.match(workflow, /LKG_FALLBACK_COMMIT/);
-  assert.match(workflow, /group: artistos-\$\{\{/);
+  assert.match(workflow, /group: tempo-os-\$\{\{/);
   assert.match(workflow, /needs: \[deploy, canary, recover\]/);
 });
 

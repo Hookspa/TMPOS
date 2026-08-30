@@ -1,4 +1,4 @@
--- Tempo OS — Tabla community_refs (Banco de Referencias · pool de comunidad) + moderación ligera
+-- TEMPO — Tabla community_refs (Banco de Referencias · pool de comunidad) + moderación ligera
 -- Las referencias personalizadas son PRIVADAS por defecto (viven en localStorage del usuario).
 -- Cuando el usuario marca "Compartir con la comunidad", su snapshot se sube aquí y queda
 -- visible para CUALQUIER usuario autenticado (pool compartido cross-equipo).

@@ -1,4 +1,4 @@
--- Tempo OS — B3 (captura "ahora"): snapshot del rollup operativo al cierre de un release.
+-- TEMPO — B3 (captura "ahora"): snapshot del rollup operativo al cierre de un release.
 -- ⚠️ Esta NO es la tabla k-anon cross-tenant (`release_benchmarks`, diferida a ≥3 releases).
 -- Esta es la captura del PROPIO equipo: RLS por team_id (cada quien ve solo lo suyo). El cliente
 -- la calcula y hace upsert best-effort; el primario es localStorage. Idempotente por release_id.

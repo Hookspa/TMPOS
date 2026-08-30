@@ -1,4 +1,4 @@
--- Tempo OS — Privacidad del artista (v0.13.0-alpha)
+-- TEMPO — Privacidad del artista (v0.13.0-alpha)
 -- El usuario-artista (ligado a una ficha) solo ve SU ficha y lo suyo (perfil, lanzamientos,
 -- contenido, calendario). El staff (owner/editor/lector) ve a todos los artistas.
 -- Correr en Supabase → SQL Editor. Idempotente.

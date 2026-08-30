@@ -1,4 +1,4 @@
--- Tempo OS — Tabla tracks (Sprint 0 del pivote a CRM)
+-- TEMPO — Tabla tracks (Sprint 0 del pivote a CRM)
 -- La canción durable (identidad por ISRC). Mismo patrón que `launches`:
 -- data jsonb + team_id + artist_id (text) + RLS por equipo/visibilidad/artista.
 -- Correr en Supabase → SQL Editor. Idempotente.

@@ -1,4 +1,4 @@
-name: Validate and deploy ArtistOS
+name: Validate and deploy TEMPO
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: artistos-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  group: tempo-os-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -130,7 +130,7 @@ jobs:
         env:
           DEPLOY_BASE_URL: ${{ needs.deploy.outputs.page_url }}
         run: node .github/scripts/canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$GITHUB_SHA" --incident _incident/deployment-incident.json
-      - name: Open ArtistOS and verify Banco ready
+      - name: Open TEMPO and verify Banco ready
         env:
           DEPLOY_BASE_URL: ${{ needs.deploy.outputs.page_url }}
         run: node .github/scripts/browser-canary.js --base-url "$DEPLOY_BASE_URL" --expected-commit "$GITHUB_SHA"

@@ -1,4 +1,4 @@
--- Tempo OS — Links de solo-lectura (compartir el plan de contenido con el artista/externos)
+-- TEMPO — Links de solo-lectura (compartir el plan de contenido con el artista/externos)
 -- Modelo "secret link" (como Google Docs "cualquiera con el enlace"): token largo y aleatorio.
 -- Seguridad: anon NO puede leer ni listar la tabla. El visor (ver.html) lee SOLO vía la función
 -- get_share(token) (security definer), que devuelve únicamente el share cuyo token coincide

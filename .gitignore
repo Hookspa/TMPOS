@@ -12,7 +12,7 @@
 .gstack/
 .DS_Store
 
-# Backups JSON (artistos-backup-*.json).
+# Backups JSON (tempo-os-backup-*.json).
 # OJO: ignora tambien package.json/manifest.json futuros -> whitelistealos con !package.json
 *.json
 !package.json

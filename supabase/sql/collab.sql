@@ -1,4 +1,4 @@
--- Tempo OS — Fase CRM Colaborativo · Sprint 6 (Cimiento relacional)
+-- TEMPO — Fase CRM Colaborativo · Sprint 6 (Cimiento relacional)
 -- Las entidades de ALTA ESCRITURA y multiusuario pasan a filas propias (fork arquitectónico §8.2):
 --   tasks · comments · activity · notifications · approvals
 -- RLS espejo de `tracks`/`launches`. comments y activity son APPEND-ONLY.

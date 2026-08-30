@@ -1,4 +1,4 @@
-// Tempo OS — Edge Function "claude"
+// TEMPO — Edge Function "claude"
 // Proxy seguro a la API de Anthropic: la API key vive como secreto en el servidor,
 // nunca en el cliente. Solo usuarios autenticados pueden llamarla.
 // Despliega con verify_jwt = ON (por defecto).

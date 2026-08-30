@@ -237,7 +237,7 @@ function migrateCatalogLegacyState() {
   return true;
 }
 // Adapter runtime del catálogo canónico. TempoCatalog concentra validación, reintentos,
-// timeout y reconexión; esta capa sólo traduce el CSV al modelo visual de ArtistOS.
+// timeout y reconexión; esta capa sólo traduce el CSV al modelo visual de TEMPO.
 function applyCatalogReady(state) {
   const parsed = parsearCSV(state.text);
   if (parsed.length !== state.stats.rowCount) throw new Error(`El adapter produjo ${parsed.length} de ${state.stats.rowCount} referencias`);
@@ -1644,7 +1644,7 @@ function buildCalDoc(printMode) {
   const body = `
     <div class="wrap">
       <div class="top">
-        <span class="brand">TEMPO OS</span>
+        <span class="brand">TEMPO</span>
         <div><h1 class="h1">${_esc(title)}</h1><div class="sub">PLAN DE CONTENIDO${drop ? ' · ESTRENO ' + _esc(drop) : ''} · ${pieces.length} pieza(s)</div></div>
         <button class="btn" onclick="window.print()">Guardar como PDF</button>
       </div>
@@ -2229,7 +2229,7 @@ async function powPDF() {
     const lines = doc.splitTextToSize(txt, W - 80); doc.text(lines, 40, y); y += lines.length * (size * 1.25) + gap;
   };
   doc.setFillColor(10,10,10); doc.rect(0, 0, W, 92, 'F');
-  doc.setTextColor(255,107,48); doc.setFontSize(22); doc.text('Tempo OS', 40, 42);
+  doc.setTextColor(255,107,48); doc.setFontSize(22); doc.text('TEMPO', 40, 42);
   doc.setTextColor(255,255,255); doc.setFontSize(13); doc.text('Plan de la Semana', 40, 64);
   doc.setTextColor(160,160,160); doc.setFontSize(10); doc.text(`${d.art.name}  ·  ${d.a.name}  ·  ${powDMd(d.now.mon)}-${powDMd(d.now.sun)}`, 40, 82);
   const hit = d.lastWeekItems.length ? Math.round(d.lastPublished.length / d.lastWeekItems.length * 100) : 0;

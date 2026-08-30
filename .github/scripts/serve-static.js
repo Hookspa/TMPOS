@@ -69,7 +69,7 @@ if (require.main === module) {
     process.exitCode = 1;
   });
   server.listen(port, host, () => {
-    console.log(`ArtistOS test server listening at http://${host}:${port}`);
+    console.log(`TEMPO test server listening at http://${host}:${port}`);
   });
 }
 
