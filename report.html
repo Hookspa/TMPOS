@@ -951,6 +951,15 @@ async function getSbReport(){
   if(!_sbReport) _sbReport=window.supabase.createClient(REPORT_SUPABASE.url,REPORT_SUPABASE.key);
   return _sbReport;
 }
+async function edgeFunctionReportErrorMessage(error){
+  const fallback=(error&&error.message)||'Error de la función claude (¿desplegada?)';
+  const context=error&&error.context;
+  if(!context||typeof context.json!=='function')return fallback;
+  try{
+    const body=await context.json();
+    return body&&typeof body.error==='string'&&body.error.trim()?body.error:fallback;
+  }catch(_){return fallback;}
+}
 async function callAI(context,sc){
   const depth=sc==='conservador'
     ?'Genera 2-3 insights claros en lenguaje que un artista entienda. Una recomendación concreta para el próximo lanzamiento.'
@@ -963,7 +972,7 @@ async function callAI(context,sc){
   if(!sess || !sess.session){ throw new Error('Inicia sesión en Tempo OS para usar la IA del reporte (abre el reporte desde la app).'); }
   const teamId=(ST.ctx&&ST.ctx.teamId)||null;
   const { data, error } = await sb.functions.invoke('claude',{ body:{ prompt, model:'claude-sonnet-4-6', max_tokens:1200, team_id:teamId, feature:'reporte' } });
-  if(error) throw new Error(error.message||'Error de la función claude (¿desplegada?)');
+  if(error) throw new Error(await edgeFunctionReportErrorMessage(error));
   if(data && data.error) throw new Error(data.error);
   if(data && data.logged===false) toast('La IA respondió, pero no se pudo registrar su consumo. Avísale al administrador.','error');
   return (data && data.text) || '';

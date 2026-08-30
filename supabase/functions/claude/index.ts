@@ -2,13 +2,19 @@
 // Proxy seguro a la API de Anthropic: la API key vive como secreto en el servidor,
 // nunca en el cliente. Solo usuarios autenticados pueden llamarla.
 // Despliega con verify_jwt = ON (por defecto).
+// Secretos requeridos: ANTHROPIC_API_KEY, SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY.
+// AI_MONTHLY_TEAM_CAP_USD es opcional: por defecto limita a USD 25 por equipo/mes.
+// Se cambia sin tocar código: supabase secrets set AI_MONTHLY_TEAM_CAP_USD=25
+// Requisito de base: ejecutar supabase/sql/ai_spend_cap.sql en el SQL Editor.
+// No hay migraciones automáticas: si faltan sus RPC de reserva/finalización, el
+// tope falla cerrado con 503 y la IA queda indisponible hasta instalarlas.
 //
 // Modelo de confianza: el cuerpo del request lo controla el cliente y NADA de lo
 // que llega se usa sin validar. La validación pura (lista blanca de modelos, techo
 // de max_tokens y prompt, formato de team_id, saneo de feature) vive en
 // ./validate.mjs para poder probarla sin Deno; aquí queda HTTP, autorización y
 // registro. Lo que este archivo agrega sobre validate.mjs es lo que necesita red:
-// la membresía real del usuario en el equipo y el INSERT en ai_usage.
+// la membresía real y la reserva/finalización atómica del gasto en la base.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { costOf, validateBody } from "./validate.mjs";
@@ -16,8 +22,23 @@ import { costOf, validateBody } from "./validate.mjs";
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const USAGE_INSERT_ATTEMPTS = 2;
-const USAGE_RETRY_DELAY_MS = 120;
+const DEFAULT_AI_MONTHLY_TEAM_CAP_USD = 25;
+const monthlyCapSetting = Deno.env.get("AI_MONTHLY_TEAM_CAP_USD");
+const normalizedMonthlyCapSetting = monthlyCapSetting?.trim();
+const configuredMonthlyCap = monthlyCapSetting === undefined
+  ? DEFAULT_AI_MONTHLY_TEAM_CAP_USD
+  : /^\d+(?:\.\d+)?$/.test(normalizedMonthlyCapSetting || "")
+    ? Number(normalizedMonthlyCapSetting)
+    : Number.NaN;
+const AI_MONTHLY_TEAM_CAP_USD = configuredMonthlyCap;
+// El conteo previo evita reservar ~4x por tratar cada byte UTF-8 como token. La
+// API lo documenta como estimación, por eso se conserva un margen amplio.
+const AI_INPUT_RESERVATION_OVERHEAD_TOKENS = 1024;
+const ANTHROPIC_TOKEN_COUNT_TIMEOUT_MS = 30_000;
+const ANTHROPIC_REQUEST_TIMEOUT_MS = 120_000;
+const USAGE_FINALIZE_ATTEMPTS = 2;
+const USAGE_FINALIZE_RETRY_DELAY_MS = 120;
+const AI_PROVIDER_FAILURE_MESSAGE = "El proveedor de IA no pudo completar la solicitud.";
 
 const ALLOWED_ORIGINS = new Set([
   "https://hookspa.github.io",
@@ -67,7 +88,7 @@ Deno.serve(async (req) => {
     if (teamId) {
       const { data: member, error: memberErr } = await supa
         .from("team_members")
-        .select("user_id")
+        .select("user_id, role")
         .eq("team_id", teamId)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -75,13 +96,17 @@ Deno.serve(async (req) => {
       // ante la duda se niega el acceso.
       if (memberErr) return j({ error: "no se pudo verificar la membresía" }, 503);
       if (!member) return j({ error: "no eres miembro de ese equipo" }, 403);
+      if (member.role !== "owner" && member.role !== "editor") {
+        return j({ error: "no tienes permiso para usar IA en ese equipo" }, 403);
+      }
     } else {
       // Los clientes viejos no siempre enviaban team_id. Se deriva únicamente
       // cuando la pertenencia es inequívoca; jamás se registra consumo sin equipo.
       const { data: memberships, error: membershipsErr } = await supa
         .from("team_members")
-        .select("team_id")
+        .select("team_id, role")
         .eq("user_id", user.id)
+        .in("role", ["owner", "editor"])
         .limit(2);
       if (membershipsErr) return j({ error: "no se pudo verificar la membresía" }, 503);
       if (!memberships?.length) return j({ error: "no perteneces a ningún equipo" }, 403);
@@ -94,70 +119,178 @@ Deno.serve(async (req) => {
       if (!teamId) return j({ error: "no se pudo determinar el equipo" }, 503);
     }
 
-    // ── Llamada a Anthropic (la key nunca sale del servidor) ──
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: mdl,
-        max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    // ── Tope antiabuso de IA (servidor, independiente de planes y billing) ──
+    // Un valor configurado pero inválido es un error, no permiso para gastar con
+    // otro tope accidental. Cero es un kill switch válido.
+    if (!Number.isFinite(AI_MONTHLY_TEAM_CAP_USD) || AI_MONTHLY_TEAM_CAP_USD < 0) {
+      return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+    }
+
+    // El conteo ocurre server-side y no acepta precios ni tokens del cliente. Si
+    // Anthropic no puede estimarlo, se falla cerrado antes de reservar o generar.
+    let countResponse: Response;
+    let countData: any;
+    try {
+      countResponse = await fetch("https://api.anthropic.com/v1/messages/count_tokens", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: mdl,
+          messages: [{ role: "user", content: prompt }],
+        }),
+        signal: AbortSignal.timeout(ANTHROPIC_TOKEN_COUNT_TIMEOUT_MS),
+      });
+      countData = await countResponse.json();
+    } catch (_) {
+      return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+    }
+    const countedInputTokens = countResponse.ok && Number.isSafeInteger(countData?.input_tokens)
+      && countData.input_tokens >= 0
+      ? countData.input_tokens
+      : null;
+    if (countedInputTokens === null) {
+      return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+    }
+
+    // Reserva el conteo estimado con margen más todos los tokens de salida
+    // permitidos. El coste real sustituye la reserva al terminar la llamada.
+    const maxInputTokens = countedInputTokens + AI_INPUT_RESERVATION_OVERHEAD_TOKENS;
+    const reservedCost = costOf(mdl, maxInputTokens, maxTokens);
+    if (!Number.isFinite(reservedCost) || reservedCost <= 0) {
+      return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+    }
+    const { data: reservation, error: reservationErr } = await supa.rpc("reserve_ai_spend", {
+      p_team_id: teamId,
+      p_user_id: user.id,
+      p_model: mdl,
+      p_feature: feat,
+      p_reserved_cost: reservedCost,
+      p_monthly_cap: AI_MONTHLY_TEAM_CAP_USD,
     });
-    const data = await r.json();
-    if (data.error) return j({ error: data.error.message }, 200);
-    if (!r.ok) return j({ error: `Anthropic respondió ${r.status}` }, 200);
+    if (reservationErr || !reservation || typeof reservation !== "object") {
+      return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+    }
+    if (reservation.status === "not_authorized") {
+      return j({ error: "no eres miembro de ese equipo" }, 403);
+    }
+    if (reservation.status === "cap_reached") {
+      return j({ error: "Este equipo alcanzó su tope mensual de IA. Se renueva el 1 del mes siguiente." }, 429);
+    }
+    const reservationId = reservation.status === "reserved" && typeof reservation.reservation_id === "string"
+      ? reservation.reservation_id
+      : null;
+    if (!reservationId) return j({ error: "no se pudo verificar el uso mensual de IA" }, 503);
+
+    async function releaseReservation() {
+      try {
+        const { data, error } = await supa.rpc("release_ai_spend_v2", {
+          p_reservation_id: reservationId,
+          p_user_id: user.id,
+        });
+        const status = data && typeof data === "object" ? data.status : null;
+        if (!error && (status === "released" || status === "already_released")) return true;
+        console.error(JSON.stringify({
+          evento: "ai_spend_release_failed",
+          reservation_id: reservationId,
+          team_id: teamId,
+          detalle: error?.message || "respuesta inválida",
+        }));
+      } catch (e) {
+        console.error(JSON.stringify({
+          evento: "ai_spend_release_failed",
+          reservation_id: reservationId,
+          team_id: teamId,
+          detalle: String(e),
+        }));
+      }
+      return false;
+    }
+
+    // ── Llamada a Anthropic (la key nunca sale del servidor) ──
+    let r: Response;
+    let data: any;
+    try {
+      r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: mdl,
+          max_tokens: maxTokens,
+          messages: [{ role: "user", content: prompt }],
+        }),
+        signal: AbortSignal.timeout(ANTHROPIC_REQUEST_TIMEOUT_MS),
+      });
+      data = await r.json();
+    } catch (_) {
+      await releaseReservation();
+      return j({ error: AI_PROVIDER_FAILURE_MESSAGE }, 502);
+    }
+    if (data?.error || !data || !r.ok) {
+      await releaseReservation();
+      return j({ error: AI_PROVIDER_FAILURE_MESSAGE }, 502);
+    }
 
     const text = (data.content || []).map((b: any) => b.text || "").join("");
     const usage = data.usage || {};
 
-    // ── Registro de uso (para cobro / dashboard admin) ──
-    // Ya no es best-effort silencioso: todos los campos vienen validados, así que
-    // el cliente no puede provocar el fallo para consumir IA sin quedar registrado.
-    // Si aun así falla, es un problema de infraestructura y se reporta.
-    const inTok = usage.input_tokens || 0;
-    const outTok = usage.output_tokens || 0;
+    // ── Registro de uso (para control de coste / dashboard admin) ──
+    // La finalización inserta ai_usage y elimina la reserva en una sola transacción.
+    // Si falla, la reserva máxima permanece y evita abrir un hueco en el tope.
+    const inTok = Number.isSafeInteger(usage.input_tokens) && usage.input_tokens >= 0
+      ? usage.input_tokens
+      : null;
+    const outTok = Number.isSafeInteger(usage.output_tokens) && usage.output_tokens >= 0
+      ? usage.output_tokens
+      : null;
+    const actualCost = inTok !== null && outTok !== null ? costOf(mdl, inTok, outTok) : Number.NaN;
     let logged = true;
-    const usageRow = {
-      team_id: teamId,
-      user_id: user.id,
-      model: mdl,
-      in_tokens: inTok,
-      out_tokens: outTok,
-      cost: costOf(mdl, inTok, outTok),
-      feature: feat,
-    };
     let insertError: unknown = null;
-    for (let attempt = 1; attempt <= USAGE_INSERT_ATTEMPTS; attempt++) {
-      try {
-        const { error } = await supa.from("ai_usage").insert(usageRow);
-        if (!error) {
-          insertError = null;
-          break;
+    if (!Number.isFinite(actualCost) || actualCost < 0 || actualCost > reservedCost) {
+      insertError = new Error("uso o coste del proveedor inválido");
+    } else {
+      for (let attempt = 1; attempt <= USAGE_FINALIZE_ATTEMPTS; attempt++) {
+        try {
+          const { data: finalized, error } = await supa.rpc("finalize_ai_spend_v2", {
+            p_reservation_id: reservationId,
+            p_user_id: user.id,
+            p_in_tokens: inTok,
+            p_out_tokens: outTok,
+            p_actual_cost: actualCost,
+          });
+          const status = finalized && typeof finalized === "object" ? finalized.status : null;
+          if (!error && (status === "finalized" || status === "already_finalized")) {
+            insertError = null;
+            break;
+          }
+          insertError = error || new Error("respuesta inválida al finalizar");
+        } catch (e) {
+          insertError = e;
         }
-        insertError = error;
-      } catch (e) {
-        insertError = e;
-      }
-      if (attempt < USAGE_INSERT_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, USAGE_RETRY_DELAY_MS));
+        if (attempt < USAGE_FINALIZE_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, USAGE_FINALIZE_RETRY_DELAY_MS));
+        }
       }
     }
     if (insertError) {
       logged = false;
       // Sin secretos ni prompt: solo lo necesario para detectar el fallo.
       console.error(JSON.stringify({
-        evento: "ai_usage_insert_failed",
+        evento: "ai_usage_finalize_failed",
+        reservation_id: reservationId,
         user_id: user.id,
         team_id: teamId,
         model: mdl,
         in_tokens: inTok,
         out_tokens: outTok,
-        intentos: USAGE_INSERT_ATTEMPTS,
+        intentos: USAGE_FINALIZE_ATTEMPTS,
         detalle: insertError && typeof insertError === "object" && "message" in insertError
           ? String(insertError.message)
           : String(insertError),

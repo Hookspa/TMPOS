@@ -964,6 +964,17 @@ function aiSettings() {
 // En modo demo, requiere key local.
 function aiReady() { return (typeof cloudEnabled === 'function' && cloudEnabled() && authed()) || !!aiSettings().key; }
 let aiUsageWarningShown = false;
+async function edgeFunctionErrorMessage(error) {
+  const fallback = (error && error.message) || 'Error de la función claude (¿está desplegada?)';
+  const context = error && error.context;
+  if (!context || typeof context.json !== 'function') return fallback;
+  try {
+    const body = await context.json();
+    return body && typeof body.error === 'string' && body.error.trim() ? body.error : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
 async function callClaude(prompt, maxTokens, feature) {
   const ai = aiSettings();
   // ── Modo equipo: proxy seguro (Edge Function 'claude') — la key NUNCA toca el cliente ──
@@ -972,7 +983,7 @@ async function callClaude(prompt, maxTokens, feature) {
     const { data, error } = await sb.functions.invoke('claude', {
       body: { prompt, model: ai.model, max_tokens: maxTokens || ai.maxTokens, team_id: _teamId, feature: feature || null },
     });
-    if (error) throw new Error(error.message || 'Error de la función claude (¿está desplegada?)');
+    if (error) throw new Error(await edgeFunctionErrorMessage(error));
     if (data && data.error) throw new Error(data.error);
     if (data && data.logged === false && !aiUsageWarningShown) {
       aiUsageWarningShown = true;
