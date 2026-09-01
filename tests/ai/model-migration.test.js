@@ -27,7 +27,7 @@ const RETIRED = [
   'claude-2.0',
 ];
 
-// Subconjunto que Tempo pudo haber guardado alguna vez: los ids que ofreció el
+// Subconjunto que TEMPO pudo haber guardado alguna vez: los ids que ofreció el
 // selector de modelo o que trae un backup. Solo estos necesitan reemplazo; los
 // demás retirados (claude-2.x) nunca fueron valores posibles de esta app.
 const MIGRATABLE = RETIRED.filter(id => !id.startsWith('claude-2.'));
@@ -109,7 +109,7 @@ test('aiSettings ejecuta la migración legada y devuelve precios vigentes', () =
   assert.equal(actual.priceOut, 5.00);
 });
 
-test('cada modelo retirado que Tempo pudo guardar tiene reemplazo en ambos lados', () => {
+test('cada modelo retirado que TEMPO pudo guardar tiene reemplazo en ambos lados', () => {
   for (const id of MIGRATABLE) {
     assert.ok(clientMigration[id], `el cliente no remapea ${id}`);
     assert.ok(edge.MODEL_MIGRATION[id], `la Edge Function no remapea ${id}`);

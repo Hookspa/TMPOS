@@ -662,7 +662,7 @@ function releaseMarketingHTML(l) {
   const mp = l.marketingPlan || {};
   const cloud = (typeof authed === 'function') && authed();
   const fileInput = canEdit ? `<input type="file" id="mkt-file" accept="application/pdf" style="display:none" onchange="uploadMarketingPlan(this)">` : '';
-  const intro = `<div class="empty-hint" style="margin-bottom:12px">Sube el plan de marketing del lanzamiento en PDF y preséntalo desde Tempo. El archivo vive en tu nube (bucket privado del equipo).</div>`;
+  const intro = `<div class="empty-hint" style="margin-bottom:12px">Sube el plan de marketing del lanzamiento en PDF y preséntalo desde TEMPO. El archivo vive en tu nube (bucket privado del equipo).</div>`;
   if (!mp.path) {
     const zone = canEdit
       ? (cloud

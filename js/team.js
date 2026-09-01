@@ -730,7 +730,7 @@ function renderTeamModal() {
     </label>
     <div style="display:flex;gap:8px;margin-bottom:18px">
       <button class="btn btn-primary" onclick="saveBranding()">Guardar marca</button>
-      <button class="btn btn-ghost" onclick="saveBranding(true)">Restablecer a Tempo</button>
+      <button class="btn btn-ghost" onclick="saveBranding(true)">Restablecer a TEMPO</button>
     </div>` : ''}
     <div class="panel-head" style="margin-bottom:8px"><span class="ph-icon">${icon('mic',18)}</span><span class="ph-title">Artistas de ${s(_teamName)} (${artists.length})</span><span class="ph-sub">asigna a otro equipo</span></div>
     <div style="margin-bottom:18px">${assignList}</div>
@@ -799,7 +799,7 @@ function renderTeamModal() {
   renderPendingInvites(); // carga las invitaciones activas (best-effort)
   if (canSeePrivate()) { renderSeats(); renderAuditLog(); } // 10e/10f (best-effort)
 }
-// Guardar branding del workspace (Sprint 10d). reset=true → vuelve a la marca Tempo.
+// Guardar branding del workspace (Sprint 10d). reset=true → vuelve a la marca TEMPO.
 async function saveBranding(reset) {
   if (!canManageWorkspace()) return uiAlert('Solo Owner/Admin pueden cambiar la marca del workspace.');
   const color = reset ? null : (_hex(agVal('brand-color-hex')) || _hex(agVal('brand-color')));

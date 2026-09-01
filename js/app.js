@@ -3713,7 +3713,7 @@ function renderDashSignals(art) {
 function dashOnboardingHTML(art) {
   return `<div class="onb fade-in">
     <div class="onb-title">EMPIEZA AQUÍ${art ? ' · ' + esc(up(art.name)) : ''}</div>
-    <div class="onb-sub">Tres pasos para poner en marcha tu primer lanzamiento en Tempo.</div>
+    <div class="onb-sub">Tres pasos para poner en marcha tu primer lanzamiento en TEMPO.</div>
     <div class="onb-steps">
       <div class="onb-step">
         <span class="onb-num">1</span>
