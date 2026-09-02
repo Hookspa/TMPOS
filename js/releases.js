@@ -1465,6 +1465,32 @@ function wizPrefill(l) {
   if (l.date) wizCalcTimeline(); else document.getElementById('timeline-result').classList.remove('show');
 }
 
+const WIZARD_LAUNCH_FIELDS = ['name','type','tracklist','date','cover','preDays','postDays'];
+const WIZARD_DNA_FIELDS = ['about','emotion','problem','conversation','message','keywords'];
+const WIZARD_CONTENT_FIELDS = ['perweek','platform','mix'];
+const WIZARD_BUDGET_FIELDS = ['total','meta','tiktok','dsp','prod'];
+
+function mergeWizardObject(existing, updates, fields) {
+  const base = (existing && typeof existing === 'object') ? Object.assign({}, existing) : {};
+  const src = (updates && typeof updates === 'object') ? updates : {};
+  fields.forEach(k => {
+    if (Object.prototype.hasOwnProperty.call(src, k)) base[k] = src[k];
+  });
+  return base;
+}
+
+function mergeLaunchWizardData(existing, data) {
+  if (!existing) return data;
+  const merged = Object.assign({}, existing);
+  WIZARD_LAUNCH_FIELDS.forEach(k => {
+    if (Object.prototype.hasOwnProperty.call(data, k)) merged[k] = data[k];
+  });
+  merged.dna = mergeWizardObject(existing.dna, data.dna, WIZARD_DNA_FIELDS);
+  merged.content = mergeWizardObject(existing.content, data.content, WIZARD_CONTENT_FIELDS);
+  merged.budget = mergeWizardObject(existing.budget, data.budget, WIZARD_BUDGET_FIELDS);
+  return merged;
+}
+
 function wizCollect() {
   const existing = editingId ? launches.find(x => x.id === editingId) : null;
   return {
@@ -1542,12 +1568,19 @@ function syncTracklistFromWizard(l) {
 }
 async function wizFinish() {
   const data = wizCollect();
-  syncTracklistFromWizard(data); // arma tracklist + tracks según tipo
   const wasEditing = editingId;
   if (wasEditing) {
     const i = launches.findIndex(x => x.id === wasEditing);
-    if (i >= 0) launches[i] = data; else launches.push(data);
+    if (i >= 0) {
+      const merged = mergeLaunchWizardData(launches[i], data);
+      syncTracklistFromWizard(merged); // arma tracklist + tracks según tipo
+      launches[i] = merged;
+    } else {
+      syncTracklistFromWizard(data);
+      launches.push(data);
+    }
   } else {
+    syncTracklistFromWizard(data); // arma tracklist + tracks según tipo
     // ¿Arrastrar metas del lanzamiento anterior del mismo artista?
     const prev = launches.filter(l => l.artistId === data.artistId && (l.goals || []).length)
       .sort((x, y) => (y.date || '').localeCompare(x.date || ''))[0];
