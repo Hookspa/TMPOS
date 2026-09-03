@@ -194,6 +194,212 @@ test('las selecciones antiguas conservan su vínculo y contador de uso', async (
   expect(migrated.usage['t:detrás de cámaras: mi trayectoria profesional']).toBeUndefined();
 });
 
+test('el Banco reemplaza manualmente una pieza planificada con retorno, cancelación y conteo humano', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ao_artists', JSON.stringify([{ id: 'A1', name: 'Artista QA', adn: {}, team: [], catalog: [], learnings: [] }]));
+    localStorage.setItem('ao_active_artist', 'A1');
+    localStorage.setItem('ao_ref_usage', JSON.stringify({ 'id:new-human': 2 }));
+    localStorage.setItem('ao_launches', JSON.stringify([{
+      id: 'L1',
+      artistId: 'A1',
+      name: 'Single QA',
+      date: '2026-10-01',
+      status: 'planning',
+      preDays: 2,
+      postDays: 3,
+      ideas: [],
+      generated: [],
+      generatedPrev: [],
+      cal: [{
+        id: 'target',
+        planPieceId: 'target',
+        source: 'plan',
+        title: 'Pieza a reemplazar',
+        fecha: '2026-10-05',
+        phase: 'post',
+        offset: 4,
+        cat: 'performance',
+        refId: 'old-human',
+        production: {
+          objetivo: 'Objetivo intacto',
+          hook: 'Hook editado',
+          descripcion: 'Brief editado',
+          plataforma: 'Reels',
+          estado: 'grabando',
+          responsable: 'Ana',
+          guion: [{ text: 'Guion intacto' }],
+          shots: [{ name: 'Plano intacto' }],
+          assets: [{ label: 'Asset intacto' }],
+        },
+      }, {
+        id: 'cancel-target',
+        planPieceId: 'cancel-target',
+        source: 'plan',
+        title: 'Pieza para cancelar',
+        fecha: '2026-10-06',
+        phase: 'post',
+        offset: 5,
+        cat: 'reaction',
+        refId: 'old-cancel',
+        production: { estado: 'pendiente' },
+      }, {
+        id: 'locked-target',
+        source: 'plan',
+        locked: true,
+        title: 'Pieza bloqueada',
+        fecha: '2026-10-07',
+        phase: 'post',
+        offset: 6,
+        cat: 'performance',
+        refId: 'old-locked',
+        production: { estado: 'pendiente' },
+      }],
+    }]));
+  });
+  await openLocalWorkspace(page);
+  await expect.poll(() => page.evaluate(() => typeof beginBankChoiceReplacement)).toBe('function');
+  await page.evaluate(() => {
+    currentLaunchId = 'L1';
+    setReferencias([
+      { id: 'old-human', title: 'Anterior', cat: ['performance'], for: [], energy: 'medium', link: 'https://example.com/old', _idx: 0 },
+      { id: 'new-human', title: 'Nueva humana QA', cat: ['reaction'], for: ['vocalist/rapper'], energy: 'medium', hook: 'Hook Banco', comentarios: 'Brief Banco', link: 'https://example.com/new', _idx: 1 },
+      { id: 'cancel-human', title: 'Cancelada QA', cat: ['reaction'], for: [], energy: 'medium', link: 'https://example.com/cancel', _idx: 2 },
+    ]);
+    calRange = '1m';
+    monthOffset = 1;
+    showPage('calendario');
+    renderCalendar();
+  });
+
+  await page.getByLabel('Reemplazar sugerencia automática').first().click();
+  await page.getByRole('button', { name: /Elegir desde Banco completo/ }).click();
+  await expect(page.locator('#page-banco')).toHaveClass(/\bactive\b/);
+  await expect(page.locator('#ctx-banco')).toContainText('Eligiendo referencia para reemplazar');
+  await expect(page.locator('#ctx-banco')).toContainText('Pieza a reemplazar');
+  await expect(page.locator('#banco-toolbar')).toContainText('Banco en modo elección');
+  await expect(page.locator('#banco-toolbar')).not.toContainText('Importar desde link');
+
+  const chosenCard = page.locator('#refs-grid .ref-page-card').filter({ hasText: 'Nueva humana QA' });
+  await chosenCard.getByRole('button', { name: /Elegir/ }).click();
+  await expect(page.locator('#page-calendario')).toHaveClass(/\bactive\b/);
+
+  let state = await page.evaluate(() => ({
+    item: launches[0].cal.find(item => item.id === 'target'),
+    usage: JSON.parse(localStorage.getItem('ao_ref_usage') || '{}'),
+    activeChoice: bankChoiceActive(),
+  }));
+  expect(state.item.refId).toBe('new-human');
+  expect(state.item.title).toBe('Nueva humana QA');
+  expect(state.item.fecha).toBe('2026-10-05');
+  expect(state.item.production.hook).toBe('Hook editado');
+  expect(state.item.production.guion).toEqual([{ text: 'Guion intacto' }]);
+  expect(state.usage['id:new-human']).toBe(3);
+  expect(state.activeChoice).toBe(false);
+
+  await page.evaluate(() => beginBankChoiceReplacement('L1', 'cancel-target'));
+  await expect(page.locator('#ctx-banco')).toContainText('Pieza para cancelar');
+  await page.keyboard.press('Escape');
+  state = await page.evaluate(() => ({
+    refId: launches[0].cal.find(item => item.id === 'cancel-target').refId,
+    activeChoice: bankChoiceActive(),
+    usage: JSON.parse(localStorage.getItem('ao_ref_usage') || '{}'),
+  }));
+  expect(state.refId).toBe('old-cancel');
+  expect(state.activeChoice).toBe(false);
+  expect(state.usage['id:cancel-human']).toBeUndefined();
+
+  await page.evaluate(() => beginBankChoiceReplacement('L1', 'cancel-target'));
+  await page.locator('.nav-item[data-page="compas"]').click();
+  state = await page.evaluate(() => ({
+    refId: launches[0].cal.find(item => item.id === 'cancel-target').refId,
+    activeChoice: bankChoiceActive(),
+  }));
+  expect(state.refId).toBe('old-cancel');
+  expect(state.activeChoice).toBe(false);
+
+  expect(await page.evaluate(() => beginBankChoiceReplacement('L1', 'locked-target'))).toBe(false);
+  expect(await page.evaluate(() => {
+    const original = canDo;
+    canDo = () => false;
+    const ok = beginBankChoiceReplacement('L1', 'cancel-target');
+    canDo = original;
+    return ok;
+  })).toBe(false);
+});
+
+test('el flujo revisable crea y edita un lanzamiento, completa ADN, conserva bloqueos y permite ambos reemplazos sin errores', async ({ page }, testInfo) => {
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('ao_artists', JSON.stringify([{
+      id: 'A1', name: 'Artista E2E', adn: {}, team: [], catalog: [], learnings: [],
+    }]));
+    localStorage.setItem('ao_active_artist', 'A1');
+  });
+  await openLocalWorkspace(page);
+  await page.evaluate(() => { launches = []; currentLaunchId = null; localStorage.setItem('ao_launches', '[]'); });
+
+  await page.locator('#btn-global-cta').click();
+  await page.locator('#wiz-name').fill('Lanzamiento revisable');
+  await page.locator('#wiz-date').fill('2026-10-01');
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-about').fill('Una canción sobre recuperar la calma.');
+  await page.locator('#wiz-emotion').fill('Esperanza');
+  await page.locator('#wiz-message').fill('La calma también es avance.');
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-next').click();
+  await expect.poll(() => page.evaluate(() => launches.length)).toBe(1);
+
+  // La edición usa el mismo wizard y conserva el lanzamiento ya creado.
+  await page.getByRole('button', { name: /^Editar$/ }).click();
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-message').fill('El plan propone; el equipo decide.');
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-next').click();
+  await page.locator('#wiz-next').click();
+  await expect.poll(() => page.evaluate(() => launches[0].dna.message)).toBe('El plan propone; el equipo decide.');
+
+  if (testInfo.project.name === 'mobile-dark') await page.evaluate(() => showPage('adn'));
+  else await page.locator('.nav-item[data-page="adn"]').click();
+  await page.locator('input[data-bind="adn.personality.tone"]').fill('Cercano y preciso');
+  await expect(page.locator('#modal-ui')).toHaveClass(/open/);
+  await expect(page.locator('#ui-message')).toContainText('Solo se llenarán días libres');
+  await page.locator('#ui-ok').click();
+  await expect.poll(() => page.evaluate(() => launches[0].cal.filter(item => item.source === 'plan').length), { timeout: 20_000 }).toBeGreaterThan(0);
+
+  const planState = await page.evaluate(() => ({
+    generated: launches[0].cal.filter(item => item.source === 'plan').length,
+    total: launches[0].cal.length,
+  }));
+  expect(planState.generated).toBeLessThanOrEqual(44);
+  expect(planState.total).toBeLessThanOrEqual(44);
+
+  await page.evaluate(() => {
+    const target = launches[0].cal.find(item => item.source === 'plan');
+    openProduction(launches[0].id, target.id);
+  });
+  await page.getByLabel('Bloquear publicación').click();
+  await expect(page.getByLabel('Desbloquear publicación')).toBeVisible();
+  const locked = await page.evaluate(() => launches[0].cal.find(item => item.id === prodCtx.itemId));
+  expect(locked.locked).toBe(true);
+  await page.evaluate(() => closeProdDirect());
+
+  await page.evaluate(() => { calRange = '1m'; monthOffset = 1; showPage('calendario'); renderCalendar(); });
+  await page.getByLabel('Reemplazar sugerencia automática').first().click();
+  await expect(page.locator('#modal-plan-replace')).toHaveClass(/open/);
+  await page.locator('#modal-plan-replace [aria-label^="Usar "]').first().click();
+  await expect(page.locator('#modal-plan-replace')).not.toHaveClass(/open/);
+
+  await page.getByLabel('Reemplazar sugerencia automática').first().click();
+  await page.getByRole('button', { name: /Elegir desde Banco completo/ }).click();
+  await expect(page.locator('#page-banco')).toHaveClass(/active/);
+  await page.locator('#refs-grid .ref-page-card').nth(1).getByRole('button', { name: /Elegir/ }).click();
+  await expect(page.locator('#page-calendario')).toHaveClass(/active/);
+  expect(await page.evaluate(() => launches[0].cal.some(item => item.locked && item.source === 'plan'))).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
 test('si el catálogo falla, muestra 10 referencias de emergencia y permite recuperarse', async ({ page }) => {
   let catalogAvailable = false;
   await page.route('**/refs_02.csv', route => catalogAvailable

@@ -406,6 +406,8 @@
           <button data-range="1m" onclick="setCalRange('1m')">1 mes</button>
         </div>
         <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap" title="Compartir el plan de contenido con el artista">
+          <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:6px 11px" onclick="regenerateActiveCalendarOffline()"><span data-icon="calendar" data-isize="13"></span> Regenerar base</button>
+          <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:6px 11px" onclick="undoActiveCalendarOffline()"><span data-icon="refresh" data-isize="13"></span> Deshacer</button>
           <button class="btn btn-primary" style="font-size:var(--text-xs);padding:6px 11px" onclick="crearShareLink()"><span data-icon="link" data-isize="13"></span> Crear link</button>
           <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:6px 11px" onclick="abrirShares()"><span data-icon="eye" data-isize="13"></span> Mis links</button>
           <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:6px 11px" onclick="exportCalHTML()"><span data-icon="globe" data-isize="13"></span> HTML</button>
@@ -1095,6 +1097,16 @@
   </div>
 </dialog>
 
+<dialog class="boxdrop-overlay" id="modal-plan-replace" style="z-index:var(--z-modal)" onclick="closePlanReplacement(event)">
+  <div class="boxdrop" style="width:620px;max-width:96vw">
+    <div class="boxdrop-header">
+      <div class="boxdrop-title" style="display:flex;align-items:center;gap:8px"><span data-icon="refresh" data-isize="16"></span>REEMPLAZAR SUGERENCIA</div>
+      <button type="button" class="boxdrop-close" aria-label="Cerrar reemplazo de sugerencia" onclick="closePlanReplacement()"><span data-icon="close" data-isize="15"></span></button>
+    </div>
+    <div class="boxdrop-body" id="plan-replace-body" style="padding:22px"></div>
+  </div>
+</dialog>
+
 <!-- ── TOAST (avisos transitorios) ── -->
 <div id="ui-toast" role="status" aria-live="polite" aria-atomic="true" style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:var(--z-toast);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 18px;font-size:var(--text-base);color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw"></div>
 
@@ -1104,6 +1116,7 @@
     <div class="boxdrop-header">
       <span id="prod-cat" class="cal-item" style="margin:0;font-size:var(--text-2xs);padding:2px 8px">—</span>
       <input id="prod-title" class="input prod-title-edit" style="flex:1;font-family:var(--font-display);font-weight:400;font-size:var(--text-lg);letter-spacing:var(--track-display);background:transparent" onchange="prodSet('title',this.value)" title="Edita el título de la pieza" placeholder="Título de la pieza">
+      <button id="prod-lock-toggle" type="button" class="btn btn-ghost" aria-pressed="false" aria-label="Bloquear publicación" onclick="toggleProductionLock()" style="font-size:var(--text-xs);padding:7px 10px;display:none"></button>
       <select id="prod-estado" class="input" style="width:auto" onchange="prodSet('estado',this.value)">
         <option value="pendiente">Pendiente</option>
         <option value="aprobado">Aprobado</option>
@@ -1142,7 +1155,8 @@
 
 <script src="js/icons.js?v=20260811a"></script>
 <script src="js/catalog.js?v=20260811c"></script>
-<script src="js/app.js?v=20260811c"></script>
+<script src="js/plan.js?v=20260902d"></script>
+<script src="js/app.js?v=20260902t"></script>
 <script src="js/releases.js?v=20260811b"></script>
 <script src="js/team.js?v=20260811b"></script>
 <script src="js/crm.js?v=20260811a"></script>

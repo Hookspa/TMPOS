@@ -948,7 +948,8 @@
     justify-content: center;
     animation: fadeIn 0.2s ease;
   }
-  .boxdrop-overlay[open] { display: flex; }
+  .boxdrop-overlay[open],
+  .boxdrop-overlay.open { display: flex; }
   .boxdrop-overlay::backdrop { background: transparent; }
   html.tempo-dialog-open { overflow: hidden; }
 

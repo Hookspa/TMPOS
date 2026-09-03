@@ -5,10 +5,15 @@ const TempoPlan = require('../../js/plan.js');
 
 const {
   ANCHORS,
+  arrangePlanWithAI,
   buildPlan,
   calcUsage,
   filterRefs,
+  makeFreeDaySlots,
   makeSlots,
+  recommendationReason,
+  replacementCandidates,
+  replacePieceReference,
   validateAI,
 } = TempoPlan;
 
@@ -74,6 +79,36 @@ test('makeSlots genera 43 días y 44 slots desde -21 hasta +21', () => {
   assert.equal(slots.filter(slot => slot.offset === 0).length, 2);
   assert.equal(slots[0].fecha, '2026-09-10');
   assert.equal(slots[slots.length - 1].fecha, '2026-10-22');
+});
+
+test('makeFreeDaySlots respeta pre/post variables, máximo 44 y no crea anclas automáticas', () => {
+  const slots = makeFreeDaySlots({ date: '2026-10-01', preDays: 2, postDays: 3 }, 44);
+
+  assert.equal(slots.length, 6);
+  assert.deepEqual(slots.map(slot => slot.offset), [-2, -1, 0, 1, 2, 3]);
+  assert.equal(slots.filter(slot => slot.offset === 0).length, 1);
+  assert.equal(slots.some(slot => slot.anchor), false);
+  assert.equal(slots.some(slot => slot.key === 'available-now' || slot.key === 'chorus-performance'), false);
+
+  const capped = makeFreeDaySlots({ date: '2026-10-01', preDays: 50, postDays: 50 }, 99);
+  assert.equal(capped.length, 44);
+});
+
+test('freeDaysOnly genera una recomendación por fecha libre y salta bloqueadas sin gastar el máximo', () => {
+  const lockedDates = new Set(['2026-09-29', '2026-10-01']);
+  const slots = makeFreeDaySlots({ date: '2026-10-01', preDays: 2, postDays: 3 }, 44, lockedDates);
+
+  assert.deepEqual(slots.map(slot => slot.fecha), ['2026-09-30', '2026-10-02', '2026-10-03', '2026-10-04']);
+
+  const occupied = new Set();
+  for (let offset = -50; offset < -20; offset += 1) {
+    const d = new Date('2026-10-01T00:00:00');
+    d.setDate(d.getDate() + offset);
+    occupied.add(d.toISOString().slice(0, 10));
+  }
+  const cappedAfterOccupied = makeFreeDaySlots({ date: '2026-10-01', preDays: 50, postDays: 50 }, 44, occupied);
+  assert.equal(cappedAfterOccupied.length, 44);
+  assert.equal(cappedAfterOccupied[0].offset, -20);
 });
 
 test('la API pública TempoPlan no permite reemplazar ANCHORS ni métodos exportados', () => {
@@ -203,6 +238,55 @@ test('buildPlan crea contrato l.plan con 43 días, 44 piezas y anclas correctas'
   ]);
   assert.ok(launch.plan.pieces.every(piece => typeof piece.refId === 'string'));
   assert.ok(launch.plan.pieces.every(piece => Number.isInteger(piece.refIdx)));
+});
+
+test('buildPlan en freeDaysOnly no crea anclas, respeta fechas bloqueadas y usa solo referencias recomendables', () => {
+  const launch = buildPlan({
+    id: 'L-free',
+    name: 'Free days',
+    date: '2026-10-01',
+    preDays: 2,
+    postDays: 3,
+    cal: [
+      { id: 'human-custom', fecha: '2026-09-29', title: 'Elegida por persona', locked: true, refId: 'custom-1' },
+      { id: 'plan-replaceable', fecha: '2026-09-30', title: 'Plan viejo', source: 'plan' },
+    ],
+  }, [
+    ref('custom-1', 'song promotion', { custom: true, energy: 'high' }),
+    ref('owned-1', 'performance', { owned: true, energy: 'medium' }),
+    ref('community-1', 'engagement', { community: true, energy: 'low' }),
+    ...refs(20),
+  ], {
+    freeDaysOnly: true,
+    maxPieces: 44,
+  });
+
+  assert.equal(launch.plan.range.freeDaysOnly, true);
+  assert.equal(launch.plan.pieces.length, 4);
+  assert.equal(launch.plan.pieces.some(piece => piece.fecha === '2026-09-29'), false);
+  assert.equal(launch.plan.pieces.some(piece => piece.fecha === '2026-09-30'), false);
+  assert.equal(launch.plan.pieces.filter(piece => piece.offset === 0).length, 1);
+  assert.equal(launch.plan.pieces.some(piece => piece.anchor || piece.anchorKey), false);
+  assert.ok(launch.plan.pieces.every(piece => !['custom-1', 'owned-1', 'community-1'].includes(piece.refId)));
+});
+
+test('filterRefs excluye refs custom, owned y community salvo opt-out explícito', () => {
+  const candidates = [
+    ref('custom-a', 'performance', { custom: true, energy: 'high' }),
+    ref('owned-a', 'performance', { owned: true, energy: 'high' }),
+    ref('community-a', 'performance', { community: true, energy: 'high' }),
+    ref('community-owned-false', 'performance', { owned: false, energy: 'high' }),
+    ref('public-a', 'performance', { energy: 'high' }),
+  ];
+
+  assert.deepEqual(
+    filterRefs(candidates, { category: 'performance', energy: 'high' }).map(item => item.id),
+    ['public-a'],
+  );
+  assert.deepEqual(
+    filterRefs(candidates, { category: 'performance', energy: 'high', excludeCustom: false }).map(item => item.id).sort(),
+    ['community-a', 'community-owned-false', 'custom-a', 'owned-a', 'public-a'],
+  );
 });
 
 test('filterRefs aplica categoría, hook/energía, evergreen, IDs excluidos y uso previo', () => {
@@ -430,4 +514,136 @@ test('calcUsage cuenta piezas planificadas por refId sin usar claves legacy', ()
     { source: 'plan', refId: 'b' },
     { source: 'plan', refId: '' },
   ]), { a: 2, b: 1 });
+});
+
+test('replacementCandidates propone candidatas de la fase y excluye refs usadas o salientes', () => {
+  const launch = {
+    id: 'L-replace-candidates',
+    planMeta: { replacementExcludedRefIds: ['saliente'] },
+    cal: [
+      { id: 'target', source: 'plan', phase: 'post', offset: 4, refId: 'actual', cats: ['performance'] },
+      { id: 'used', source: 'plan', phase: 'post', offset: 5, refId: 'ya-usada', cats: ['reaction'] },
+    ],
+  };
+  const candidates = replacementCandidates(launch, [
+    ref('actual', 'performance', { energy: 'medium' }),
+    ref('ya-usada', 'reaction', { energy: 'medium' }),
+    ref('saliente', 'performance', { energy: 'medium' }),
+    ref('pre-only', 'awareness', { energy: 'medium' }),
+    ref('post-ok', 'reaction', { energy: 'medium' }),
+    ref('post-alt', 'performance', { energy: 'medium' }),
+  ], 'target');
+
+  assert.deepEqual(candidates.map(item => item.id), ['post-alt', 'post-ok']);
+  assert.ok(candidates.every(item => ['reaction', 'performance'].includes(item.cat[0])));
+
+  const noPhaseMatch = replacementCandidates(launch, [
+    ref('pre-only', 'awareness', { energy: 'medium' }),
+    ref('launch-only', 'song promotion', { energy: 'high' }),
+  ], 'target');
+  assert.deepEqual(noPhaseMatch, []);
+});
+
+test('replacePieceReference cambia solo la referencia y conserva identidad, fecha y producción', () => {
+  const original = {
+    id: 'plan-L1-4-post-4',
+    planPieceId: 'plan-L1-4-post-4',
+    source: 'plan',
+    title: 'Referencia anterior',
+    phase: 'post',
+    offset: 4,
+    day: 4,
+    fecha: '2026-10-05',
+    date: '2026-10-05',
+    pauta: 'pautado',
+    refId: 'old',
+    refIdx: 0,
+    refLink: 'https://example.com/old',
+    production: {
+      objetivo: 'Convertir comentarios en saves',
+      hook: 'Hook editado por el equipo',
+      descripcion: 'Brief editado',
+      plataforma: 'Reels 9:16',
+      estado: 'grabando',
+      responsable: 'Ana',
+      guion: [{ time: '00:00', text: 'Abrir con coro' }],
+      shots: [{ name: 'Plano detalle', detail: 'Manos' }],
+      assets: [{ label: 'B-roll', link: 'drive://asset' }],
+    },
+  };
+  const updated = replacePieceReference(original, ref('new', 'reaction', {
+    _idx: 7,
+    title: 'Referencia nueva',
+    hook: 'Hook nuevo de banco',
+    comentarios: 'Descripción nueva',
+    link: 'https://example.com/new',
+    thumb: 'https://example.com/thumb.jpg',
+  }));
+
+  assert.equal(updated.id, original.id);
+  assert.equal(updated.planPieceId, original.planPieceId);
+  assert.equal(updated.source, 'plan');
+  assert.equal(updated.fecha, original.fecha);
+  assert.equal(updated.date, original.date);
+  assert.equal(updated.phase, original.phase);
+  assert.equal(updated.pauta, original.pauta);
+  assert.equal(updated.title, 'Referencia nueva');
+  assert.equal(updated.refId, 'new');
+  assert.equal(updated.refIdx, 7);
+  assert.equal(updated.refLink, 'https://example.com/new');
+  assert.deepEqual(updated.production, original.production);
+  assert.match(updated.recommendationReason, /Sostener/);
+  assert.match(recommendationReason(updated), /Reacción/);
+});
+
+test('la IA solo reordena candidatas validadas y el motor completa respuestas parciales sin exponer detalles del proveedor', async () => {
+  const catalog = refs(70);
+  const launch = { id: 'L-assisted', date: '2026-10-01' };
+  const offline = buildPlan(launch, catalog);
+  const candidates = offline.plan.pieces.filter(piece => piece.refId);
+  const first = candidates[0];
+  const second = candidates[1];
+  const result = await arrangePlanWithAI(launch, catalog, {
+    permission: true,
+    configured: true,
+    quota: true,
+    request: async request => ({ selections: [
+      { pieceId: first.id, refId: second.refId, reason: 'Alterna el formato para abrir la campaña.' },
+      { pieceId: second.id, refId: first.refId, reason: 'Cierra el intercambio sin repetir referencias.' },
+      { pieceId: candidates[2].id, refId: 'referencia-inventada', reason: 'No debe aceptarse.' },
+      { pieceId: 'slot-inventado', refId: first.refId, reason: 'No debe aceptarse.' },
+    ], provider: 'never-persisted', cost: 9.99 }),
+  });
+
+  const replaced = result.plan.pieces.find(piece => piece.id === first.id);
+  const completed = result.plan.pieces.find(piece => piece.id === second.id);
+  assert.equal(result.mode, 'assisted');
+  assert.equal(result.plan.pieces.length, 44);
+  assert.equal(replaced.refId, second.refId);
+  assert.equal(completed.refId, first.refId);
+  assert.equal(replaced.production.hook, catalog.find(reference => reference.id === second.refId).hook);
+  assert.equal(completed.production.hook, catalog.find(reference => reference.id === first.refId).hook);
+  assert.equal(result.meta.provider, undefined);
+  assert.equal(result.meta.cost, undefined);
+  assert.match(replaced.recommendationReason, /Alterna el formato/);
+  assert.ok(result.validation.errors.some(error => error.code === 'UNKNOWN_CANDIDATE_REF'));
+  assert.ok(result.validation.errors.some(error => error.code === 'UNKNOWN_SLOT'));
+});
+
+test('permiso, cuota, configuración, fallo y timeout devuelven el mismo plan offline sin contar uso', async () => {
+  const catalog = refs(70);
+  const launch = { id: 'L-offline-fallback', date: '2026-10-01' };
+  const baseline = buildPlan(launch, catalog);
+  const blocked = await Promise.all([
+    arrangePlanWithAI(launch, catalog, { permission: false, configured: true, quota: true }),
+    arrangePlanWithAI(launch, catalog, { permission: true, configured: false, quota: true }),
+    arrangePlanWithAI(launch, catalog, { permission: true, configured: true, quota: false }),
+    arrangePlanWithAI(launch, catalog, { permission: true, configured: true, quota: true, request: async () => { throw new Error('provider down'); } }),
+    arrangePlanWithAI(launch, catalog, { permission: true, configured: true, quota: true, timeoutMs: 1, request: () => new Promise(() => {}) }),
+  ]);
+
+  assert.deepEqual(blocked.map(result => result.mode), ['offline', 'offline', 'offline', 'offline', 'offline']);
+  assert.deepEqual(blocked.map(result => result.plan.pieces.map(piece => piece.refId)), blocked.map(() => baseline.plan.pieces.map(piece => piece.refId)));
+  assert.deepEqual(blocked.map(result => result.meta.aiUsageCount), [0, 0, 0, 0, 0]);
+  assert.deepEqual(blocked.map(result => result.meta.reason), ['permission', 'configuration', 'quota', 'provider_failure', 'timeout']);
 });

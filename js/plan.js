@@ -7,6 +7,7 @@
   const DAY_END = 21;
   const PLAN_DAY_COUNT = 43;
   const PLAN_PIECE_COUNT = 44;
+  const MAX_FREE_DAY_PIECES = 44;
   const PLAN_VERSION = 1;
   const ENERGY = ['low', 'medium', 'high'];
 
@@ -33,6 +34,22 @@
     pre: ['awareness', 'behind the scenes', 'storytelling', 'song promotion', 'transition hook', 'vibes', 'engagement'],
     launch: ['song promotion', 'performance', 'show your skills / challenge', 'talking to camera', 'engagement'],
     post: ['performance', 'reaction', 'behind the scenes', 'relatable', 'storytelling', 'engagement', 'trending sounds'],
+  });
+  const PHASE_LABELS = deepFreeze({ pre: 'Preparación', launch: 'Lanzamiento', post: 'Sostener' });
+  const CATEGORY_LABELS = deepFreeze({
+    awareness: 'Reconocimiento',
+    'behind the scenes': 'Detrás de cámaras',
+    storytelling: 'Narrativa',
+    'song promotion': 'Promoción de la canción',
+    'transition hook': 'Gancho de transición',
+    vibes: 'Vibes',
+    engagement: 'Interacción',
+    performance: 'Performance',
+    'show your skills / challenge': 'Muestra tu talento / reto',
+    'talking to camera': 'Hablando a cámara',
+    reaction: 'Reacción',
+    relatable: 'Identificable',
+    'trending sounds': 'Sonidos en tendencia',
   });
 
   function text(value) {
@@ -228,6 +245,19 @@
     });
   }
 
+  function isCustomReference(reference) {
+    if (!reference || typeof reference !== 'object') return false;
+    if (reference.custom === true || reference.owned === true || reference.owned === false || reference.community === true) return true;
+    const id = normalizeToken(reference.id || reference.refId || '');
+    if (id.startsWith('custom-') || id.startsWith('own-') || id.startsWith('propia-')) return true;
+    const type = normalizeToken(reference.type || reference.kind || reference.source || reference.origin);
+    if (['custom', 'personal', 'propia', 'own', 'community'].includes(type)) return true;
+    return [...toList(reference.cat), ...toList(reference.cats), ...toList(reference.categories)].some(tag => {
+      const key = normalizeToken(tag);
+      return key === 'custom' || key === 'personal' || key === 'propia';
+    });
+  }
+
   function listFilter(values) {
     const list = toList(values).map(normalizeToken).filter(Boolean);
     return list.length ? new Set(list) : null;
@@ -268,6 +298,7 @@
     const hardFiltered = normalizeRefs(references).filter(reference => {
       if (excluded.has(reference.id) || excluded.has(`id:${reference.id}`)) return false;
       if (opts.excludeEvergreen !== false && isEvergreen(reference)) return false;
+      if (opts.excludeCustom !== false && isCustomReference(reference)) return false;
       if (opts.excludePreviousUsage === true && usageValue(previousUsage, reference.id) > 0) return false;
       return true;
     });
@@ -377,6 +408,42 @@
     return slots;
   }
 
+  function boundedDays(value, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? Math.min(Math.floor(n), 365) : fallback;
+  }
+
+  function makeFreeDaySlots(launchOrDate, maxPieces, occupiedDates) {
+    const launch = typeof launchOrDate === 'string' ? { date: launchOrDate } : (launchOrDate || {});
+    const dropDate = clean(launch.date);
+    const pre = boundedDays(launch.preDays, Math.abs(DAY_START));
+    const post = boundedDays(launch.postDays, DAY_END);
+    const limit = Math.max(0, Math.min(MAX_FREE_DAY_PIECES, boundedDays(maxPieces, MAX_FREE_DAY_PIECES)));
+    const occupied = occupiedDates instanceof Set ? occupiedDates : new Set(toList(occupiedDates));
+    const slots = [];
+    for (let offset = -pre; offset <= post && slots.length < limit; offset += 1) {
+      const phase = phaseForOffset(offset);
+      const fecha = addDaysISO(dropDate, offset);
+      if (occupied.has(fecha)) continue;
+      const categories = PHASE_CATEGORIES[phase];
+      const category = categories[Math.abs(offset + PLAN_PIECE_COUNT) % categories.length];
+      slots.push({
+        key: `${phase}-${offset}`,
+        offset,
+        day: offset,
+        date: fecha,
+        fecha,
+        phase,
+        anchor: false,
+        title: '',
+        cat: category,
+        categories: [category],
+        energy: slotEnergy(offset, ''),
+      });
+    }
+    return slots;
+  }
+
   function plannedId(launch, slot) {
     const launchId = slug((launch && launch.id) || (launch && launch.name) || 'launch');
     return `plan-${launchId}-${slot.offset}-${slot.key}`;
@@ -467,6 +534,24 @@
     return normalized;
   }
 
+  function isLockedPiece(piece) {
+    return !!(piece && (piece.locked === true || piece.humanLocked === true || (piece.lock && piece.lock.human === true)));
+  }
+
+  function lockedDatesFromLaunch(launch, includeAllCalendarItems) {
+    const dates = new Set();
+    const add = (piece, includeAll) => {
+      if (includeAll || isLockedPiece(piece)) {
+        const date = clean(piece.fecha || piece.date);
+        if (date) dates.add(date);
+      }
+    };
+    (Array.isArray(launch && launch.cal) ? launch.cal : []).forEach(piece => add(piece, includeAllCalendarItems));
+    const plan = launch && launch.plan;
+    (Array.isArray(plan && plan.pieces) ? plan.pieces : []).forEach(piece => add(piece, false));
+    return dates;
+  }
+
   function normalizeExistingPlan(plan, references) {
     const catalog = references && references.refs ? references : makeRefCatalog(references);
     if (Array.isArray(plan)) {
@@ -517,6 +602,124 @@
     return usage;
   }
 
+  function cloneData(value) {
+    return JSON.parse(JSON.stringify(value == null ? null : value));
+  }
+
+  function primaryCategory(value) {
+    const cats = unique([
+      ...toList(value && value.cat),
+      ...toList(value && value.cats),
+      ...toList(value && value.category),
+      ...toList(value && value.categories),
+    ]);
+    return cats[0] || 'awareness';
+  }
+
+  function categoryLabel(value) {
+    const key = normalizeToken(value);
+    return CATEGORY_LABELS[key] || clean(value) || 'pieza';
+  }
+
+  function recommendationReason(piece, reference) {
+    if (piece && !reference && clean(piece.recommendationReason)) return clean(piece.recommendationReason);
+    const phase = clean((piece && piece.phase) || (Number.isInteger(piece && piece.offset) ? phaseForOffset(piece.offset) : ''));
+    const phaseLabel = PHASE_LABELS[phase] || 'Campaña';
+    const cat = primaryCategory(reference || piece || {});
+    const hook = clean((reference && reference.hook) || (piece && piece.hook) || (piece && piece.production && piece.production.hook));
+    return `${phaseLabel}: ${categoryLabel(cat)} compatible con la fase${hook ? ' y hook claro' : ''}.`;
+  }
+
+  function findPieceInLaunch(launch, pieceOrId) {
+    if (pieceOrId && typeof pieceOrId === 'object') return pieceOrId;
+    const id = clean(pieceOrId);
+    if (!id || !launch) return null;
+    const cal = Array.isArray(launch.cal) ? launch.cal : [];
+    const planPieces = Array.isArray(launch.plan && launch.plan.pieces) ? launch.plan.pieces : [];
+    return cal.concat(planPieces).find(piece => clean(piece && piece.id) === id || clean(piece && piece.planPieceId) === id) || null;
+  }
+
+  function launchUsedRefIds(launch) {
+    const used = new Set();
+    const add = piece => {
+      const id = clean(piece && (piece.refId || piece.ref_id));
+      if (id) used.add(id);
+    };
+    (Array.isArray(launch && launch.cal) ? launch.cal : []).forEach(add);
+    (Array.isArray(launch && launch.plan && launch.plan.pieces) ? launch.plan.pieces : []).forEach(add);
+    return used;
+  }
+
+  function launchReplacementExclusions(launch) {
+    const meta = (launch && launch.planMeta) || {};
+    return [
+      ...toList(meta.replacementExcludedRefIds),
+      ...toList(meta.excludedRefIds),
+      ...toList(meta.outgoingRefIds),
+    ];
+  }
+
+  function replacementCandidates(arg, refsArg, pieceArg, optsArg) {
+    const launch = (arg && arg.launch) || arg || {};
+    const sourceReferences = (arg && arg.references) || refsArg || [];
+    const opts = {
+      ...(arg && arg.options && typeof arg.options === 'object' ? arg.options : {}),
+      ...(optsArg && typeof optsArg === 'object' ? optsArg : {}),
+    };
+    const piece = findPieceInLaunch(launch, (arg && (arg.piece || arg.item || arg.itemId || arg.pieceId)) || pieceArg);
+    if (!piece || isLockedPiece(piece) || piece.anchor === true || clean(piece.anchorKey)) return [];
+    const phase = clean(piece.phase) || (Number.isInteger(piece.offset) ? phaseForOffset(piece.offset) : '');
+    const categories = PHASE_CATEGORIES[phase] || toList(piece.cats || piece.cat || primaryCategory(piece));
+    const excluded = new Set([
+      ...Array.from(launchUsedRefIds(launch)),
+      ...launchReplacementExclusions(launch),
+      ...toList(opts.excludeIds),
+    ]);
+    const currentRef = clean(piece.refId || piece.ref_id);
+    if (currentRef) excluded.add(currentRef);
+    const candidates = filterRefs(sourceReferences, {
+      categories,
+      energy: piece.energy || (Number.isInteger(piece.offset) ? slotEnergy(piece.offset, piece.anchorKey) : ''),
+      hook: opts.hook || '',
+      excludeIds: Array.from(excluded),
+      excludeEvergreen: opts.excludeEvergreen !== false,
+      excludeCustom: opts.excludeCustom !== false,
+      allowFallback: false,
+      previousUsage: opts.previousUsage || opts.usage || {},
+    });
+    const limit = Number.isFinite(Number(opts.limit)) ? Math.max(0, Math.floor(Number(opts.limit))) : 6;
+    return limit ? candidates.slice(0, limit) : candidates;
+  }
+
+  function replacePieceReference(piece, reference, references) {
+    const source = piece && typeof piece === 'object' ? piece : {};
+    const catalog = references && references.refs ? references : makeRefCatalog(Array.isArray(references) ? references : [reference]);
+    const ref = reference && reference.id && catalog.byId.has(reference.id)
+      ? catalog.byId.get(reference.id)
+      : normalizeRef(reference || {}, Number.isInteger(reference && reference._idx) ? reference._idx : 0);
+    const cats = unique([...(ref.cats || ref.cat || []), source.cat].filter(Boolean));
+    const production = source.production && typeof source.production === 'object'
+      ? cloneData(source.production)
+      : { objetivo: '', hook: '', descripcion: '', plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] };
+    const updated = {
+      ...source,
+      source: source.source || 'plan',
+      fallback: false,
+      title: ref.title || source.title || 'Pieza',
+      cat: cats[0] || source.cat || 'awareness',
+      cats,
+      for: Array.isArray(ref.for) ? ref.for.slice() : [],
+      refId: ref.id,
+      refIdx: ref._idx,
+      refLink: ref.link || '',
+      thumb: ref.thumb || '',
+      icon: ref.icon || '',
+      production,
+    };
+    updated.recommendationReason = recommendationReason(updated, ref);
+    return updated;
+  }
+
   function buildPlan(arg, refsArg, optsArg) {
     const launch = (arg && arg.launch) || arg || {};
     const sourceReferences = (arg && arg.references) || refsArg || [];
@@ -528,7 +731,9 @@
     };
     const previousUsage = (arg && (arg.usage || arg.previousUsage)) || opts.previousUsage || opts.usage || {};
     const excludeIds = [...toList(opts.excludeIds), ...toList(arg && arg.excludeIds)];
-    const slots = makeSlots(launch);
+    const freeDayMode = opts.freeDaysOnly === true || opts.onlyFreeDays === true;
+    const lockedDates = lockedDatesFromLaunch(launch, freeDayMode);
+    const slots = freeDayMode ? makeFreeDaySlots(launch, opts.maxPieces, lockedDates) : makeSlots(launch);
     const usedIds = new Set(excludeIds);
     const pieces = [];
     let fallbackCount = 0;
@@ -540,6 +745,7 @@
         hook: opts.hook || '',
         excludeIds: Array.from(usedIds),
         excludeEvergreen: opts.excludeEvergreen !== false,
+        excludeCustom: opts.excludeCustom !== false,
         excludePreviousUsage: opts.excludePreviousUsage === true,
         previousUsage,
       });
@@ -547,6 +753,7 @@
       if (reference) usedIds.add(reference.id);
       else fallbackCount += 1;
       pieces.push(makePiece(slot, reference, launch, index));
+      pieces[pieces.length - 1].recommendationReason = recommendationReason(pieces[pieces.length - 1], reference);
     });
 
     const selfErrors = [];
@@ -567,7 +774,17 @@
       ...existing,
       version: PLAN_VERSION,
       source: 'plan',
-      range: { startOffset: DAY_START, endOffset: DAY_END, days: PLAN_DAY_COUNT, pieces: PLAN_PIECE_COUNT },
+      range: freeDayMode
+        ? {
+            startOffset: slots.length ? Math.min(...slots.map(slot => slot.offset)) : -(boundedDays(launch.preDays, Math.abs(DAY_START))),
+            endOffset: slots.length ? Math.max(...slots.map(slot => slot.offset)) : boundedDays(launch.postDays, DAY_END),
+            days: slots.length,
+            pieces: pieces.length,
+            freeDaysOnly: true,
+            maxPieces: Math.min(MAX_FREE_DAY_PIECES, boundedDays(opts.maxPieces, MAX_FREE_DAY_PIECES)),
+            lockedDays: lockedDates.size,
+          }
+        : { startOffset: DAY_START, endOffset: DAY_END, days: PLAN_DAY_COUNT, pieces: PLAN_PIECE_COUNT },
       days,
       pieces,
       usage: calcUsage(pieces),
@@ -576,10 +793,228 @@
         candidateCount: references.length,
         fallbackCount,
         legacyPieceCount: legacyPieces.length,
+        lockedPieceCount: Array.from(lockedDates).length,
       },
     };
     if (legacyPieces.length) plan.legacyPieces = legacyPieces;
     return { ...launch, plan };
+  }
+
+  function boundedText(value, max) {
+    return clean(value).replace(/\s+/g, ' ').slice(0, max);
+  }
+
+  function campaignAIContext(launch) {
+    const dna = (launch && launch.dna) || {};
+    const personality = (launch && launch.artistDNA && launch.artistDNA.personality) || {};
+    return {
+      campaign: boundedText(launch && (launch.name || launch.title), 120),
+      releaseDate: boundedText(launch && launch.date, 10),
+      concept: boundedText(dna.about || dna.concept || '', 300),
+      emotion: boundedText(dna.emotion || '', 120),
+      message: boundedText(dna.message || '', 300),
+      keywords: boundedText(dna.keywords || '', 180),
+      tone: boundedText(personality.tone || '', 120),
+      lyricsExcerpt: boundedText(launch && (launch.letra || launch.lyrics), 600),
+    };
+  }
+
+  function buildAIOrderingRequest(launch, baseline, references, options) {
+    const opts = options || {};
+    const catalog = makeRefCatalog(references);
+    const plan = baseline && baseline.plan ? baseline.plan : { pieces: [] };
+    const requestedLimit = Number.isFinite(Number(opts.candidateLimit)) ? Math.floor(Number(opts.candidateLimit)) : 60;
+    const candidateLimit = Math.max(1, Math.min(60, requestedLimit));
+    const candidates = [];
+    const seen = new Set();
+    (plan.pieces || []).forEach(piece => {
+      const refId = clean(piece && piece.refId);
+      if (!refId || seen.has(refId) || !catalog.byId.has(refId) || candidates.length >= candidateLimit) return;
+      seen.add(refId);
+      const reference = catalog.byId.get(refId);
+      candidates.push({
+        id: reference.id,
+        title: boundedText(reference.title, 160),
+        categories: (reference.cats || reference.cat || []).slice(0, 4).map(value => boundedText(value, 60)),
+        hook: boundedText(reference.hook, 180),
+      });
+    });
+    return {
+      context: campaignAIContext(launch),
+      slots: (plan.pieces || []).map(piece => ({
+        pieceId: clean(piece.id),
+        offset: piece.offset,
+        date: clean(piece.fecha || piece.date),
+        phase: clean(piece.phase),
+      })),
+      candidates,
+      responseContract: 'Devuelve JSON: {"selections":[{"pieceId":"ID de slot","refId":"ID de candidata","reason":"motivo breve"}]}. Usa únicamente los IDs entregados; no agregues slots ni referencias.',
+    };
+  }
+
+  function planAIEligibility(options) {
+    const opts = options || {};
+    if (opts.permission !== true) return { ok: false, reason: 'permission' };
+    if (opts.configured !== true) return { ok: false, reason: 'configuration' };
+    if (opts.quota !== true) return { ok: false, reason: 'quota' };
+    if (typeof opts.request !== 'function') return { ok: false, reason: 'provider_failure' };
+    return { ok: true, reason: '' };
+  }
+
+  function normalizeAIOrderingResponse(response) {
+    let value = response;
+    if (value && typeof value === 'object' && typeof value.text === 'string') value = value.text;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); }
+      catch (_error) { return { selections: [], parseError: true }; }
+    }
+    const selections = Array.isArray(value)
+      ? value
+      : (Array.isArray(value && value.selections) ? value.selections
+        : (Array.isArray(value && value.choices) ? value.choices : []));
+    return { selections: selections.filter(item => item && typeof item === 'object'), parseError: false };
+  }
+
+  function safeAIReason(value) {
+    return boundedText(value, 240);
+  }
+
+  function validateAIOrdering(response, request, baseline) {
+    const parsed = normalizeAIOrderingResponse(response);
+    const errors = [];
+    const slots = new Set((request.slots || []).map(slot => slot.pieceId).filter(Boolean));
+    const candidateIds = new Set((request.candidates || []).map(candidate => candidate.id).filter(Boolean));
+    const pieces = (baseline && baseline.plan && baseline.plan.pieces) || [];
+    const fallbackOwner = new Map();
+    pieces.forEach(piece => {
+      const refId = clean(piece && piece.refId);
+      if (refId) fallbackOwner.set(refId, clean(piece.id));
+    });
+    if (parsed.parseError) errors.push({ code: 'INVALID_AI_JSON' });
+    const assignments = new Map();
+    const assignedRefs = new Set();
+    parsed.selections.forEach((selection, index) => {
+      const pieceId = clean(selection.pieceId || selection.slotId || selection.id);
+      const refId = clean(selection.refId || selection.referenceId || selection.candidateId);
+      if (!slots.has(pieceId)) {
+        errors.push({ code: 'UNKNOWN_SLOT', index, pieceId });
+        return;
+      }
+      if (!candidateIds.has(refId)) {
+        errors.push({ code: 'UNKNOWN_CANDIDATE_REF', index, refId });
+        return;
+      }
+      if (assignments.has(pieceId)) {
+        errors.push({ code: 'DUPLICATE_SLOT', index, pieceId });
+        return;
+      }
+      if (assignedRefs.has(refId)) {
+        errors.push({ code: 'DUPLICATE_REF_ID', index, refId });
+        return;
+      }
+      assignments.set(pieceId, { refId, reason: safeAIReason(selection.reason || selection.explanation) });
+      assignedRefs.add(refId);
+    });
+    // Una respuesta parcial solo puede aplicar ciclos completos de la asignación
+    // determinista. Así, la IA nunca deja duplicados al rellenar el resto offline.
+    let removed = true;
+    while (removed) {
+      removed = false;
+      Array.from(assignments.entries()).forEach(([pieceId, assignment]) => {
+        const owner = fallbackOwner.get(assignment.refId);
+        if (owner && owner !== pieceId && !assignments.has(owner)) {
+          assignments.delete(pieceId);
+          errors.push({ code: 'UNSAFE_PARTIAL_REORDER', pieceId, refId: assignment.refId });
+          removed = true;
+        }
+      });
+    }
+    return { assignments, errors, parseError: parsed.parseError };
+  }
+
+  function assistedPlanFromOrdering(baseline, references, ordering) {
+    const catalog = makeRefCatalog(references);
+    const plan = cloneData(baseline.plan);
+    const assignments = ordering.assignments || new Map();
+    plan.pieces = plan.pieces.map(piece => {
+      const assignment = assignments.get(clean(piece.id));
+      if (!assignment || !catalog.byId.has(assignment.refId)) return piece;
+      const assignedReference = catalog.byId.get(assignment.refId);
+      const next = replacePieceReference(piece, assignedReference, catalog);
+      next.production = {
+        ...(next.production || {}),
+        hook: assignedReference.hook || '',
+        descripcion: assignedReference.comentarios || '',
+      };
+      if (assignment.reason) next.recommendationReason = assignment.reason;
+      return next;
+    });
+    plan.days = dayRows((plan.pieces || []).map(piece => ({
+      offset: piece.offset,
+      day: piece.day,
+      date: piece.date,
+      fecha: piece.fecha,
+      phase: piece.phase,
+    })), plan.pieces);
+    plan.usage = calcUsage(plan.pieces);
+    return { ...baseline, plan };
+  }
+
+  function offlineAIResult(baseline, reason, errors) {
+    const plan = cloneData(baseline.plan);
+    const meta = {
+      mode: 'offline',
+      reason,
+      summary: 'Plan generado con el motor offline.',
+      aiUsageCount: 0,
+    };
+    plan.meta = { ...(plan.meta || {}), assistance: meta };
+    const launch = { ...baseline, plan };
+    return { mode: 'offline', launch, plan, meta, validation: { errors: errors || [], accepted: 0 } };
+  }
+
+  function callWithTimeout(request, payload, timeoutMs) {
+    const timeout = Number.isFinite(Number(timeoutMs)) ? Math.max(1, Math.min(30000, Math.floor(Number(timeoutMs)))) : 8000;
+    let timer;
+    const requestPromise = Promise.resolve().then(() => request(payload));
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const error = new Error('AI_TIMEOUT');
+        error.code = 'AI_TIMEOUT';
+        reject(error);
+      }, timeout);
+    });
+    return Promise.race([requestPromise, timeoutPromise]).finally(() => clearTimeout(timer));
+  }
+
+  async function arrangePlanWithAI(arg, refsArg, optsArg) {
+    const launch = (arg && arg.launch) || arg || {};
+    const references = (arg && arg.references) || refsArg || [];
+    const options = {
+      ...(arg && arg.options && typeof arg.options === 'object' ? arg.options : {}),
+      ...(optsArg && typeof optsArg === 'object' ? optsArg : {}),
+    };
+    const baseline = buildPlan(launch, references, options);
+    const eligibility = planAIEligibility(options);
+    if (!eligibility.ok) return offlineAIResult(baseline, eligibility.reason, []);
+    const request = buildAIOrderingRequest(launch, baseline, references, options);
+    let response;
+    try {
+      response = await callWithTimeout(options.request, request, options.timeoutMs);
+    } catch (error) {
+      return offlineAIResult(baseline, error && error.code === 'AI_TIMEOUT' ? 'timeout' : 'provider_failure', []);
+    }
+    const ordering = validateAIOrdering(response, request, baseline);
+    if (!ordering.assignments.size) return offlineAIResult(baseline, 'invalid_response', ordering.errors);
+    const assisted = assistedPlanFromOrdering(baseline, references, ordering);
+    const fallbackCount = Math.max(0, assisted.plan.pieces.length - ordering.assignments.size);
+    const meta = {
+      mode: 'assisted',
+      summary: `IA ordenó ${ordering.assignments.size} pieza${ordering.assignments.size === 1 ? '' : 's'}; el motor offline completó ${fallbackCount}.`,
+      aiUsageCount: 1,
+    };
+    assisted.plan.meta = { ...(assisted.plan.meta || {}), assistance: meta };
+    return { mode: 'assisted', launch: assisted, plan: assisted.plan, meta, validation: { errors: ordering.errors, accepted: ordering.assignments.size } };
   }
 
   function normalizeAIInput(input) {
@@ -749,6 +1184,8 @@
 
   return deepFreeze({
     ANCHORS,
+    arrangePlanWithAI,
+    buildAIOrderingRequest,
     DAY_END,
     DAY_START,
     PLAN_DAY_COUNT,
@@ -758,6 +1195,12 @@
     calcUsage,
     filterRefs,
     makeSlots,
+    planAIEligibility,
+    makeFreeDaySlots,
+    recommendationReason,
+    replacementCandidates,
+    replacePieceReference,
+    validateAIOrdering,
     validateAI,
   });
 });
