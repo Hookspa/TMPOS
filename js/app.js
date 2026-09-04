@@ -14,6 +14,12 @@ const safeUrl = v => {
     return /^https?:$/.test(url.protocol) ? url.href.replace(/["']/g, char => encodeURIComponent(char)) : '#';
   } catch (e) { return '#'; }
 };
+const jsArg = v => JSON.stringify(s(v))
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/'/g, '\\u0027');
+const cloneData = value => JSON.parse(JSON.stringify(value == null ? null : value));
 
 // ══════════════════════════════════════════
 // ESTADO GLOBAL
@@ -38,12 +44,110 @@ let bancoMine     = false;     // filtro "Mis referencias" (solo personalizadas)
 let bancoRandom   = false;     // orden aleatorio on/off
 let _shuffleKey   = 0;         // semilla del orden aleatorio (cambia al re-randomizar)
 let bancoSort     = 'default'; // 'default' | 'recientes' | 'usadas'
+let _bankChoiceCtx = null;      // modo temporal: elegir referencia para reemplazar pieza planificada
 // ── Contador de uso de referencias (para "Más usadas") ──
 function _refUsageMap() { try { return JSON.parse(localStorage.getItem('ao_ref_usage')) || {}; } catch (e) { return {}; } }
 function refUsage(r) { const usage = _refUsageMap(); return usage[refKey(r)] || usage[legacyRefKey(r)] || 0; }
 function bumpRefUsage(r) { try { const m = _refUsageMap(); m[refKey(r)] = (m[refKey(r)] || 0) + 1; localStorage.setItem('ao_ref_usage', JSON.stringify(m)); } catch (e) {} }
 // Timestamp aproximado de una referencia (custom/comunidad llevan 'custom-<ts>' en el id; CSV → 0).
 function refTime(r) { const m = s(r && r.id).match(/(\d{12,})/); return m ? parseInt(m[1], 10) : 0; }
+
+function isCustomRecommendationRef(r) {
+  if (!r || typeof r !== 'object') return false;
+  if (r.custom === true || r.owned === true || r.owned === false || r.community === true) return true;
+  const id = s(r.id || r.refId).trim().toLowerCase();
+  if (/^(custom|own|propia|personal)-/.test(id)) return true;
+  const src = s(r.source || r.origin || r.type || r.kind).trim().toLowerCase();
+  if (['custom', 'own', 'propia', 'personal', 'community'].includes(src)) return true;
+  const tags = []
+    .concat(Array.isArray(r.cat) ? r.cat : (s(r.cat).trim() ? [r.cat] : []))
+    .concat(Array.isArray(r.cats) ? r.cats : (s(r.cats).trim() ? [r.cats] : []));
+  return tags.some(c => ['custom', 'propia', 'personal'].includes(s(c).trim().toLowerCase()));
+}
+function recommendationRefs() {
+  return (referencias || []).filter(r => !isCustomRecommendationRef(r));
+}
+
+function calItemLocked(ci) {
+  return !!(ci && (ci.locked === true || ci.humanLocked === true || (ci.lock && ci.lock.human === true)));
+}
+function lockCalItem(ci, reason) {
+  if (!ci || typeof ci !== 'object') return ci;
+  ci.locked = true;
+  ci.humanLocked = true;
+  ci.lock = Object.assign({ human: true, reason: reason || 'manual' }, ci.lock && typeof ci.lock === 'object' ? ci.lock : {});
+  return ci;
+}
+function unlockCalItem(ci) {
+  if (!ci || typeof ci !== 'object') return ci;
+  ci.locked = false;
+  ci.humanLocked = false;
+  if (ci.lock && typeof ci.lock === 'object') {
+    delete ci.lock.human;
+    delete ci.lock.reason;
+    if (!Object.keys(ci.lock).length) delete ci.lock;
+  }
+  return ci;
+}
+function setCalItemLock(ci, locked, reason) {
+  return locked ? lockCalItem(ci, reason) : unlockCalItem(ci);
+}
+function normalizeCalItem(ci, index) {
+  if (!ci || typeof ci !== 'object') return ci;
+  if (!ci.id) ci.id = 'ci-' + index + '-' + s(ci.fecha);
+  if (!ci.source) {
+    ci.source = 'manual';
+    lockCalItem(ci, 'legacy-manual');
+  }
+  return ci;
+}
+function rejectLockedCalAction(ci, action) {
+  if (!calItemLocked(ci)) return false;
+  if (typeof uiToast === 'function') uiToast(`Publicación bloqueada: no se puede ${action || 'modificar'}.`);
+  return true;
+}
+function planRecommendationReason(ci) {
+  if (!ci) return '';
+  if (window.TempoPlan && typeof TempoPlan.recommendationReason === 'function') return TempoPlan.recommendationReason(ci);
+  return s(ci.recommendationReason || '');
+}
+function bankChoiceActive() {
+  return !!_bankChoiceCtx;
+}
+function bankChoiceTarget(ctx) {
+  const choice = ctx || _bankChoiceCtx;
+  const launch = choice && launches.find(x => x.id === choice.launchId);
+  const ci = launch && (launch.cal || []).find(item => item.id === choice.itemId);
+  return { launch, ci };
+}
+function bankChoiceOrigin(overrides) {
+  const nav = (typeof navCurrentView === 'function') ? navCurrentView() : {};
+  const prodModal = document.getElementById('prod-modal');
+  const prodOpen = !!(prodModal && prodModal.classList && prodModal.classList.contains && prodModal.classList.contains('open'));
+  return Object.assign({
+    page: nav.page || ((document.querySelector('.page.active') || {}).id || 'page-calendario').replace('page-', ''),
+    launchId: (typeof currentLaunchId !== 'undefined') ? currentLaunchId : null,
+    trackId: (typeof currentTrackId !== 'undefined') ? currentTrackId : null,
+    releaseTab: (typeof _releaseTab !== 'undefined') ? _releaseTab : 'resumen',
+    calView: (typeof calView !== 'undefined') ? calView : 'calendar',
+    calRange: (typeof calRange !== 'undefined') ? calRange : '1m',
+    weekOffset: (typeof weekOffset !== 'undefined') ? weekOffset : 0,
+    monthOffset: (typeof monthOffset !== 'undefined') ? monthOffset : 0,
+    prodOpen,
+  }, overrides || {});
+}
+function restoreBankChoiceOrigin(origin) {
+  const target = origin || {};
+  if (target.launchId && launches.find(x => x.id === target.launchId)) currentLaunchId = target.launchId;
+  if (typeof calView !== 'undefined' && target.calView) calView = target.calView;
+  if (typeof calRange !== 'undefined' && target.calRange) calRange = target.calRange;
+  if (typeof weekOffset !== 'undefined' && Number.isFinite(Number(target.weekOffset))) weekOffset = Number(target.weekOffset);
+  if (typeof monthOffset !== 'undefined' && Number.isFinite(Number(target.monthOffset))) monthOffset = Number(target.monthOffset);
+  const page = target.page || 'calendario';
+  if (typeof showPage === 'function') showPage(page, true);
+  if (target.prodOpen && target.launchId && target.itemId && typeof openProduction === 'function') openProduction(target.launchId, target.itemId);
+  else if (typeof renderCalendar === 'function' && page === 'calendario') renderCalendar();
+}
 
 // ══════════════════════════════════════════
 // TRADUCCIÓN AL ESPAÑOL (banco de referencias) — toggle + caché + Google (gratis, CORS ok)
@@ -250,6 +354,7 @@ function applyCatalogReady(state) {
 
   mergeCustomRefs();
   bancoCargado = true;
+  if (typeof flushOfflineCalendarGenerationQueue === 'function') flushOfflineCalendarGenerationQueue();
   _catalogRetrying = false;
   renderCatalogStatus();
   if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
@@ -264,6 +369,7 @@ function handleCatalogLoaderState(state) {
   if (state.status === 'degraded') {
     // DEMO + referencias propias siguen disponibles hasta que la reconexión automática funcione.
     bancoCargado = true;
+    if (typeof flushOfflineCalendarGenerationQueue === 'function') flushOfflineCalendarGenerationQueue();
     _catalogRetrying = false;
     renderCatalogStatus();
     if (((document.querySelector('.page.active') || {}).id === 'page-banco')) {
@@ -650,6 +756,7 @@ function navBack() {
   updateBackBtn();
 }
 function showPage(id, skipRecord) {
+  if (_bankChoiceCtx && id !== 'banco') cancelBankChoiceReplacement(null, { restore: false, silent: true });
   if (!skipRecord) navRecord();         // graba la vista que dejamos (antes de cambiar)
   document.body.classList.remove('sidebar-open'); // cierra el menú en móvil al navegar
   if (typeof cerrarMoreSheet === 'function') cerrarMoreSheet(); // cierra la hoja "Más" si estaba abierta
@@ -762,8 +869,28 @@ function forBadgeHTML(fors, small) {
 }
 function renderBancoContext() {
   const host = document.getElementById('ctx-banco'); if (!host) return;
+  if (_bankChoiceCtx) {
+    const { launch, ci } = bankChoiceTarget();
+    if (!launch || !ci) {
+      cancelBankChoiceReplacement(null, { restore: false, silent: true });
+      host.innerHTML = launchContextHTML();
+      return;
+    }
+    host.innerHTML = launchContextHTML()
+      + `<div class="catalog-state" role="status" style="margin:-8px 0 18px;border-color:color-mix(in srgb,var(--accent) 40%,transparent)">
+        <span class="catalog-state-icon" style="color:var(--accent)">${icon('refresh',17)}</span>
+        <div class="catalog-state-copy">
+          <div class="catalog-state-title">Eligiendo referencia para reemplazar</div>
+          <div class="catalog-state-detail">${esc(ci.title || 'Pieza planificada')} · ${esc(ci.fecha || 'sin fecha')} · ${esc(launch.name || 'Lanzamiento')}</div>
+        </div>
+        <div class="catalog-state-actions">
+          <button type="button" class="btn btn-ghost" onclick="cancelBankChoiceReplacement()" style="font-size:var(--text-xs);padding:6px 11px">${icon('close',12)} Cancelar</button>
+        </div>
+      </div>`;
+    return;
+  }
   const a = activeLaunch();
-  const n = a ? a.ideas.length : 0;
+  const n = a ? (a.ideas || []).length : 0;
   host.innerHTML = launchContextHTML()
     + `<div style="margin:-10px 0 18px;font-family:var(--font-ui);font-size:var(--text-2xs);color:var(--text-muted);letter-spacing:var(--track-caps-sm);display:flex;align-items:center;gap:5px"><span style="color:var(--accent)">${icon('starFill',12)}</span><strong style="color:var(--accent)">${n}</strong> idea${n===1?'':'s'} seleccionada${n===1?'':'s'} para ${a ? esc(a.name) : 'este lanzamiento'} · la estrella agrega o quita</div>`;
 }
@@ -799,8 +926,12 @@ function renderBanco() {
   paginaActual = Math.max(1, Math.min(paginaActual, totalPags));
   const shown = Math.min(paginaActual * porPagina, filtered.length); // "Cargar más": acumulativo (no por páginas)
   const slice  = filtered.slice(0, shown);
+  const choosing = bankChoiceActive();
   const cards = slice.map(r => {
-    const sel = ideaSelected(r);
+    const sel = !choosing && ideaSelected(r);
+    const chooseBtn = `<button type="button" onclick="event.stopPropagation();chooseBankReplacement(${r._idx})" title="Elegir esta referencia para reemplazar la pieza" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.72);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:3px;padding:4px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--accent);font-family:var(--font-ui);font-size:var(--text-2xs);z-index:2">${icon('check',11)} Elegir</button>`;
+    const starBtn = `<button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
+          style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>`;
     return `
     <article class="ref-page-card fade-in">
       <div class="ref-page-thumb">
@@ -808,8 +939,7 @@ function renderBanco() {
           return th
           ? `<img id="${iid}" class="ref-thumb-img" src="${esc(safeUrl(th))}" alt="${esc(r.title)}" loading="lazy" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:none">${icon(s(r.icon)||'pin',30)}</span>`
           : `<img id="${iid}" class="ref-thumb-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="lazy" style="display:none" onerror="this.style.display='none';this.parentNode.querySelector('.ref-thumb-fallback').style.display='flex'"><span class="ref-thumb-fallback" style="display:flex">${icon(s(r.icon)||'pin',30)}</span>`; })()}
-        <button onclick="event.stopPropagation();toggleIdea(${r._idx},this)" title="Seleccionar idea para el lanzamiento activo"
-          style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.45);border-radius:50%;padding:3px;border:none;cursor:pointer;display:flex;color:${sel?'var(--accent)':'#fff'};opacity:${sel?1:0.85};transition:all 0.2s;z-index:2">${icon(sel?'starFill':'star',15)}</button>
+        ${choosing ? chooseBtn : starBtn}
         ${r.custom ? customBadgeHTML(r) : ''}
         ${r.link ? `<a href="${esc(safeUrl(r.link))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="position:absolute;bottom:6px;right:6px;font-size:var(--text-2xs);font-family:var(--font-ui);background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:2px;color:var(--accent);text-decoration:none;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);z-index:2">↗ VER</a>` : ''}
       </div>
@@ -823,7 +953,7 @@ function renderBanco() {
     </article>`;
   }).join('');
   // Tarjeta "+ Crear post desde cero" siempre al inicio (con "Cargar más" el inicio siempre está visible).
-  const addCard = `<button type="button" class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
+  const addCard = choosing ? '' : `<button type="button" class="ref-page-card fade-in" onclick="crearPostDesdeCero()" style="cursor:pointer;display:flex;align-items:center;justify-content:center;border-style:dashed">
         <span style="display:block;text-align:center;color:var(--text-muted);padding:20px">${icon('plus',26)}<span style="display:block;font-size:var(--text-xs);font-family:var(--font-ui);margin-top:8px;letter-spacing:var(--track-caps)">CREAR POST<br>DESDE CERO</span></span>
       </button>`;
   const restantes = filtered.length - shown;
@@ -873,8 +1003,13 @@ function renderBancoToolbar() {
   const host = document.getElementById('banco-toolbar'); if (!host) return;
   const mineN = referencias.filter(r => r.custom).length;
   const sortOpts = [['default','Por defecto'],['recientes','Recientes'],['usadas','Más usadas']];
+  const choosing = bankChoiceActive();
+  const modeNotice = choosing
+    ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--accent)">${icon('check',13)} Banco en modo elección</div>`
+    : '';
   host.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      ${modeNotice}
       <div style="flex:1;min-width:170px;position:relative;display:flex;align-items:center">
         <span style="position:absolute;left:10px;color:var(--text-dim);display:flex;pointer-events:none">${icon('search',14)}</span>
         <input id="banco-search" class="input" type="text" value="${esc(bancoSearch)}" placeholder="Buscar por título, hook o tag…"
@@ -884,7 +1019,7 @@ function renderBancoToolbar() {
       <select class="input" title="Ordenar" onchange="setBancoSort(this.value)" style="font-size:var(--text-xs);padding:7px 10px;width:auto">
         ${sortOpts.map(o => `<option value="${o[0]}" ${bancoSort===o[0]?'selected':''}>Orden: ${o[1]}</option>`).join('')}
       </select>
-      <button onclick="toggleBancoMine()" title="Ver solo tus referencias personalizadas"
+      ${choosing ? '' : `<button onclick="toggleBancoMine()" title="Ver solo tus referencias personalizadas"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid ${bancoMine?"var(--muted)":"var(--border)"};background:${bancoMine?"var(--surface2)":"transparent"};color:${bancoMine?"var(--text)":"var(--text-muted)"}">${icon(bancoMine?'starFill':'star',13)} Mis referencias${mineN?` · ${mineN}`:''}</button>
       <button onclick="toggleBancoRandom()" title="Orden aleatorio (on/off)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid ${bancoRandom?"var(--muted)":"var(--border)"};background:${bancoRandom?"var(--surface2)":"transparent"};color:${bancoRandom?"var(--text)":"var(--text-muted)"}">${icon('shuffle',13)} Aleatorio ${bancoRandom?'ON':'OFF'}</button>
@@ -894,7 +1029,7 @@ function renderBancoToolbar() {
       <button onclick="importarRefDesdeLink()" title="Crear una referencia propia desde un link (TikTok/YT/Vimeo auto-rellenan título y miniatura)"
         style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--radius-sm);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('link',13)} Importar desde link</button>
       ${(typeof isAdmin === 'function' && isAdmin()) ? `<button onclick="abrirModeracion()" title="Moderar el pool de la comunidad (reportes)"
-        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}
+        style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:4px;font-family:var(--font-ui);font-size:var(--text-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',13)} Moderación</button>` : ''}`}
     </div>`;
   ensureTagDatalist();
   if (typeof hydrateIcons === 'function') hydrateIcons(host);
@@ -1061,19 +1196,27 @@ function openRefBoxdrop(idx) {
   // Si es TikTok sin caché, resuelve la miniatura async y la coloca al vuelo.
   if (!thumb && /tiktok\.com/.test(link)) resolveTikTokThumb(link, 'bd-thumb-img');
 
-  const selLabel = a ? `Seleccionar para ${s(a.name)}` : 'Seleccionar idea';
-  document.getElementById('bd-actions').innerHTML = `
-    <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${sel?'color-mix(in srgb, var(--accent) 30%, transparent)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
-    <button onclick="generarContenidoBanco(${idx})"
-      style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
-    <button onclick="abrirModalCal(${idx})"
-      style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
-    ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${r.shared?'color-mix(in srgb,var(--ok) 40%,transparent)':'var(--border)'};background:${r.shared?'color-mix(in srgb,var(--ok) 8%,transparent)':'transparent'};color:${r.shared?'var(--ok)':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:var(--ok);cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
-    ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+s(r.author)):''}</span>
-    <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
-    ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
-    ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
+  if (bankChoiceActive()) {
+    document.getElementById('bd-actions').innerHTML = `
+      <button id="bd-sel-btn" onclick="chooseBankReplacement(${idx})"
+        style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:color-mix(in srgb, var(--accent) 8%, transparent);color:var(--accent);transition:all 0.15s">${icon('check',13)} Elegir para reemplazar</button>
+      <button onclick="cancelBankChoiceReplacement()"
+        style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted);transition:all 0.15s">${icon('close',12)} Cancelar</button>`;
+  } else {
+    const selLabel = a ? `Seleccionar para ${esc(a.name)}` : 'Seleccionar idea';
+    document.getElementById('bd-actions').innerHTML = `
+      <button id="bd-sel-btn" onclick="toggleIdea(${idx}, null); openRefBoxdrop(${idx})"
+        style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${sel?'color-mix(in srgb, var(--accent) 30%, transparent)':'var(--border)'};background:transparent;color:${sel?'var(--accent)':'var(--text-muted)'};transition:all 0.15s">${icon(sel?'starFill':'star',13)} ${sel?'Seleccionada':selLabel}</button>
+      <button onclick="generarContenidoBanco(${idx})"
+        style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);background:transparent;color:var(--accent);transition:all 0.15s">${icon('ai',13)} Generar contenido</button>
+      <button onclick="abrirModalCal(${idx})"
+        style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);background:color-mix(in srgb, var(--accent) 6%, transparent);color:var(--accent);transition:all 0.15s">+ Agregar al Calendario</button>
+      ${editable ? `<label title="Si la activas, otros usuarios la verán en la comunidad. Si no, queda privada (solo tú)." style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid ${r.shared?'color-mix(in srgb,var(--ok) 40%,transparent)':'var(--border)'};background:${r.shared?'color-mix(in srgb,var(--ok) 8%,transparent)':'transparent'};color:${r.shared?'var(--ok)':'var(--text-muted)'}"><input type="checkbox" ${r.shared?'checked':''} onchange="refSetShared(${idx}, this.checked)" style="accent-color:var(--ok);cursor:pointer">${icon(r.shared?'eye':'lock',12)} Compartir con la comunidad</label>` : ''}
+      ${community ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.08);color:#a78bfa">${icon('star',12)} De la comunidad${s(r.author)?(' · '+esc(r.author)):''}</span>
+      <button onclick="reportCommunityRef(${idx})" title="Reportar a moderación" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted)">${icon('flag',12)} Reportar</button>
+      ${(typeof isAdmin==='function'&&isAdmin()) ? `<button onclick="hideCommunityRef(${idx})" title="Ocultar de la comunidad (super-admin)" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2)">${icon('eyeOff',12)} Ocultar</button>` : ''}` : ''}
+      ${editable ? `<button onclick="eliminarPostCustom(${idx})" style="padding:5px 12px;border-radius:3px;font-size:var(--text-xs);font-family:var(--font-ui);cursor:pointer;border:1px solid rgba(255,77,77,0.3);background:transparent;color:var(--accent2);transition:all 0.15s">${icon('trash',12)} Eliminar post</button>` : ''}`;
+  }
   const cres = document.getElementById('bd-content-result'); if (cres) cres.innerHTML = '';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('#boxdrop .boxdrop-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
@@ -1142,6 +1285,7 @@ function cerrarModalCal(e) {
     document.getElementById('modal-cal').classList.remove('open');
 }
 function confirmarCal() {
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
   const fecha = document.getElementById('mc-fecha').value;
   if (!fecha) { document.getElementById('mc-status').style.color = 'var(--accent2)'; document.getElementById('mc-status').textContent = 'Selecciona una fecha'; return; }
   const campId = (document.getElementById('mc-camp') || {}).value || '';
@@ -1155,26 +1299,397 @@ function confirmarCal() {
     const arr = src.kind === 'genprev' ? (_a.generatedPrev || []) : (_a.generated || []);
     const g = arr[src.idx]; if (!g) return; // las ideas IA viven en el release activo
 
-    item = { id: 'ci-' + Date.now(), title: s(g.title), cat: s(g.cat) || 'awareness', fecha, pauta, refLink: s(g.refLink || ''),
-      production: { objetivo: s(g.objetivo || ''), hook: s(g.hook || ''), descripcion: s(g.descripcion || ''), plataforma: s(g.format || ''), estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
+    item = lockCalItem({ id: 'ci-' + Date.now(), source: 'manual', title: s(g.title), cat: s(g.cat) || 'awareness', fecha, pauta, refLink: s(g.refLink || ''),
+      production: { objetivo: s(g.objetivo || ''), hook: s(g.hook || ''), descripcion: s(g.descripcion || ''), plataforma: s(g.format || ''), estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } }, 'manual');
   } else {
     const r = referencias[src.idx]; if (!r) return;
     bumpRefUsage(r);   // contador para "Más usadas"
     const cats = (r.cat || []).filter(Boolean);
     // Arrastra TODA la info de la referencia del banco (cats, for, link, miniatura, ícono + hook/descripción al brief).
-    item = { id: 'ci-' + Date.now(), title: s(r.title), cat: cats[0] || 'awareness', cats: cats,
+    item = lockCalItem({ id: 'ci-' + Date.now(), source: 'manual', title: s(r.title), cat: cats[0] || 'awareness', cats: cats,
       for: (r.for || []).filter(Boolean), fecha, pauta, refIdx: src.idx, refLink: s(r.link),
       thumb: s(r.thumb || ''), icon: s(r.icon || ''),
       production: { objetivo: '', hook: s(r.hook || ''), descripcion: s(r.comentarios || ''),
-        plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
+        plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } }, 'manual');
   }
   target.cal = target.cal || [];
+  invalidatePendingCalendarAssistance(target);
   target.cal.push(item);
   saveLaunches();
   document.getElementById('mc-status').style.color = 'var(--ok)';
   document.getElementById('mc-status').textContent = `✓ Agregado a ${s(target.name)}`;
   if (typeof renderCalendar === 'function' && (document.querySelector('.page.active') || {}).id === 'page-calendario') renderCalendar();
   setTimeout(() => { document.getElementById('modal-cal').classList.remove('open'); }, 800);
+}
+
+let _calGenerationUndo = null;
+let _calendarGenerationVersion = new Map();
+function invalidatePendingCalendarAssistance(launch) {
+  if (!launch || !launch.id) return;
+  _calendarGenerationVersion.set(launch.id, (_calendarGenerationVersion.get(launch.id) || 0) + 1);
+}
+// La generación de recuperación no depende de red ni de IA. Se difiere al siguiente
+// microtask para que guardar el ADN nunca deje el formulario esperando al calendario.
+let _offlineCalendarGenerationQueue = new Set();
+let _offlineCalendarGenerationConfirmed = new Set();
+let _offlineCalendarApprovalEpoch = new Map();
+let _offlineCalendarGenerationScheduled = false;
+let _offlineCalendarConfirmationPending = false;
+function bumpOfflineCalendarApprovalEpoch(launchId) {
+  const next = (_offlineCalendarApprovalEpoch.get(launchId) || 0) + 1;
+  _offlineCalendarApprovalEpoch.set(launchId, next);
+  return next;
+}
+function validLaunchDate(value) {
+  const iso = s(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const [year, month, day] = iso.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return !Number.isNaN(d.getTime()) &&
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day;
+}
+function artistHasSufficientDNA(artist) {
+  const adn = (artist && artist.adn) || {};
+  return !!(
+    s((adn.personality || {}).tone).trim() ||
+    ((adn.personality || {}).archetypes || []).length ||
+    s((adn.sound || {}).genres).trim() ||
+    s((adn.universe || {}).themes).trim()
+  );
+}
+function offlineCalendarFreeDays(launch) {
+  if (!launch || !window.TempoPlan || typeof TempoPlan.makeFreeDaySlots !== 'function') return [];
+  const occupied = new Set((launch.cal || []).filter(calItemLocked).map(item => s(item.fecha || item.date)).filter(Boolean));
+  return TempoPlan.makeFreeDaySlots(launch, 44, occupied);
+}
+function canAutoGenerateOfflineCalendar(launch, artist) {
+  if (!launch || launch.type === 'evergreen' || launch.status === 'evergreen' || !validLaunchDate(launch.date)) return false;
+  if (!artistHasSufficientDNA(artist) || !offlineCalendarFreeDays(launch).length) return false;
+  if (launch.planMeta && (launch.planMeta.autoGeneratedFromADN || launch.planMeta.autoGenerationDeclinedFromADN)) return false;
+  return !(typeof canDo === 'function' && !canDo('edit_launch'));
+}
+function flushOfflineCalendarGenerationQueue() {
+  if (_offlineCalendarConfirmationPending) return 0;
+  _offlineCalendarGenerationScheduled = false;
+  // El catálogo puede cargar después del ADN. Conservamos la cola hasta que haya un
+  // Banco utilizable, sin recurrir a una petición de red ni sincronización cloud.
+  if (!bancoCargado || !window.TempoPlan || typeof TempoPlan.buildPlan !== 'function') return 0;
+  let generated = 0;
+  Array.from(_offlineCalendarGenerationQueue).forEach(launchId => {
+    if (!_offlineCalendarGenerationConfirmed.has(launchId)) return;
+    const launch = launches.find(item => item.id === launchId);
+    const artist = launch && artists.find(item => item.id === launch.artistId);
+    if (!canAutoGenerateOfflineCalendar(launch, artist)) {
+      _offlineCalendarGenerationQueue.delete(launchId);
+      _offlineCalendarGenerationConfirmed.delete(launchId);
+      return;
+    }
+    const result = generateOfflineCalendarForLaunch(launchId, { silent: true, automatic: true, assist: false });
+    _offlineCalendarGenerationQueue.delete(launchId);
+    _offlineCalendarGenerationConfirmed.delete(launchId);
+    if (result) generated += 1;
+  });
+  return generated;
+}
+function queueOfflineCalendarGeneration(artistId) {
+  const artist = artists.find(item => item.id === artistId) || ((typeof activeArtist === 'function') ? activeArtist() : null);
+  if (!artist || !artistHasSufficientDNA(artist)) return 0;
+  launches.forEach(launch => {
+    if (launch.artistId === artist.id && canAutoGenerateOfflineCalendar(launch, artist) && !_offlineCalendarGenerationQueue.has(launch.id)) {
+      bumpOfflineCalendarApprovalEpoch(launch.id);
+      _offlineCalendarGenerationQueue.add(launch.id);
+    }
+  });
+  if (_offlineCalendarGenerationQueue.size && !_offlineCalendarGenerationScheduled && !_offlineCalendarConfirmationPending) {
+    _offlineCalendarGenerationScheduled = true;
+    Promise.resolve().then(async () => {
+      const pending = Array.from(_offlineCalendarGenerationQueue).filter(launchId => !_offlineCalendarGenerationConfirmed.has(launchId));
+      const pendingEpochs = new Map(pending.map(launchId => [launchId, _offlineCalendarApprovalEpoch.get(launchId) || 0]));
+      if (pending.length) {
+        // Un consentimiento explícito antes de la primera recomendación: guardar el ADN no altera
+        // el calendario por sorpresa. El resultado sigue siendo local-only y puede deshacerse.
+        let approved = false;
+        _offlineCalendarConfirmationPending = true;
+        try {
+          approved = typeof uiConfirm === 'function'
+            ? await uiConfirm('¿Generar recomendaciones base desde el ADN? Solo se llenarán días libres; las publicaciones bloqueadas se conservarán.', { okText: 'Generar recomendaciones' })
+            : false;
+        } finally {
+          _offlineCalendarConfirmationPending = false;
+        }
+        if (!approved) {
+          pending.forEach(launchId => {
+            if (_offlineCalendarApprovalEpoch.get(launchId) !== pendingEpochs.get(launchId)) return;
+            _offlineCalendarGenerationQueue.delete(launchId);
+            const launch = launches.find(item => item.id === launchId);
+            if (launch) launch.planMeta = Object.assign({}, launch.planMeta || {}, { autoGenerationDeclinedFromADN: true });
+          });
+          saveLaunchesLocal();
+          _offlineCalendarGenerationScheduled = false;
+          const nextLaunchId = Array.from(_offlineCalendarGenerationQueue).find(launchId => !_offlineCalendarGenerationConfirmed.has(launchId));
+          if (nextLaunchId) {
+            const nextLaunch = launches.find(item => item.id === nextLaunchId);
+            if (nextLaunch) queueOfflineCalendarGeneration(nextLaunch.artistId);
+          }
+          return 0;
+        }
+        pending.forEach(launchId => {
+          if (_offlineCalendarGenerationQueue.has(launchId) && _offlineCalendarApprovalEpoch.get(launchId) === pendingEpochs.get(launchId)) {
+            _offlineCalendarGenerationConfirmed.add(launchId);
+          }
+        });
+      }
+      const generated = flushOfflineCalendarGenerationQueue();
+      _offlineCalendarGenerationScheduled = false;
+      const nextLaunchId = Array.from(_offlineCalendarGenerationQueue).find(launchId => !_offlineCalendarGenerationConfirmed.has(launchId));
+      if (nextLaunchId) {
+        const nextLaunch = launches.find(item => item.id === nextLaunchId);
+        if (nextLaunch) queueOfflineCalendarGeneration(nextLaunch.artistId);
+      }
+      return generated;
+    }).catch(() => {
+      _offlineCalendarGenerationScheduled = false;
+      _offlineCalendarConfirmationPending = false;
+      return 0;
+    });
+  }
+  return _offlineCalendarGenerationQueue.size;
+}
+function planPieceToCalItem(piece) {
+  const prod = piece.production || {};
+  return {
+    id: piece.id || ('ci-plan-' + Date.now()),
+    source: 'plan',
+    planPieceId: piece.id || '',
+    locked: false,
+    humanLocked: false,
+    anchor: !!piece.anchor,
+    anchorKey: s(piece.anchorKey || ''),
+    title: s(piece.title || 'Pieza'),
+    cat: s(piece.cat || ((piece.cats || [])[0]) || 'awareness'),
+    cats: Array.isArray(piece.cats) ? piece.cats.slice() : [s(piece.cat || 'awareness')],
+    for: Array.isArray(piece.for) ? piece.for.slice() : [],
+    fecha: s(piece.fecha || piece.date),
+    pauta: 'organico',
+    refId: s(piece.refId || ''),
+    refIdx: Number.isInteger(piece.refIdx) ? piece.refIdx : -1,
+    refLink: s(piece.refLink || ''),
+    thumb: s(piece.thumb || ''),
+    icon: s(piece.icon || ''),
+    production: {
+      objetivo: s(prod.objetivo || ''),
+      hook: s(prod.hook || ''),
+      descripcion: s(prod.descripcion || ''),
+      plataforma: s(prod.plataforma || ''),
+      estado: s(prod.estado || 'pendiente') || 'pendiente',
+      responsable: s(prod.responsable || ''),
+      guion: Array.isArray(prod.guion) ? prod.guion.slice() : [],
+      shots: Array.isArray(prod.shots) ? prod.shots.slice() : [],
+      assets: Array.isArray(prod.assets) ? prod.assets.slice() : [],
+    },
+  };
+}
+function planAIFallbackLabel(reason) {
+  const labels = {
+    permission: 'Tu rol no tiene acceso a la asistencia de IA.',
+    quota: 'La cuota de IA está agotada; usamos el motor offline.',
+    configuration: 'La asistencia de IA no está disponible; usamos el motor offline.',
+    timeout: 'La asistencia tardó demasiado; usamos el motor offline.',
+    provider_failure: 'La asistencia no estuvo disponible; usamos el motor offline.',
+    invalid_response: 'La respuesta asistida no fue válida; usamos el motor offline.',
+  };
+  return labels[reason] || 'Usamos el motor offline para completar el plan.';
+}
+function planAIAttemptOptions() {
+  const permission = (typeof canDo !== 'function') || canDo('use_generador_ia');
+  const limit = (typeof checkPlanLimit === 'function') ? checkPlanLimit('ideas_ia') : { ok: true };
+  const configured = typeof aiReady === 'function' && aiReady();
+  return { permission, configured, quota: !!(limit && limit.ok), limit };
+}
+function buildPlanOrderingPrompt(request) {
+  const context = request && request.context || {};
+  const slots = (request && request.slots || []).map(slot => (
+    `- pieceId: ${s(slot.pieceId)} | día: ${slot.offset} | fecha: ${s(slot.date)} | fase: ${s(slot.phase)}`
+  )).join('\n');
+  const candidates = (request && request.candidates || []).map(candidate => (
+    `- id: ${s(candidate.id)} | título: ${s(candidate.title)} | categorías: ${(candidate.categories || []).map(s).join(', ')} | hook: ${s(candidate.hook)}`
+  )).join('\n');
+  return `Ordena únicamente candidatas de contenido ya filtradas para una campaña musical. No inventes referencias, IDs, fechas ni slots. No publiques contenido ni cambies permisos.
+
+CONTEXTO ACOTADO:
+Campaña: ${s(context.campaign)}
+Fecha: ${s(context.releaseDate)}
+Concepto: ${s(context.concept)}
+Emoción: ${s(context.emotion)}
+Mensaje: ${s(context.message)}
+Keywords: ${s(context.keywords)}
+Tono: ${s(context.tone)}
+Extracto de letra: ${s(context.lyricsExcerpt)}
+
+SLOTS DISPONIBLES:
+${slots}
+
+CANDIDATAS PERMITIDAS:
+${candidates}
+
+${s(request && request.responseContract)}`;
+}
+function applyAssistedCalendarPlan(target, result, opts) {
+  // Las campañas always-on se editan pieza a pieza: nunca deben recibir ni
+  // sobrescribir un plan de lanzamiento, incluso si esta función se invoca
+  // fuera de los controles de la interfaz.
+  if (!target || target.type === 'evergreen' || target.status === 'evergreen' || !result || !result.plan) return null;
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return null;
+  if (opts && opts.generationVersion != null && _calendarGenerationVersion.get(target.id) !== opts.generationVersion) return null;
+  const retained = (target.cal || []).filter(item => calItemLocked(item) || s(item.source) !== 'plan');
+  (target.cal || []).forEach(item => invalidateProductionContentGeneration(target.id, item.id));
+  const retainedIds = new Set(retained.map(item => item.id));
+  const generated = (result.plan.pieces || []).map(planPieceToCalItem).filter(item => !retainedIds.has(item.id));
+  target.plan = result.plan;
+  target.planMeta = Object.assign({}, target.planMeta || {}, {
+    generatedAt: new Date().toISOString(),
+    generatedCount: generated.length,
+    lockedCount: retained.filter(calItemLocked).length,
+    mode: result.mode,
+    summary: s(result.meta && result.meta.summary),
+    fallbackReason: s(result.meta && result.meta.reason),
+    assistance: {
+      mode: result.mode,
+      summary: s(result.meta && result.meta.summary),
+      reason: s(result.meta && result.meta.reason),
+    },
+  });
+  target.cal = retained.concat(generated);
+  saveLaunchesLocal();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderLaunchDetail === 'function' && currentLaunchId === target.id) renderLaunchDetail();
+  if (!(opts && opts.silent) && typeof uiToast === 'function') {
+    uiToast(result.mode === 'assisted'
+      ? 'Calendario ordenado con asistencia revisable.'
+      : planAIFallbackLabel(result.meta && result.meta.reason));
+  }
+  return result;
+}
+async function assistCalendarPlan(target, opts) {
+  if (!target || target.type === 'evergreen' || target.status === 'evergreen' || !window.TempoPlan || typeof TempoPlan.arrangePlanWithAI !== 'function') return null;
+  if (typeof canDo === 'function' && !canDo('edit_launch')) return null;
+  const access = planAIAttemptOptions();
+  const retained = (target.cal || []).filter(item => calItemLocked(item) || s(item.source) !== 'plan');
+  const planningTarget = Object.assign({}, target, { cal: retained });
+  const result = await TempoPlan.arrangePlanWithAI(planningTarget, recommendationRefs(), {
+    freeDaysOnly: true,
+    maxPieces: 44,
+    excludeCustom: true,
+    permission: access.permission,
+    configured: access.configured,
+    quota: access.quota,
+    timeoutMs: 8000,
+    request: async request => {
+      const response = await callClaude(buildPlanOrderingPrompt(request), 3200, 'plan_content_ordering');
+      return response && response.text;
+    },
+  });
+  // La única escritura asistida conserva exactamente el mismo flujo local de
+  // aplicación. La respuesta nunca transporta proveedor, modelo ni coste.
+  const applied = applyAssistedCalendarPlan(target, result, opts);
+  if (applied && result.mode === 'assisted' && typeof bumpTeamCounter === 'function') {
+    bumpTeamCounter('ideas_generadas_mes');
+  }
+  return applied;
+}
+function generateOfflineCalendarForLaunch(launchId, opts) {
+  const target = launches.find(x => x.id === launchId) || activeLaunch();
+  if (!target || target.type === 'evergreen' || target.status === 'evergreen' || !validLaunchDate(target.date) || !window.TempoPlan || typeof TempoPlan.buildPlan !== 'function') return null;
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return null;
+  // Una regeneración explícita del usuario gana sobre cualquier consentimiento ADN pendiente.
+  if (!(opts && opts.automatic)) {
+    bumpOfflineCalendarApprovalEpoch(target.id);
+    _offlineCalendarGenerationQueue.delete(target.id);
+    _offlineCalendarGenerationConfirmed.delete(target.id);
+  }
+  const generationVersion = (_calendarGenerationVersion.get(target.id) || 0) + 1;
+  _calendarGenerationVersion.set(target.id, generationVersion);
+  _calGenerationUndo = {
+    launchId: target.id,
+    cal: cloneData(target.cal || []),
+    plan: cloneData(target.plan || null),
+    updatedAt: target._updatedAt,
+    meta: cloneData(target.planMeta || null),
+  };
+  const currentCal = target.cal || [];
+  const retained = currentCal.filter(item => calItemLocked(item) || s(item.source) !== 'plan');
+  const planningTarget = Object.assign({}, target, { cal: retained });
+  const planLaunch = TempoPlan.buildPlan(planningTarget, recommendationRefs(), {
+    freeDaysOnly: true,
+    maxPieces: 44,
+    excludeCustom: true,
+    previousUsage: {},
+  });
+  currentCal.forEach(item => invalidateProductionContentGeneration(target.id, item.id));
+  const retainedIds = new Set(retained.map(item => item.id));
+  const generated = (planLaunch.plan.pieces || []).map(planPieceToCalItem).filter(item => !retainedIds.has(item.id));
+  target.plan = planLaunch.plan;
+  target.planMeta = Object.assign({}, target.planMeta || {}, {
+    generatedOfflineAt: new Date().toISOString(),
+    generatedCount: generated.length,
+    lockedCount: retained.filter(calItemLocked).length,
+  });
+  if (opts && opts.automatic) target.planMeta.autoGeneratedFromADN = true;
+  target.cal = retained.concat(generated);
+  saveLaunchesLocal();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderLaunchDetail === 'function' && currentLaunchId === target.id) renderLaunchDetail();
+  if (!(opts && opts.silent) && typeof uiToast === 'function') uiToast(`Calendario base generado: ${generated.length} día${generated.length === 1 ? '' : 's'} libre${generated.length === 1 ? '' : 's'}.`);
+  // El calendario útil ya existe antes de intentar IA. Ninguna ausencia de
+  // permiso/configuración/cuota ni un timeout puede retrasar esta generación.
+  if (!(opts && opts.assist === false)) {
+    Promise.resolve()
+      .then(() => assistCalendarPlan(target, { silent: !!(opts && opts.silent), automatic: !!(opts && opts.automatic), generationVersion }))
+      .catch(() => undefined);
+  }
+  return { launch: target, generatedCount: generated.length, lockedCount: retained.filter(calItemLocked).length, plan: target.plan };
+}
+function undoOfflineCalendarGeneration(launchId) {
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
+  const snap = _calGenerationUndo;
+  const target = launches.find(x => x.id === (launchId || (snap && snap.launchId)));
+  if (!snap || !target || target.id !== snap.launchId) return false;
+  target.cal = cloneData(snap.cal);
+  if (snap.plan === null) delete target.plan; else target.plan = cloneData(snap.plan);
+  if (snap.meta === null) delete target.planMeta; else target.planMeta = cloneData(snap.meta);
+  if (snap.updatedAt === undefined) delete target._updatedAt; else target._updatedAt = snap.updatedAt;
+  _calendarGenerationVersion.set(target.id, (_calendarGenerationVersion.get(target.id) || 0) + 1);
+  _calGenerationUndo = null;
+  saveLaunchesLocal();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderLaunchDetail === 'function' && currentLaunchId === target.id) renderLaunchDetail();
+  if (typeof uiToast === 'function') uiToast('Calendario restaurado.');
+  return true;
+}
+function generateActiveCalendarOffline() {
+  return regenerateActiveCalendarOffline();
+}
+async function regenerateActiveCalendarOffline() {
+  const a = activeLaunch();
+  if (!a) { if (typeof uiAlert === 'function') uiAlert('Selecciona un lanzamiento primero.'); return null; }
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return null;
+  const ok = typeof uiConfirm !== 'function'
+    ? true
+    : await uiConfirm('¿Regenerar el calendario base? Se conservarán solo las publicaciones bloqueadas; el plan y las plantillas actuales se reemplazarán.', { okText: 'Regenerar' });
+  if (!ok) return null;
+  return generateOfflineCalendarForLaunch(a.id, { requirePermission: true });
+}
+async function undoActiveCalendarOffline() {
+  const a = activeLaunch();
+  if (!a) return false;
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
+  const ok = typeof uiConfirm !== 'function'
+    ? true
+    : await uiConfirm('¿Deshacer la generación del calendario? Se restaurará el calendario anterior.', { okText: 'Deshacer' });
+  if (!ok) return false;
+  return undoOfflineCalendarGeneration(a.id);
 }
 
 // Crea un post directo en el calendario (NO se guarda en el banco de referencias) al hacer click en un día.
@@ -1184,9 +1699,9 @@ function crearPostEnDia(dk) {
   const camps = (typeof calCampaigns === 'function') ? calCampaigns() : [];
   const target = activeLaunch() || (camps[0] && camps[0].launch);
   if (!target) { if (typeof uiToast === 'function') uiToast('Crea una campaña o lanzamiento primero'); return; }
-  const item = { id: 'ci-' + Date.now(), title: 'Nuevo post', cat: 'awareness', fecha: dk, pauta: 'organico',
-    production: { objetivo: '', hook: '', descripcion: '', plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } };
-  target.cal = target.cal || []; target.cal.push(item);
+  const item = lockCalItem({ id: 'ci-' + Date.now(), source: 'manual', title: 'Nuevo post', cat: 'awareness', fecha: dk, pauta: 'organico',
+    production: { objetivo: '', hook: '', descripcion: '', plataforma: '', estado: 'pendiente', responsable: '', guion: [], shots: [], assets: [] } }, 'manual');
+  target.cal = target.cal || []; invalidatePendingCalendarAssistance(target); target.cal.push(item);
   saveLaunches();
   if (typeof renderCalendar === 'function') renderCalendar();
   if (typeof openProduction === 'function') openProduction(target.id, item.id);
@@ -1197,18 +1712,29 @@ async function deleteCalItem(campId, itemId, ev) {
   if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return; }
   const l = launches.find(x => x.id === campId); if (!l) return;
   const ci = (l.cal || []).find(c => c.id === itemId);
+  if (rejectLockedCalAction(ci, 'borrarla')) return false;
   const title = ci ? s(ci.title) : 'este contenido';
   if (typeof uiConfirm === 'function' && !(await uiConfirm(`¿Eliminar "${title}" del calendario?`))) return;
+  invalidatePendingCalendarAssistance(l);
   l.cal = (l.cal || []).filter(c => c.id !== itemId);
   saveLaunches();
   if (typeof renderCalendar === 'function') renderCalendar();
   if (typeof uiToast === 'function') uiToast('✓ Eliminado del calendario');
+  return true;
 }
 // ── Drag & drop en la vista de calendario: arrastrar una pieza a otro día la reprograma ──
 let _calDrag = null;
 function calDragStart(e, campId, itemId) {
+  const l = launches.find(x => x.id === campId);
+  const ci = l && (l.cal || []).find(c => c.id === itemId);
+  if (rejectLockedCalAction(ci, 'arrastrarla')) {
+    _calDrag = null;
+    if (e && e.preventDefault) e.preventDefault();
+    return false;
+  }
   _calDrag = { campId, itemId };
   if (e.dataTransfer) { e.dataTransfer.setData('text/plain', campId + '|' + itemId); e.dataTransfer.effectAllowed = 'move'; }
+  return true;
 }
 function calDragEnd() { _calDrag = null; document.querySelectorAll('.cal-day.cal-drop').forEach(d => d.classList.remove('cal-drop')); }
 function calDropOnDay(e, dk) {
@@ -1220,11 +1746,209 @@ function calDropOnDay(e, dk) {
   if (typeof canDo === 'function' && !canDo('edit_launch')) return;
   const l = launches.find(x => x.id === p.campId); if (!l) return;
   const ci = (l.cal || []).find(c => c.id === p.itemId); if (!ci) return;
+  if (rejectLockedCalAction(ci, 'moverla')) return false;
   if (ci.fecha === dk) return;  // mismo día → nada
+  invalidatePendingCalendarAssistance(l);
+  invalidateProductionContentGeneration(l.id, ci.id);
   ci.fecha = dk;
   saveLaunches();
   if (typeof renderCalendar === 'function') renderCalendar();
   if (typeof uiToast === 'function') uiToast('✓ Movido a ' + dk);
+  return true;
+}
+function replaceCalItem(campId, itemId, next) {
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
+  const l = launches.find(x => x.id === campId); if (!l) return false;
+  const ci = (l.cal || []).find(c => c.id === itemId); if (!ci) return false;
+  if (rejectLockedCalAction(ci, 'reemplazarla')) return false;
+  invalidatePendingCalendarAssistance(l);
+  invalidateProductionContentGeneration(l.id, ci.id);
+  Object.assign(ci, next || {});
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  return true;
+}
+function isPlanReplaceable(ci) {
+  return !!(ci && ci.source === 'plan' && !calItemLocked(ci) && ci.anchor !== true && !s(ci.anchorKey).trim());
+}
+function planReplacementCandidates(launch, ci, opts) {
+  if (!launch || !ci || !window.TempoPlan || typeof TempoPlan.replacementCandidates !== 'function') return [];
+  return TempoPlan.replacementCandidates(launch, recommendationRefs(), ci, opts || {});
+}
+function rememberReplacementExclusion(launch, refId) {
+  const id = s(refId).trim();
+  if (!launch || !id) return;
+  launch.planMeta = launch.planMeta && typeof launch.planMeta === 'object' ? launch.planMeta : {};
+  const list = Array.isArray(launch.planMeta.replacementExcludedRefIds) ? launch.planMeta.replacementExcludedRefIds.slice() : [];
+  if (!list.includes(id)) list.push(id);
+  launch.planMeta.replacementExcludedRefIds = list;
+  launch.planMeta.lastReplacementAt = new Date().toISOString();
+}
+function archiveStaleProductionContent(ci) {
+  const prod = ci && ci.production;
+  if (!prod || !prod.content) return;
+  prod.contentPrev = prod.content;
+  delete prod.content;
+}
+function replaceCalItemWithAutomaticSuggestion(campId, itemId, refId) {
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return false; }
+  const l = launches.find(x => x.id === campId); if (!l) return false;
+  const ci = (l.cal || []).find(c => c.id === itemId); if (!ci) return false;
+  if (rejectLockedCalAction(ci, 'reemplazarla')) return false;
+  if (!isPlanReplaceable(ci)) { if (typeof uiToast === 'function') uiToast('Solo las piezas planificadas sustituibles pueden reemplazarse.'); return false; }
+  const candidates = planReplacementCandidates(l, ci);
+  const chosen = refId ? candidates.find(item => s(item.id) === s(refId)) : candidates[0];
+  if (!chosen || !window.TempoPlan || typeof TempoPlan.replacePieceReference !== 'function') {
+    if (typeof uiToast === 'function') uiToast('No hay sugerencias compatibles para esta fase.');
+    return false;
+  }
+  const outgoing = s(ci.refId || '');
+  const next = TempoPlan.replacePieceReference(ci, chosen, recommendationRefs());
+  invalidatePendingCalendarAssistance(l);
+  invalidateProductionContentGeneration(l.id, ci.id);
+  Object.keys(ci).forEach(key => { if (!Object.prototype.hasOwnProperty.call(next, key)) delete ci[key]; });
+  Object.assign(ci, next);
+  archiveStaleProductionContent(ci);
+  if (outgoing && outgoing !== s(chosen.id)) rememberReplacementExclusion(l, outgoing);
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderLaunchDetail === 'function' && currentLaunchId === l.id) renderLaunchDetail();
+  if (typeof renderProd === 'function' && prodCtx.launchId === l.id && prodCtx.itemId === ci.id) renderProd();
+  if (typeof uiToast === 'function') uiToast('Sugerencia reemplazada sin tocar producción.');
+  return true;
+}
+let _planReplaceCtx = null;
+function openPlanReplacement(launchId, itemId) {
+  const l = launches.find(x => x.id === launchId); if (!l) return false;
+  const ci = (l.cal || []).find(c => c.id === itemId); if (!ci) return false;
+  if (rejectLockedCalAction(ci, 'reemplazarla')) return false;
+  if (!isPlanReplaceable(ci)) { if (typeof uiToast === 'function') uiToast('Solo las piezas planificadas sustituibles pueden reemplazarse.'); return false; }
+  _planReplaceCtx = { launchId, itemId };
+  renderPlanReplacementModal();
+  const modal = document.getElementById('modal-plan-replace');
+  if (modal) modal.classList.add('open');
+  return true;
+}
+function closePlanReplacement(e) {
+  const modal = document.getElementById('modal-plan-replace');
+  if (!e || e.target === modal) {
+    if (modal) modal.classList.remove('open');
+    _planReplaceCtx = null;
+  }
+}
+function renderPlanReplacementModal() {
+  const body = document.getElementById('plan-replace-body'); if (!body) return;
+  const l = _planReplaceCtx && launches.find(x => x.id === _planReplaceCtx.launchId);
+  const ci = l && (l.cal || []).find(c => c.id === _planReplaceCtx.itemId);
+  if (!l || !ci) { body.innerHTML = '<div class="empty-hint">No se encontró la pieza.</div>'; return; }
+  const candidates = planReplacementCandidates(l, ci);
+  const reason = planRecommendationReason(ci);
+  body.innerHTML = `
+    <div class="empty-hint" style="margin-top:0;margin-bottom:14px">${icon('ai',13)} ${esc(reason || 'Sugerencia automática por fase.')}</div>
+    ${candidates.length ? candidates.map(ref => {
+      const cats = (ref.cats || ref.cat || []).filter(Boolean);
+      const col = catColor(cats[0] || ci.cat);
+      return `<button type="button" class="ref-item" style="width:100%;align-items:flex-start;margin-bottom:8px" onclick='choosePlanReplacement(${jsArg(ref.id)})' aria-label="Usar ${esc(ref.title)} como reemplazo">
+        <span style="width:30px;height:30px;border-radius:4px;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s(ref.icon)||'pin',15)}</span>
+        <span class="ref-info" style="min-width:0"><span class="ref-title" style="display:block">${esc(ref.title)}</span><span class="ref-meta" style="display:block">${esc(cats.map(up).join(' · ') || up(ci.phase || ''))}</span>${ref.hook ? `<span style="display:block;font-size:var(--text-xs);color:var(--text-muted);line-height:1.45;margin-top:3px">${esc(ref.hook)}</span>` : ''}</span>
+      </button>`;
+    }).join('') : '<div class="empty-hint">No hay candidatas nuevas compatibles con esta fase.</div>'}
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button type="button" class="btn btn-ghost" onclick='beginBankChoiceReplacement(${jsArg(l.id)},${jsArg(ci.id)})' style="font-size:var(--text-xs);padding:7px 12px">${icon('references',12)} Elegir desde Banco completo</button>
+    </div>`;
+  if (typeof hydrateIcons === 'function') hydrateIcons(body);
+}
+function choosePlanReplacement(refId) {
+  if (!_planReplaceCtx) return false;
+  const ok = replaceCalItemWithAutomaticSuggestion(_planReplaceCtx.launchId, _planReplaceCtx.itemId, refId);
+  if (ok) closePlanReplacement();
+  return ok;
+}
+function beginBankChoiceReplacement(launchId, itemId, originOverrides) {
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return false; }
+  const l = launches.find(x => x.id === launchId); if (!l) return false;
+  const ci = (l.cal || []).find(c => c.id === itemId); if (!ci) return false;
+  if (rejectLockedCalAction(ci, 'reemplazarla')) return false;
+  if (!isPlanReplaceable(ci)) { if (typeof uiToast === 'function') uiToast('Solo las piezas planificadas sustituibles pueden reemplazarse.'); return false; }
+
+  const origin = bankChoiceOrigin(originOverrides);
+  origin.itemId = itemId;
+  _bankChoiceCtx = { launchId, itemId, origin };
+  currentLaunchId = launchId;
+  const replModal = document.getElementById('modal-plan-replace');
+  if (replModal && replModal.classList) replModal.classList.remove('open');
+  const prodModal = document.getElementById('prod-modal');
+  if (prodModal && prodModal.classList && prodModal.classList.contains && prodModal.classList.contains('open')) prodModal.classList.remove('open');
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('keydown', cancelBankChoiceReplacement);
+  if (typeof showPage === 'function') showPage('banco');
+  else if (typeof renderBanco === 'function') renderBanco();
+  return true;
+}
+function cancelBankChoiceReplacement(event, opts) {
+  if (event && event.key && event.key !== 'Escape') return false;
+  if (!_bankChoiceCtx) return false;
+  if (event && event.preventDefault) event.preventDefault();
+  const ctx = _bankChoiceCtx;
+  _bankChoiceCtx = null;
+  if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('keydown', cancelBankChoiceReplacement);
+  const box = document.getElementById('boxdrop');
+  if (box && box.classList) box.classList.remove('open');
+  const options = opts || {};
+  if (options.restore !== false) restoreBankChoiceOrigin(ctx.origin);
+  else if (!options.silent && typeof renderBanco === 'function') renderBanco();
+  if (!options.silent && typeof uiToast === 'function') uiToast('Elección cancelada.');
+  return true;
+}
+function chooseBankReplacement(idx) {
+  if (!_bankChoiceCtx) return false;
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (typeof uiToast === 'function') uiToast('Sin permiso para editar'); return false; }
+  const r = referencias[idx]; if (!r) return false;
+  const ctx = _bankChoiceCtx;
+  const { launch, ci } = bankChoiceTarget(ctx);
+  if (!launch || !ci) return false;
+  if (rejectLockedCalAction(ci, 'reemplazarla')) return false;
+  if (!isPlanReplaceable(ci)) { if (typeof uiToast === 'function') uiToast('Solo las piezas planificadas sustituibles pueden reemplazarse.'); return false; }
+  if (!window.TempoPlan || typeof TempoPlan.replacePieceReference !== 'function') return false;
+
+  const outgoing = s(ci.refId || '');
+  const next = TempoPlan.replacePieceReference(ci, r, referencias);
+  invalidatePendingCalendarAssistance(launch);
+  invalidateProductionContentGeneration(launch.id, ci.id);
+  Object.keys(ci).forEach(key => { if (!Object.prototype.hasOwnProperty.call(next, key)) delete ci[key]; });
+  Object.assign(ci, next);
+  archiveStaleProductionContent(ci);
+  if (outgoing && outgoing !== s(r.id)) rememberReplacementExclusion(launch, outgoing);
+  bumpRefUsage(r);
+  saveLaunches();
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderLaunchDetail === 'function' && currentLaunchId === launch.id) renderLaunchDetail();
+  if (typeof renderProd === 'function' && prodCtx.launchId === launch.id && prodCtx.itemId === ci.id) renderProd();
+
+  _bankChoiceCtx = null;
+  if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('keydown', cancelBankChoiceReplacement);
+  const box = document.getElementById('boxdrop');
+  if (box && box.classList) box.classList.remove('open');
+  restoreBankChoiceOrigin(ctx.origin);
+  if (typeof uiToast === 'function') uiToast('Referencia elegida y pieza reemplazada.');
+  return true;
+}
+function toggleCalItemLock(launchId, itemId, locked) {
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
+  const l = launches.find(x => x.id === launchId); if (!l) return false;
+  const ci = (l.cal || []).find(c => c.id === itemId); if (!ci) return false;
+  const next = typeof locked === 'boolean' ? locked : !calItemLocked(ci);
+  invalidatePendingCalendarAssistance(l);
+  setCalItemLock(ci, next, 'manual');
+  saveLaunchesLocal();
+  scheduleCloudSync();
+  updateProductionLockControl(ci);
+  if (typeof renderCalendar === 'function') renderCalendar();
+  if (typeof renderKanban === 'function' && calView === 'kanban') renderKanban();
+  if (typeof uiToast === 'function') uiToast(next ? 'Publicación bloqueada.' : 'Publicación desbloqueada.');
+  return true;
+}
+function toggleProductionLock() {
+  return toggleCalItemLock(prodCtx.launchId, prodCtx.itemId);
 }
 
 // ══════════════════════════════════════════
@@ -1386,9 +2110,15 @@ function renderCalGrid() {
       const est = (ci.production && ci.production.estado) || 'pendiente';
       const estIcon = ESTADO_ICON[est] || '';
       const paid = (ci.pauta === 'pautado') ? `<span title="Pautado" style="font-weight:700">$ </span>` : '';
-      const delX = canEditCal ? `<button type="button" onclick="event.stopPropagation();deleteCalItem('${ci._campId}','${ci.id}',event)" title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
-      const drag = canEditCal ? `draggable="true" ondragstart="calDragStart(event,'${ci._campId}','${ci.id}')" ondragend="calDragEnd(event)"` : '';
-      return `<div ${drag} style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:var(--text-2xs);font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:1px solid ${col};cursor:${canEditCal?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${canEditCal?' · arrastra para mover de día':''}">${delX}<button type="button" onclick="event.stopPropagation();openProduction('${ci._campId}','${ci.id}')" style="cursor:pointer;flex:1;min-width:0;border:0;background:transparent;color:inherit;text-align:left;padding:0">${paid}${estIcon ? estIcon + ' ' : ''}${esc(ci.title)}</button></div>`;
+      const locked = calItemLocked(ci);
+      const replaceable = isPlanReplaceable(ci);
+      const reason = replaceable ? planRecommendationReason(ci) : '';
+      const lockIcon = locked ? `<span title="Publicación reservada" aria-label="Reservada" style="display:inline-flex;flex-shrink:0">${icon('lock',9)}</span>` : '';
+      const lockLabel = locked ? `<span style="font-family:var(--font-ui);font-size:9px;color:var(--text-dim);border:1px solid currentColor;border-radius:2px;padding:0 3px;line-height:1.35">Reservada</span>` : '';
+      const delX = canEditCal && !locked ? `<button type="button" onclick='event.stopPropagation();deleteCalItem(${jsArg(ci._campId)},${jsArg(ci.id)},event)' title="Eliminar del calendario" style="flex-shrink:0;background:none;border:none;color:${col};opacity:.55;cursor:pointer;padding:0;display:flex;align-items:center;line-height:1">${icon('close',9)}</button>` : '';
+      const drag = canEditCal && !locked ? `draggable="true" ondragstart='calDragStart(event,${jsArg(ci._campId)},${jsArg(ci.id)})' ondragend="calDragEnd(event)"` : '';
+      const repl = canEditCal && replaceable ? `<button type="button" onclick='event.stopPropagation();openPlanReplacement(${jsArg(ci._campId)},${jsArg(ci.id)})' aria-label="Reemplazar sugerencia automática" title="Reemplazar sugerencia automática" style="flex-shrink:0;background:none;border:1px solid ${col}55;border-radius:3px;color:${col};cursor:pointer;padding:1px 4px;display:flex;align-items:center;line-height:1">${icon('refresh',9)}</button>` : '';
+      return `<div ${drag} data-locked="${locked ? 'true' : 'false'}" style="display:flex;align-items:flex-start;gap:3px;border-radius:3px;padding:3px 5px 3px 4px;font-size:var(--text-2xs);font-weight:500;margin-bottom:3px;line-height:1.3;background:${col}18;color:${col};border-left:1px solid ${col};cursor:${canEditCal && !locked?'grab':'default'}" title="${esc(ci._campName||'')} · ${esc(ci.title)} · ${est}${ci.pauta==='pautado'?' · pautado':''}${locked?' · reservada':(canEditCal?' · arrastra para mover de día':'')}">${delX}${lockIcon}${lockLabel}<button type="button" onclick='event.stopPropagation();openProduction(${jsArg(ci._campId)},${jsArg(ci.id)})' style="cursor:pointer;flex:1;min-width:0;border:0;background:transparent;color:inherit;text-align:left;padding:0">${paid}${estIcon ? estIcon + ' ' : ''}<span style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(ci.title)}</span>${reason ? `<span style="display:block;color:var(--text-muted);font-family:var(--font-ui);font-size:9px;line-height:1.25;white-space:normal">${esc(reason)}</span>` : ''}</button>${repl}</div>`;
     }).join('');
     const dropBadge = isDrop ? `<div style="font-size:var(--text-2xs);font-family:var(--font-ui);color:var(--accent);letter-spacing:var(--track-caps);margin-bottom:3px;display:flex;align-items:center;gap:4px">${icon('goals',10)} ESTRENO</div>` : '';
     const div = document.createElement('div');
@@ -1483,12 +2213,17 @@ function kanbanCardHTML(launchId, ci) {
   const est = (ci.production && ci.production.estado) || 'pendiente';
   const fecha = ci.fecha ? `${MESES_CAL[new Date(ci.fecha+'T00:00:00').getMonth()]} ${new Date(ci.fecha+'T00:00:00').getDate()}` : '—';
   const canEditCal = (typeof canDo !== 'function') || canDo('edit_launch');
-  const delX = canEditCal ? `<button type="button" class="kc-del" onclick="deleteCalItem('${launchId}','${ci.id}',event)" title="Eliminar del calendario">${icon('close',12)}</button>` : '';
-  return `<article class="kanban-card" draggable="true" ondragstart="kanbanDrag(event,'${ci.id}')" style="position:relative">
+  const locked = calItemLocked(ci);
+  const replaceable = canEditCal && isPlanReplaceable(ci);
+  const reason = replaceable ? planRecommendationReason(ci) : '';
+  const delX = canEditCal && !locked ? `<button type="button" class="kc-del" onclick='deleteCalItem(${jsArg(launchId)},${jsArg(ci.id)},event)' title="Eliminar del calendario">${icon('close',12)}</button>` : '';
+  const dragAttr = (!canEditCal || locked) ? 'data-locked="true"' : `draggable="true" ondragstart='kanbanDrag(event,${jsArg(ci.id)})'`;
+  return `<article class="kanban-card" ${dragAttr} style="position:relative">
     ${delX}
-    <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${esc(ci.title)}</div>
+    <div class="kc-title" style="padding-right:16px;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${locked ? icon('lock',11) + '<span style="font-size:var(--text-2xs);color:var(--text-dim)">Reservada</span>' : ''}${esc(ci.title)}</div>
+    ${reason ? `<div class="kc-meta">${esc(reason)}</div>` : ''}
     <div class="kc-meta">${fecha} · ${ESTADO_ICON[est] || ''} ${est}</div>
-    <div class="card-actions"><button type="button" class="card-open" onclick="openProduction('${launchId}','${ci.id}')">Abrir ${icon('link',10)}</button></div>
+    <div class="card-actions"><button type="button" class="card-open" onclick='openProduction(${jsArg(launchId)},${jsArg(ci.id)})'>Abrir ${icon('link',10)}</button>${replaceable ? `<button type="button" class="card-open" onclick='openPlanReplacement(${jsArg(launchId)},${jsArg(ci.id)})' aria-label="Reemplazar sugerencia automática">${icon('refresh',10)} Reemplazar</button>` : ''}</div>
   </article>`;
 }
 function renderKanban() {
@@ -1507,7 +2242,11 @@ function renderKanban() {
     </div>`;
   }).join('')}</div>`;
 }
-function kanbanDrag(e, id) { e.dataTransfer.setData('text/plain', id); }
+function kanbanDrag(e, id) {
+  if (typeof canDo === 'function' && !canDo('edit_launch')) { if (e && e.preventDefault) e.preventDefault(); return false; }
+  e.dataTransfer.setData('text/plain', id);
+  return true;
+}
 // Encuentra la pieza por id en cualquiera de las campañas (release o evergreen).
 function findCalItem(id) {
   for (const c of calCampaigns()) { const ci = (c.launch.cal || []).find(x => x.id === id); if (ci) return { launch: c.launch, ci }; }
@@ -1516,13 +2255,19 @@ function findCalItem(id) {
 function kanbanDrop(e, stageKey) {
   e.preventDefault();
   document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('drag-over'));
+  if (typeof requireCan === 'function' && !requireCan('edit_launch')) return false;
   const id = e.dataTransfer.getData('text/plain');
   const found = findCalItem(id); if (!found) return;
   const ci = found.ci;
+  if (rejectLockedCalAction(ci, 'moverla')) return false;
   const st = STAGE_DEF.find(x => x.key === stageKey); if (!st) return;
   ensureProduction(ci);
-  if (stageOf(ci.production.estado) !== stageKey) ci.production.estado = st.setTo;
+  if (stageOf(ci.production.estado) !== stageKey) {
+    invalidatePendingCalendarAssistance(found.launch);
+    ci.production.estado = st.setTo;
+  }
   saveLaunches(); renderKanban();
+  return true;
 }
 
 // ══════════════════════════════════════════
@@ -1554,13 +2299,13 @@ function _pieceDetailHTML(p) {
   const shots = (p.shots || []).filter(sh => s(sh.name).trim() || s(sh.detail).trim()).map((sh, i) =>
     `<div class="x-shot"><span class="x-num">${String(i+1).padStart(2,'0')}</span><div><strong>${_esc(sh.name) || 'Plano'}</strong>${s(sh.detail).trim() ? `<div class="x-note">${_esc(sh.detail)}</div>` : ''}</div></div>`).join('');
   const assets = (p.assets || []).filter(a => s(a.link).trim()).map(a =>
-    `<a class="x-asset" href="${_esc(a.link)}" target="_blank" rel="noopener">↗ ${_esc(a.label) || 'Archivo'}</a>`).join('');
+    `<a class="x-asset" href="${_esc(safeUrl(a.link))}" target="_blank" rel="noopener">↗ ${_esc(a.label) || 'Archivo'}</a>`).join('');
   const c = p.content;
   const cBlock = (lbl, v) => s(v).trim() ? `<div class="x-row"><span class="x-k">${lbl}</span><span class="x-v">${_esc(v)}</span></div>` : '';
   const content = c ? `${cBlock('Hook', c.hook)}${cBlock('Caption IG', c.caption_ig)}${cBlock('Caption TikTok', c.caption_tiktok)}${cBlock('Story', c.story)}${s(c.script).trim() ? `<div class="x-block"><div class="x-time">GUIÓN</div><div>${_esc(c.script)}</div></div>` : ''}${(c.hashtags||[]).length ? `<div class="x-tags">${(c.hashtags||[]).map(h => `<span class="x-tag">${_esc(s(h).startsWith('#')?h:'#'+h)}</span>`).join('')}</div>` : ''}` : '';
   return `
     <div class="x-head">
-      ${p.thumb ? `<img class="x-thumb" src="${_esc(p.thumb)}" alt="" loading="lazy">` : ''}
+      ${p.thumb ? `<img class="x-thumb" src="${_esc(safeUrl(p.thumb))}" alt="" loading="lazy">` : ''}
       <div>
         <div class="x-title">${_esc(p.title)}</div>
         <div class="x-meta">${[p.fecha, p.plataforma, p.estado, p.pauta, p.cat].filter(Boolean).map(_esc).join(' · ')}</div>
@@ -1572,7 +2317,7 @@ function _pieceDetailHTML(p) {
     ${shots ? `<div class="x-sec">Shot list</div>${shots}` : ''}
     ${content ? `<div class="x-sec">Contenido sugerido</div>${content}` : ''}
     ${assets ? `<div class="x-sec">Archivos</div><div class="x-assets">${assets}</div>` : ''}
-    ${p.refLink ? `<div class="x-sec">Referencia</div><a class="x-asset" href="${_esc(p.refLink)}" target="_blank" rel="noopener">↗ Ver video de referencia</a>` : ''}`;
+    ${p.refLink ? `<div class="x-sec">Referencia</div><a class="x-asset" href="${_esc(safeUrl(p.refLink))}" target="_blank" rel="noopener">↗ Ver video de referencia</a>` : ''}`;
 }
 // Grilla de calendario por mes (solo meses con piezas).
 function _calGridHTML(pieces) {
@@ -1587,7 +2332,7 @@ function _calGridHTML(pieces) {
       const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const out = d.getMonth() !== month;
       const list = byDate[dk] || [];
-      cells += `<div class="x-cell${out ? ' x-out' : ''}"><div class="x-daynum">${d.getDate()}</div>${list.map(p => `<button class="x-chip" onclick="op('${p.id}')">${_esc(p.title)}</button>`).join('')}</div>`;
+      cells += `<div class="x-cell${out ? ' x-out' : ''}"><div class="x-daynum">${d.getDate()}</div>${list.map(p => `<button class="x-chip" onclick="op(${Number(p._exportIndex)})">${_esc(p.title)}</button>`).join('')}</div>`;
     }
     return `<div class="x-monthlbl">${MESES_CAL[month]} ${year}</div>
       <div class="x-grid">${['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'].map(d => `<div class="x-dow">${d}</div>`).join('')}${cells}</div>`;
@@ -1596,10 +2341,10 @@ function _calGridHTML(pieces) {
 function buildCalDoc(printMode) {
   const a = (typeof activeLaunch === 'function') ? activeLaunch() : null;
   const art = (typeof activeArtist === 'function') ? activeArtist() : null;
-  const pieces = calExportPieces();
+  const pieces = calExportPieces().map((piece, index) => Object.assign({}, piece, { _exportIndex: index }));
   const title = (art ? s(art.name) + ' — ' : '') + (a ? s(a.name) : 'Plan de contenido');
   const drop = (a && a.date) ? a.date : '';
-  const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p.id}">${_pieceDetailHTML(p)}</div>`).join('');
+  const detailBlocks = pieces.map(p => `<div class="x-detail" id="p-${p._exportIndex}">${_pieceDetailHTML(p)}</div>`).join('');
   const flat = pieces.map(p => `<div class="x-card">${_pieceDetailHTML(p)}</div>`).join('');
   const CSS = `
     :root{--ac:#FF6900;--bg:#0a0a0a;--surf:#171717;--card:#27272a;--bd:#2e2e2e;--tx:#FFFFFF;--mut:#98989D;--dim:#78787d}
@@ -1786,12 +2531,29 @@ async function shareSetExpiry(token, opt) {
 // ══════════════════════════════════════════
 const ESTADO_ICON = { pendiente:'', aprobado:icon('thumb',13), grabando:icon('video',13), editando:icon('scissors',13), programado:icon('calendar',13), publicado:icon('check',13) };
 let prodCtx = { launchId: null, itemId: null };
+let _productionContentGenerationVersion = new Map();
 let prodActiveTab = 'brief';
 
 function prodItem() {
   const l = launches.find(x => x.id === prodCtx.launchId);
   if (!l) return null;
   return (l.cal || []).find(c => c.id === prodCtx.itemId) || null;
+}
+function productionContentGenerationKey(launchId, itemId) {
+  return `${s(launchId)}\u0000${s(itemId)}`;
+}
+function invalidateProductionContentGeneration(launchId, itemId) {
+  const key = productionContentGenerationKey(launchId, itemId);
+  _productionContentGenerationVersion.set(key, (_productionContentGenerationVersion.get(key) || 0) + 1);
+  return _productionContentGenerationVersion.get(key);
+}
+function prepareProductionCalendarMutation(ci) {
+  if (!ci || (typeof requireCan === 'function' && !requireCan('edit_launch'))) return null;
+  const launch = launches.find(x => x.id === prodCtx.launchId);
+  if (!launch) return null;
+  invalidatePendingCalendarAssistance(launch);
+  invalidateProductionContentGeneration(launch.id, ci.id);
+  return launch;
 }
 function ensureProduction(ci) {
   const p = ci.production = ci.production || {};
@@ -1812,7 +2574,12 @@ function openProduction(launchId, itemId) {
   const ci = prodItem(); if (!ci) return;
   ensureProduction(ci);
   prodActiveTab = 'brief';
-  document.getElementById('prod-title').value = s(ci.title);
+  const titleInput = document.getElementById('prod-title');
+  titleInput.value = s(ci.title);
+  titleInput.readOnly = calItemLocked(ci);
+  titleInput.style.cursor = calItemLocked(ci) ? 'not-allowed' : '';
+  titleInput.title = calItemLocked(ci) ? 'Publicación bloqueada: el contenido no se reemplaza' : 'Edita el título de la pieza';
+  updateProductionLockControl(ci);
   document.getElementById('prod-estado').value = ci.production.estado;
   const badge = document.getElementById('prod-cat');
   const col = catColor(ci.cat);
@@ -1821,6 +2588,21 @@ function openProduction(launchId, itemId) {
   document.querySelectorAll('#prod-modal .boxdrop-tab').forEach(t => { const on=t.dataset.ptab==='brief'; t.classList.toggle('active',on); t.setAttribute('aria-selected',String(on)); });
   renderProd();
   document.getElementById('prod-modal').classList.add('open');
+}
+function updateProductionLockControl(ci) {
+  const btn = document.getElementById('prod-lock-toggle');
+  if (!btn) return;
+  const canEdit = (typeof canDo !== 'function') || canDo('edit_launch');
+  if (!canEdit || !ci) {
+    btn.style.display = 'none';
+    return;
+  }
+  const locked = calItemLocked(ci);
+  btn.style.display = 'inline-flex';
+  btn.setAttribute('aria-pressed', String(locked));
+  btn.setAttribute('aria-label', locked ? 'Desbloquear publicación' : 'Bloquear publicación');
+  btn.title = locked ? 'Desbloquear publicación' : 'Bloquear publicación';
+  btn.innerHTML = `${icon('lock',13)} ${locked ? 'Desbloquear' : 'Bloquear'}`;
 }
 function closeProd(e) { if (e.target === document.getElementById('prod-modal')) closeProdDirect(); }
 function closeProdDirect() {
@@ -1834,28 +2616,58 @@ function prodTab(name, el) {
 }
 function prodSet(field, val) {
   const ci = prodItem(); if (!ci) return;
-  if (field === 'title') ci.title = val;
-  else ensureProduction(ci)[field] = val;
+  if (!prepareProductionCalendarMutation(ci)) return;
+
+  const locked = calItemLocked(ci);
+  const lockEditable = new Set(['estado', 'responsable', 'pauta', 'objetivo', 'plataforma', 'hook', 'descripcion']);
+
+  if (field === 'title') {
+    if (rejectLockedCalAction(ci, 'reemplazar el contenido')) {
+      const title = document.getElementById('prod-title'); if (title) title.value = s(ci.title);
+      updateProductionLockControl(ci);
+      return;
+    }
+    ci.title = val;
+  } else {
+    if (locked && !lockEditable.has(field)) {
+      rejectLockedCalAction(ci, 'reemplazar el contenido');
+      return;
+    }
+    ensureProduction(ci)[field] = val;
+  }
+
   saveLaunches();
   if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
 }
 function prodSetFecha(val) {
   const ci = prodItem(); if (!ci) return;
+  if (!prepareProductionCalendarMutation(ci)) return;
+  if (rejectLockedCalAction(ci, 'reprogramarla')) {
+    const date = document.querySelector('#prod-body input[readonly]');
+    if (date) date.value = s(ci.fecha);
+    updateProductionLockControl(ci);
+    return;
+  }
   ci.fecha = val; saveLaunches();
   if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
 }
 function prodSetPauta(val) {
   const ci = prodItem(); if (!ci) return;
+  if (!prepareProductionCalendarMutation(ci)) return;
   ci.pauta = val; saveLaunches();
   if (((document.querySelector('.page.active') || {}).id) === 'page-calendario') renderCalendar();
 }
 // Mueve la pieza actual a otra campaña (otro launch del mismo artista).
 function moveCalItem(targetId) {
   const ci = prodItem(); if (!ci) return;
+  if (!prepareProductionCalendarMutation(ci)) return;
+  if (rejectLockedCalAction(ci, 'moverla de campaña')) return;
   const srcL = launches.find(x => x.id === prodCtx.launchId);
   const tgtL = launches.find(x => x.id === targetId);
   if (!srcL || !tgtL || srcL.id === tgtL.id) return;
+  invalidatePendingCalendarAssistance(tgtL);
   srcL.cal = (srcL.cal || []).filter(c => c.id !== ci.id);
+  lockCalItem(ci, 'manual');
   tgtL.cal = tgtL.cal || []; tgtL.cal.push(ci);
   prodCtx.launchId = tgtL.id; // sigue editando la misma pieza, ahora en la campaña destino
   saveLaunches();
@@ -1866,8 +2678,8 @@ function renderProd() {
   const ci = prodItem(); const body = document.getElementById('prod-body'); if (!ci || !body) return;
   const p = ensureProduction(ci);
   if (prodActiveTab === 'brief') body.innerHTML = prodBriefHTML(ci, p);
-  else if (prodActiveTab === 'guion') body.innerHTML = prodGuionHTML(p);
-  else if (prodActiveTab === 'shots') body.innerHTML = prodShotsHTML(p);
+  else if (prodActiveTab === 'guion') body.innerHTML = prodGuionHTML(ci, p);
+  else if (prodActiveTab === 'shots') body.innerHTML = prodShotsHTML(ci, p);
   else if (prodActiveTab === 'content') body.innerHTML = prodContentHTML(ci, p);
   else body.innerHTML = prodAssetsHTML(ci, p);
 }
@@ -1880,65 +2692,76 @@ function prodBriefHTML(ci, p) {
   const artId = srcL && srcL.artistId;
   const campOpts = launches.filter(l => l.artistId === artId)
     .map(l => `<option value="${esc(l.id)}" ${l.id === prodCtx.launchId ? 'selected' : ''}>${esc(l.name)}${l.type === 'evergreen' ? ' · always-on' : ''}</option>`).join('');
+  const locked = calItemLocked(ci);
+  const replaceable = isPlanReplaceable(ci);
+  const reason = replaceable ? planRecommendationReason(ci) : '';
   return `
-    <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:var(--text-2xs)">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)">${campOpts}</select></div>
+    ${locked ? `<div class="empty-hint" style="margin-top:0;margin-bottom:14px;color:var(--beat);border-color:color-mix(in srgb,var(--beat) 35%,transparent)">${icon('lock',12)} Reservada: fecha, referencia y campaña quedan fijas. El brief sigue editable.</div>` : ''}
+    ${replaceable ? `<div class="empty-hint" style="margin-top:0;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;justify-content:space-between">
+      <span style="min-width:0"><strong>Por qué se recomendó</strong><br>${esc(reason)}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0">
+        <button type="button" class="btn btn-ghost" aria-label="Reemplazar sugerencia automática" onclick='openPlanReplacement(${jsArg(prodCtx.launchId)},${jsArg(ci.id)})' style="font-size:var(--text-xs);padding:6px 10px">${icon('refresh',12)} Reemplazar</button>
+        <button type="button" class="btn btn-ghost" aria-label="Elegir reemplazo desde Banco" onclick='beginBankChoiceReplacement(${jsArg(prodCtx.launchId)},${jsArg(ci.id)})' style="font-size:var(--text-xs);padding:6px 10px">${icon('references',12)} Banco</button>
+      </span>
+    </div>` : ''}
+    <div class="field" style="margin-bottom:16px"><label>Campaña <span style="color:var(--text-dim);font-size:var(--text-2xs)">(mover entre campañas)</span></label><select class="input" onchange="moveCalItem(this.value)" ${locked ? 'disabled' : ''}>${campOpts}</select></div>
     <div class="field-grid" style="margin-bottom:16px">
-      <div class="field"><label>Objetivo</label><input class="input" value="${s(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
-      <div class="field"><label>Plataforma / formato</label><input class="input" value="${s(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
+      <div class="field"><label>Objetivo</label><input class="input" value="${esc(p.objetivo)}" onchange="prodSet('objetivo',this.value)" placeholder="¿Qué busca esta pieza?"></div>
+      <div class="field"><label>Plataforma / formato</label><input class="input" value="${esc(p.plataforma)}" onchange="prodSet('plataforma',this.value)" placeholder="TikTok · 9:16 · 15s"></div>
       <div class="field"><label>Responsable</label>${respSel}</div>
-      <div class="field"><label>Fecha</label><input type="text" class="input" readonly placeholder="Elegir fecha…" value="${s(ci.fecha)}" onclick="openDayPicker(this)" onchange="prodSetFecha(this.value)" style="cursor:pointer"></div>
+      <div class="field"><label>Fecha</label><input type="text" class="input" readonly placeholder="Elegir fecha…" value="${esc(ci.fecha)}" ${locked ? '' : 'onclick="openDayPicker(this)"'} onchange="prodSetFecha(this.value)" style="cursor:${locked ? 'not-allowed' : 'pointer'}" ${locked ? 'aria-disabled="true"' : ''}></div>
       <div class="field"><label>Pauta</label><select class="input" onchange="prodSetPauta(this.value)"><option value="organico" ${ci.pauta!=='pautado'?'selected':''}>Orgánico</option><option value="pautado" ${ci.pauta==='pautado'?'selected':''}>Pautado (paid)</option></select></div>
     </div>
-    <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${s(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
-    <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${s(p.descripcion)}</textarea></div>
+    <div class="field" style="margin-bottom:16px"><label>Hook</label><input class="input" value="${esc(p.hook)}" onchange="prodSet('hook',this.value)" placeholder="El gancho de los primeros segundos"></div>
+    <div class="field"><label>Descripción / Brief</label><textarea class="textarea" onchange="prodSet('descripcion',this.value)" placeholder="Qué se graba, cómo, tono…">${esc(p.descripcion)}</textarea></div>
     ${ci.refLink ? `<div style="margin-top:14px"><a href="${safeUrl(ci.refLink)}" target="_blank" rel="noopener" style="font-size:var(--text-xs);color:var(--accent);font-family:var(--font-ui);text-decoration:none">↗ Referencia de inspiración</a></div>` : ''}`;
 }
-function prodGuionHTML(p) {
+function prodGuionHTML(ci, p) {
   const blocks = p.guion.map((b, i) => `
     <div class="script-block">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input class="input" style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--accent)" value="${s(b.time)}" onchange="prodGuionSet(${i},'time',this.value)" placeholder="00:00 – 00:03 · HOOK">
+        <input class="input" style="font-family:var(--font-ui);font-size:var(--text-xs);color:var(--accent)" value="${esc(b.time)}" onchange="prodGuionSet(${i},'time',this.value)" placeholder="00:00 – 00:03 · HOOK">
         <button class="goal-btn reject" onclick="prodGuionDel(${i})" title="Quitar">${icon('close',12)}</button>
       </div>
-      <textarea class="textarea" onchange="prodGuionSet(${i},'text',this.value)" placeholder="Qué pasa / qué se dice">${s(b.text)}</textarea>
-      <input class="input" style="margin-top:8px;font-size:var(--text-xs)" value="${s(b.note)}" onchange="prodGuionSet(${i},'note',this.value)" placeholder="Nota (audio, tono, texto en pantalla…)">
+      <textarea class="textarea" onchange="prodGuionSet(${i},'text',this.value)" placeholder="Qué pasa / qué se dice">${esc(b.text)}</textarea>
+      <input class="input" style="margin-top:8px;font-size:var(--text-xs)" value="${esc(b.note)}" onchange="prodGuionSet(${i},'note',this.value)" placeholder="Nota (audio, tono, texto en pantalla…)">
     </div>`).join('');
   return `${blocks || '<div class="empty-hint">Sin guión. Agrega bloques por tiempo (hook, desarrollo, clímax, CTA).</div>'}<button class="btn btn-ghost" style="margin-top:6px" onclick="prodGuionAdd()">+ Bloque</button>`;
 }
-function prodGuionAdd() { ensureProduction(prodItem()).guion.push({ time:'', text:'', note:'' }); saveLaunches(); renderProd(); }
-function prodGuionDel(i) { ensureProduction(prodItem()).guion.splice(i, 1); saveLaunches(); renderProd(); }
-function prodGuionSet(i, k, v) { ensureProduction(prodItem()).guion[i][k] = v; saveLaunches(); }
-function prodShotsHTML(p) {
+function prodGuionAdd() { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).guion.push({ time:'', text:'', note:'' }); saveLaunches(); renderProd(); }
+function prodGuionDel(i) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).guion.splice(i, 1); saveLaunches(); renderProd(); }
+function prodGuionSet(i, k, v) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; const p = ensureProduction(ci).guion[i]; if (!p) return; p[k] = v; saveLaunches(); }
+function prodShotsHTML(ci, p) {
   const shots = p.shots.map((sh, i) => `
     <div class="shot-item">
       <div class="shot-num">${String(i+1).padStart(2,'0')}</div>
       <div class="shot-content">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-          <input class="input" value="${s(sh.name)}" onchange="prodShotSet(${i},'name',this.value)" placeholder="Nombre del plano">
+          <input class="input" value="${esc(sh.name)}" onchange="prodShotSet(${i},'name',this.value)" placeholder="Nombre del plano">
           <button class="goal-btn reject" onclick="prodShotDel(${i})" title="Quitar">${icon('close',12)}</button>
         </div>
-        <textarea class="textarea" style="min-height:50px" onchange="prodShotSet(${i},'detail',this.value)" placeholder="Encuadre, iluminación, duración…">${s(sh.detail)}</textarea>
+        <textarea class="textarea" style="min-height:50px" onchange="prodShotSet(${i},'detail',this.value)" placeholder="Encuadre, iluminación, duración…">${esc(sh.detail)}</textarea>
       </div>
     </div>`).join('');
   return `${shots || '<div class="empty-hint">Sin shot list. Agrega los planos a grabar.</div>'}<button class="btn btn-ghost" style="margin-top:10px" onclick="prodShotAdd()">+ Plano</button>`;
 }
-function prodShotAdd() { ensureProduction(prodItem()).shots.push({ name:'', detail:'' }); saveLaunches(); renderProd(); }
-function prodShotDel(i) { ensureProduction(prodItem()).shots.splice(i, 1); saveLaunches(); renderProd(); }
-function prodShotSet(i, k, v) { ensureProduction(prodItem()).shots[i][k] = v; saveLaunches(); }
+function prodShotAdd() { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).shots.push({ name:'', detail:'' }); saveLaunches(); renderProd(); }
+function prodShotDel(i) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).shots.splice(i, 1); saveLaunches(); renderProd(); }
+function prodShotSet(i, k, v) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; const p = ensureProduction(ci).shots[i]; if (!p) return; p[k] = v; saveLaunches(); }
 function prodAssetsHTML(ci, p) {
   const assets = p.assets.map((as, i) => `
     <div class="metric-entry-row" style="grid-template-columns:1fr 1.5fr 32px">
-      <input class="input" value="${s(as.label)}" onchange="prodAssetSet(${i},'label',this.value)" placeholder="Etiqueta (Foto portada, B-roll…)">
-      <input class="input" value="${s(as.link)}" onchange="prodAssetSet(${i},'link',this.value)" placeholder="Link (Drive, Dropbox, archivo…)">
+      <input class="input" value="${esc(as.label)}" onchange="prodAssetSet(${i},'label',this.value)" placeholder="Etiqueta (Foto portada, B-roll…)">
+      <input class="input" value="${esc(as.link)}" onchange="prodAssetSet(${i},'link',this.value)" placeholder="Link (Drive, Dropbox, archivo…)">
       <button class="goal-btn reject" onclick="prodAssetDel(${i})" title="Quitar">${icon('close',12)}</button>
     </div>`).join('');
   return `<div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:12px;line-height:1.5">Enlaces a fotos, videos y archivos de la pieza (Drive, Dropbox, etc.).</div>
     ${assets || '<div class="empty-hint">Sin assets todavía.</div>'}
     <button class="btn btn-ghost" style="margin-top:6px" onclick="prodAssetAdd()">+ Asset</button>`;
 }
-function prodAssetAdd() { ensureProduction(prodItem()).assets.push({ label:'', link:'' }); saveLaunches(); renderProd(); }
-function prodAssetDel(i) { ensureProduction(prodItem()).assets.splice(i, 1); saveLaunches(); renderProd(); }
-function prodAssetSet(i, k, v) { ensureProduction(prodItem()).assets[i][k] = v; saveLaunches(); }
+function prodAssetAdd() { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).assets.push({ label:'', link:'' }); saveLaunches(); renderProd(); }
+function prodAssetDel(i) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; ensureProduction(ci).assets.splice(i, 1); saveLaunches(); renderProd(); }
+function prodAssetSet(i, k, v) { const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return; const p = ensureProduction(ci).assets[i]; if (!p) return; p[k] = v; saveLaunches(); }
 
 // ── FASE 1: Generador de contenido real con IA ──
 function buildContentPrompt(ci) {
@@ -1999,7 +2822,7 @@ function prodContentHTML(ci, p) {
 let viewContentPrev = null;
 function copyContentPrev(key, btn) {
   if (!viewContentPrev) return;
-  const v = key === 'hashtags' ? (viewContentPrev.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContentPrev[key]);
+  const v = key === 'hashtags' ? (Array.isArray(viewContentPrev.hashtags) ? viewContentPrev.hashtags : []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContentPrev[key]);
   aiCopy(v, btn);
 }
 function contentResultPrevHTML(c) {
@@ -2008,27 +2831,42 @@ function contentResultPrevHTML(c) {
     const v = s(c[key]); if (!v) return '';
     return aiFieldHTML(label, v, `copyContentPrev('${key}',this)`, { sm: pre });
   };
-  const tags = (c.hashtags || []);
+  const tags = Array.isArray(c.hashtags) ? c.hashtags : [];
   return `<div class="ai-field-prev" style="opacity:.95">
     ${blk('Hook (primeros 3s)', 'hook')}
     ${blk('Caption · Instagram', 'caption_ig')}
     ${blk('Caption · TikTok', 'caption_tiktok')}
     ${blk('Story', 'story')}
     ${blk('Guión 30–60s', 'script', true)}
-    ${tags.length ? `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost btn-sm" onclick="copyContentPrev('hashtags',this)">Copiar todos</button></div><div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('')}</div></div>` : ''}
+    ${tags.length ? `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost btn-sm" onclick="copyContentPrev('hashtags',this)">Copiar todos</button></div><div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${esc(s(h).startsWith('#') ? s(h) : '#' + s(h))}</span>`).join('')}</div></div>` : ''}
   </div>`;
 }
 async function generarContenidoIA() {
-  const ci = prodItem(); if (!ci) return;
+  const ci = prodItem(); if (!ci || !prepareProductionCalendarMutation(ci)) return;
   if (!aiReady()) { abrirAISettings(); return; }
+  const launchId = prodCtx.launchId;
+  const itemId = ci.id;
+  const generationKey = productionContentGenerationKey(launchId, itemId);
+  const generationVersion = invalidateProductionContentGeneration(launchId, itemId);
   const res = document.getElementById('prod-content-result');
   res.innerHTML = `<div class="empty-hint">${icon('ai',13)} Generando contenido…</div>`;
   try {
     const { text } = await callClaude(buildContentPrompt(ci), 1600);
     const obj = parseJSONObj(text);
     if (!obj) throw new Error('La IA no devolvió contenido en formato válido.');
+    const targetLaunch = launches.find(item => item.id === launchId);
+    const targetItem = targetLaunch && (targetLaunch.cal || []).find(item => item.id === itemId);
+    if (!targetItem || prodCtx.launchId !== launchId || prodCtx.itemId !== itemId ||
+      _productionContentGenerationVersion.get(generationKey) !== generationVersion) {
+      res.innerHTML = '<div class="cal-empty">Solicitud descartada porque la pieza cambió durante la generación.</div>';
+      return;
+    }
+    if (typeof requireCan === 'function' && !requireCan('edit_launch')) {
+      res.innerHTML = '<div class="cal-empty">Solicitud descartada: ya no tienes permiso para editar.</div>';
+      return;
+    }
     obj.at = Date.now();
-    const prod = ensureProduction(ci);
+    const prod = ensureProduction(targetItem);
     // Conserva el contenido anterior para complementar (no se borra; se reemplaza solo al regenerar).
     if (prod.content) prod.contentPrev = prod.content;
     prod.content = obj;
@@ -2043,7 +2881,7 @@ async function generarContenidoIA() {
 let viewContent = null;
 function contentResultHTML(c) {
   viewContent = c;
-  const tags = (c.hashtags || []);
+  const tags = Array.isArray(c.hashtags) ? c.hashtags : [];
   return `<div class="content-result">
     <div class="ctabs" role="tablist" aria-label="Contenido generado">
       <button type="button" role="tab" aria-selected="true" class="ctab active" data-ctab="caption" onclick="contentTab('caption',this)">Caption</button>
@@ -2061,7 +2899,7 @@ function contentResultHTML(c) {
     </div>
     <div data-cpane="hashtags" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="brief-label" style="margin:0">Hashtags (${tags.length})</div><button class="btn btn-ghost btn-sm" onclick="copyContent('hashtags',this)">Copiar todos</button></div>
-      <div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${s(h).startsWith('#') ? s(h) : '#' + s(h)}</span>`).join('') || '—'}</div>
+      <div class="brief-tags">${tags.map(h => `<span class="brief-tag accent">${esc(s(h).startsWith('#') ? s(h) : '#' + s(h))}</span>`).join('') || '—'}</div>
     </div>
   </div>`;
 }
@@ -2069,7 +2907,7 @@ function contentResultHTML(c) {
 // Único componente de salida para TODOS los generadores (HANDOFF #7 nivel 2).
 function aiFieldHTML(label, value, copyFn, opts) {
   opts = opts || {};
-  const v = (value == null || value === '') ? '—' : value;
+  const v = (value == null || value === '') ? '—' : esc(value);
   const copyBtn = copyFn ? `<button class="btn btn-ghost btn-sm" onclick="${copyFn}">${opts.copyLabel || 'Copiar'}</button>` : '';
   return `<div class="ai-field-block">
     <div class="ai-field-head"><div class="brief-label" style="margin:0">${label}</div>${copyBtn}</div>
@@ -2096,7 +2934,7 @@ function aiCopy(text, btn) {
 }
 function copyContent(key, btn) {
   if (!viewContent) return;
-  const v = key === 'hashtags' ? (viewContent.hashtags || []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContent[key]);
+  const v = key === 'hashtags' ? (Array.isArray(viewContent.hashtags) ? viewContent.hashtags : []).map(h => s(h).startsWith('#') ? s(h) : '#' + s(h)).join(' ') : s(viewContent[key]);
   aiCopy(v, btn);
 }
 // Banco: generación transitoria desde una referencia
@@ -3147,7 +3985,12 @@ const SEED_ARTISTS = [
   })),
 ];
 function saveArtistsLocal() { localStorage.setItem('ao_artists', JSON.stringify(artists)); }
-function saveArtists() { saveArtistsLocal(); scheduleCloudSync(); }
+function saveArtists() {
+  saveArtistsLocal(); scheduleCloudSync();
+  // El listener de ADN guarda en vivo. Encolar aquí mantiene el guardado no bloqueante
+  // y también cubre los flujos guiados que completan el ADN fuera del formulario.
+  if (typeof queueOfflineCalendarGeneration === 'function') queueOfflineCalendarGeneration(currentArtistId);
+}
 
 let artists = [];
 try { artists = JSON.parse(localStorage.getItem('ao_artists')); } catch(e){}
@@ -3204,7 +4047,7 @@ const SEED_LAUNCHES = [
 function normalizeLaunch(l) {
   l.dna = l.dna || {}; l.content = l.content || {}; l.budget = l.budget || {};
   l.cal = Array.isArray(l.cal) ? l.cal : [];
-  l.cal.forEach((ci, i) => { if (!ci.id) ci.id = 'ci-' + i + '-' + s(ci.fecha); });
+  l.cal.forEach(normalizeCalItem);
   l.goals = Array.isArray(l.goals) ? l.goals : [];
   l.metrics = (l.metrics && typeof l.metrics === 'object') ? l.metrics : {cards:[],weeks:[]};
   if (!Array.isArray(l.metrics.cards)) l.metrics.cards = [];
@@ -3330,6 +4173,11 @@ function saveLaunches() {
     const _l = launches.find(x => x.id === currentLaunchId); if (_l) _l._updatedAt = Date.now();
   }
   saveLaunchesLocal(); scheduleCloudSync();
+  // Un lanzamiento puede volverse elegible cuando se crea o se completa su ventana;
+  // reconciliamos por artista sin bloquear el guardado.
+  if (typeof queueOfflineCalendarGeneration === 'function') {
+    new Set(launches.map(item => item && item.artistId).filter(Boolean)).forEach(queueOfflineCalendarGeneration);
+  }
 }
 // ── Ordenamiento de lanzamientos (lista + dashboard) ──
 const LAUNCH_STATUS_ORDER = { active:0, planning:1, analisis:2, bloqueado:3, complete:4, cerrado:5 };
@@ -3841,8 +4689,8 @@ function renderDashboard() {
         return `<article style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid ${urgent?'rgba(255,71,87,0.35)':'var(--border)'};border-radius:6px;">
           <div style="font-family:var(--font-ui);font-size:var(--text-2xs);color:${dr === 0 ? 'var(--accent)' : (urgent?'#ff8a8a':'var(--text-muted)')};width:64px;display:flex;align-items:center;gap:4px">${urgent?icon('clock',11):''}${dlabel}</div>
           <span class="cal-item" style="margin:0;background:${col}18;color:${col};border-left:2px solid ${col}">${ESTADO_ICON[estado]||''} ${esc(ci.title)}</span>
-          <div style="margin-left:auto;font-size:var(--text-2xs);color:var(--text-muted);font-family:var(--font-ui)">${s(ci.launch)}</div>
-          <button type="button" class="card-open" onclick="openProduction('${ci.launchId}','${ci.id}')">Abrir ${icon('link',10)}</button>
+          <div style="margin-left:auto;font-size:var(--text-2xs);color:var(--text-muted);font-family:var(--font-ui)">${esc(ci.launch)}</div>
+          <button type="button" class="card-open" onclick='openProduction(${jsArg(ci.launchId)},${jsArg(ci.id)})'>Abrir ${icon('link',10)}</button>
         </article>`;
       }).join('');
     }

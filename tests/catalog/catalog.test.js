@@ -461,7 +461,7 @@ test('el catálogo canónico conserva las 6,066 referencias y app.html ya no con
   assert.match(html, /href=["']css\/app\.css\?v=20260811a["']/);
   assert.match(css, /:root, \[data-theme="dark"\]/);
   assert.match(css, /\.catalog-state/);
-  const scriptVersions = { catalog: '20260811c', app: '20260811c', releases: '20260811b', team: '20260811b', init: '20260811b' };
+  const scriptVersions = { catalog: '20260811c', plan: '20260902d', app: '20260902t', releases: '20260811b', team: '20260811b', init: '20260811b' };
   Object.entries(scriptVersions).forEach(([script, version]) => {
     assert.match(html, new RegExp(`src=["']js/${script}\\.js\\?v=${version}["']`));
   });
