@@ -77,6 +77,37 @@ test('el usuario puede abrir TEMPO y navegar al Banco', async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
+test('el Calendario embebido del lanzamiento renderiza aunque la campaña esté vacía', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('ao_artists', JSON.stringify([{
+      id: 'A1', name: 'Jemeth', adn: {}, team: [], catalog: [], learnings: [],
+    }]));
+    localStorage.setItem('ao_active_artist', 'A1');
+    localStorage.setItem('ao_launches', JSON.stringify([{
+      id: 'TMP-422', artistId: 'A1', name: 'BEACHY', type: 'single',
+      date: '2026-08-27', status: 'active', preDays: 0, postDays: 28,
+      dna: {}, content: {}, cal: [],
+    }]));
+  });
+  await openLocalWorkspace(page);
+
+  await page.evaluate(() => openLaunch('TMP-422'));
+  await page.getByRole('tab', { name: 'Campaña', exact: true }).click();
+  await page.getByRole('tab', { name: 'Calendario', exact: true }).click();
+
+  await expect(page.locator('#release-sub-body #page-calendario')).toBeVisible();
+  await expect(page.locator('#release-sub-body #cal-calendar-view')).toBeVisible();
+  await expect(page.locator('#release-sub-body #cal-grid .cal-day')).toHaveCount(42);
+
+  // Una actualización normal del lanzamiento no debe destruir la página global embebida.
+  await page.evaluate(() => renderLaunchDetail());
+  await expect(page.locator('#release-sub-body #page-calendario')).toBeVisible();
+  await expect(page.locator('#release-sub-body #cal-grid .cal-day')).toHaveCount(42);
+  expect(pageErrors).toEqual([]);
+});
+
 test('la navegación principal abre cada espacio de trabajo', async ({ page }, testInfo) => {
   await openLocalWorkspace(page);
 

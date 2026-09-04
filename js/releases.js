@@ -35,7 +35,11 @@ function openLaunch(id) {
 
 function renderLaunchDetail() {
   const l = launches.find(x => x.id === currentLaunchId);
-  const host = document.getElementById('launch-detail');
+  const host = document.getElementById('launch-detail'); if (!host) return;
+  // Las páginas globales (Calendario, Objetivos, etc.) se mueven físicamente
+  // dentro de la ficha. Hay que devolverlas antes de reemplazar su contenedor
+  // o el nodo embebido se destruye y la subpestaña queda en blanco.
+  releaseRestorePages();
   if (!l) { host.innerHTML = '<div class="empty-hint">Lanzamiento no encontrado.</div>'; return; }
 
   // ojo: #page-title ahora envuelve dos <span> (texto + artista, ver showPage en app.js);
